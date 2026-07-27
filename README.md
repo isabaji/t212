@@ -99,11 +99,12 @@ They're independent — enable one, both, or neither. To turn them on:
 2. Under **Secrets**, click **New repository secret** and add two secrets:
    - Name: `T212_API_KEY` — Value: your Trading212 API key
    - Name: `T212_API_SECRET` — Value: your Trading212 API secret
-3. (Optional) Under **Variables**, add any of `T212_ENV`, `DRY_RUN`,
-   `DAYTRADE_DRY_RUN`, `WATCHLIST`, `DAYTRADE_WATCHLIST`, `MAX_POSITION_PCT`,
-   `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to override the defaults (`demo`,
-   `true`, `true`, 15 large-caps across sectors — see the table above, same
-   list for `WATCHLIST`, `0.10`, `5`, `0.05`).
+3. (Optional) **Also under Secrets** (not Variables — see the note below), add
+   any of `T212_ENV`, `DRY_RUN`, `DAYTRADE_DRY_RUN`, `WATCHLIST`,
+   `DAYTRADE_WATCHLIST`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`,
+   `CASH_BUFFER_PCT` to override the defaults (`demo`, `true`, `true`, 15
+   large-caps across sectors — see the table above, same list for
+   `WATCHLIST`, `0.10`, `5`, `0.05`).
    `DRY_RUN` and `DAYTRADE_DRY_RUN` are separate on purpose, so you can arm one
    mode without arming the other. Leave everything unset to start safely in
    demo/dry-run mode.
@@ -111,6 +112,22 @@ They're independent — enable one, both, or neither. To turn them on:
    it manually and check the logs, or just wait for the schedule.
 
 No terminal or local Python install required — GitHub runs it for you.
+
+> **Why config lives in Secrets, not Variables, on this repo:** this repo is
+> public, so its GitHub Actions run logs are public too. GitHub automatically
+> masks any value stored as a **Secret** wherever it appears in a log, but
+> **Variables print in plain text** — so if `T212_ENV` or `WATCHLIST` were
+> Variables, anyone could read them straight off the Actions tab, no access
+> needed. Storing them as Secrets instead (even though they're not
+> credentials) gets them the same automatic masking. On top of that, the
+> bot's own logging deliberately never prints account value, cash, position
+> sizes, or trade dollar amounts, and a BUY/SELL log line looks identical
+> whether it was a dry run or a real order — none of that is something
+> auto-masking can protect (it only works on values GitHub already knows to
+> look for), so it's scrubbed at the source instead. Full detail (exact
+> figures, order IDs, the dry-run flag) is still written locally each cycle
+> to `logs/history.jsonl` (gitignored, never pushed) if you want it for your
+> own use — it just doesn't flow into the public log stream.
 
 **Option B — your own machine/server with cron:**
 

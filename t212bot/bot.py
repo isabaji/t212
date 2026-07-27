@@ -37,9 +37,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         account_value = float(cash.get("total", free_cash))
         positions = {p["ticker"]: p for p in client.portfolio()}
         held_symbols = {to_yahoo_symbol(t) for t in positions}
-        log.info("Account value %.2f, free cash %.2f, %d open positions (%s mode%s)",
-                 account_value, free_cash, len(positions), cfg.env,
-                 ", DRY RUN" if cfg.dry_run else "")
+        log.info("Account snapshot retrieved (%d open position%s)",
+                 len(positions), "" if len(positions) == 1 else "s")
 
         prices = fetch_history(sorted(set(cfg.watchlist) | held_symbols))
         signals = strategy.generate_signals(prices)
@@ -109,9 +108,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         account_value = float(cash.get("total", free_cash))
         positions = {p["ticker"]: p for p in client.portfolio()}
         held_symbols = {to_yahoo_symbol(t) for t in positions}
-        log.info("Account value %.2f, free cash %.2f, %d open positions (%s mode%s)",
-                 account_value, free_cash, len(positions), cfg.env,
-                 ", DRY RUN" if cfg.dry_run else "")
+        log.info("Account snapshot retrieved (%d open position%s)",
+                 len(positions), "" if len(positions) == 1 else "s")
 
         prices = fetch_intraday(sorted(set(cfg.watchlist) | held_symbols))
         signals = strategy.generate_signals(prices)
@@ -199,10 +197,11 @@ def _minutes_until_close(bar_timestamp: pd.Timestamp) -> float:
 
 def _execute(client: Trading212Client, dry_run: bool, ticker: str,
              quantity: float, ref_price: float, label: str) -> None:
-    notional = abs(quantity) * ref_price
-    if dry_run:
-        log.info("[DRY RUN] %s %s x %.2f (~%.2f)", label, ticker, abs(quantity), notional)
-        return
-    result = client.place_market_order(ticker, quantity)
-    log.info("%s %s x %.2f (~%.2f) placed: order id %s",
-             label, ticker, abs(quantity), notional, result.get("id"))
+    # Deliberately identical output whether this was a dry run or a real
+    # order, with no quantity/notional/order-id — this stdout is captured by
+    # a public CI log, and even "did a real order get placed" is information
+    # worth not leaking there. Full detail (figures, dry_run flag, order id)
+    # goes only to the local, gitignored history.jsonl via the call site.
+    if not dry_run:
+        client.place_market_order(ticker, quantity)
+    log.info("Signal: %s %s", label, ticker)

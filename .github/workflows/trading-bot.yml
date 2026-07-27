@@ -26,14 +26,18 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Run trading bot
+        # Config is deliberately stored as Secrets, not Variables, even though
+        # none of it is a credential — this repo is public, and only Secrets
+        # get GitHub's automatic log-masking. Variables print in plain text in
+        # every run's "env:" log block regardless of repo visibility.
         env:
           T212_API_KEY: ${{ secrets.T212_API_KEY }}
           T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
-          T212_ENV: ${{ vars.T212_ENV || 'demo' }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || vars.DRY_RUN || 'true' }}
-          I_UNDERSTAND_LIVE_TRADING_RISK: ${{ vars.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
-          WATCHLIST: ${{ vars.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS' }}
-          MAX_POSITION_PCT: ${{ vars.MAX_POSITION_PCT || '0.10' }}
-          MAX_OPEN_POSITIONS: ${{ vars.MAX_OPEN_POSITIONS || '5' }}
-          CASH_BUFFER_PCT: ${{ vars.CASH_BUFFER_PCT || '0.05' }}
+          T212_ENV: ${{ secrets.T212_ENV || 'demo' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || secrets.DRY_RUN || 'true' }}
+          I_UNDERSTAND_LIVE_TRADING_RISK: ${{ secrets.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
+          WATCHLIST: ${{ secrets.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS' }}
+          MAX_POSITION_PCT: ${{ secrets.MAX_POSITION_PCT || '0.10' }}
+          MAX_OPEN_POSITIONS: ${{ secrets.MAX_OPEN_POSITIONS || '5' }}
+          CASH_BUFFER_PCT: ${{ secrets.CASH_BUFFER_PCT || '0.05' }}
         run: python main.py run
