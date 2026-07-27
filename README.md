@@ -79,8 +79,27 @@ let it place practice orders. Only after that consider `T212_ENV=live`.
 
 ### 5. Schedule it
 
-The bot is intentionally stateless — one invocation = one cycle. Schedule it with
-cron (e.g. every 15 minutes during US market hours):
+The bot is intentionally stateless — one invocation = one cycle. You have two options:
+
+**Option A — GitHub Actions (recommended, no server needed):**
+
+A workflow at `.github/workflows/trading-bot.yml` is already set up to run the bot
+every 15 minutes during US market hours. To turn it on:
+
+1. On GitHub, go to this repo → **Settings → Secrets and variables → Actions**.
+2. Under **Secrets**, click **New repository secret**:
+   - Name: `T212_API_KEY`
+   - Value: your Trading212 API key
+3. (Optional) Under **Variables**, add any of `T212_ENV`, `DRY_RUN`,
+   `WATCHLIST`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to
+   override the defaults (`demo`, `true`, `AAPL,MSFT,GOOGL`, `0.10`, `5`, `0.05`).
+   Leave them unset to start safely in demo/dry-run mode.
+4. Go to the **Actions** tab → **Trading212 Bot** → **Run workflow** to trigger
+   it manually and check the logs, or just wait for the schedule.
+
+No terminal or local Python install required — GitHub runs it for you.
+
+**Option B — your own machine/server with cron:**
 
 ```cron
 */15 14-21 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py run >> bot.log 2>&1

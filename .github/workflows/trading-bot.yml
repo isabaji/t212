@@ -1,0 +1,38 @@
+name: Trading212 Bot
+
+on:
+  # Every 15 minutes during roughly US market hours (14:00-21:00 UTC), weekdays.
+  schedule:
+    - cron: '*/15 14-21 * * 1-5'
+  # Lets you trigger a run by hand from the Actions tab, with an override on dry-run.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (log intended orders, do not place them)'
+        type: boolean
+        default: true
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Run trading bot
+        env:
+          T212_API_KEY: ${{ secrets.T212_API_KEY }}
+          T212_ENV: ${{ vars.T212_ENV || 'demo' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || vars.DRY_RUN || 'true' }}
+          I_UNDERSTAND_LIVE_TRADING_RISK: ${{ vars.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
+          WATCHLIST: ${{ vars.WATCHLIST || 'AAPL,MSFT,GOOGL' }}
+          MAX_POSITION_PCT: ${{ vars.MAX_POSITION_PCT || '0.10' }}
+          MAX_OPEN_POSITIONS: ${{ vars.MAX_OPEN_POSITIONS || '5' }}
+          CASH_BUFFER_PCT: ${{ vars.CASH_BUFFER_PCT || '0.05' }}
+        run: python main.py run
