@@ -63,7 +63,7 @@ Key settings in `.env`:
 | `T212_API_SECRET` | — | Your API secret (shown alongside the key when you generate it) |
 | `T212_ENV` | `demo` | `demo` (practice) or `live` |
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
-| `WATCHLIST` | `AAPL,MSFT,GOOGL` | Yahoo symbols the strategy scans |
+| `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS` | Yahoo symbols the strategy scans (15 large-caps across sectors by default) |
 
 The bot refuses to run against `live` unless you also set
 `I_UNDERSTAND_LIVE_TRADING_RISK=yes`.
@@ -102,7 +102,8 @@ They're independent — enable one, both, or neither. To turn them on:
 3. (Optional) Under **Variables**, add any of `T212_ENV`, `DRY_RUN`,
    `DAYTRADE_DRY_RUN`, `WATCHLIST`, `DAYTRADE_WATCHLIST`, `MAX_POSITION_PCT`,
    `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to override the defaults (`demo`,
-   `true`, `true`, `AAPL,MSFT,GOOGL`, same as `WATCHLIST`, `0.10`, `5`, `0.05`).
+   `true`, `true`, 15 large-caps across sectors — see the table above, same
+   list for `WATCHLIST`, `0.10`, `5`, `0.05`).
    `DRY_RUN` and `DAYTRADE_DRY_RUN` are separate on purpose, so you can arm one
    mode without arming the other. Leave everything unset to start safely in
    demo/dry-run mode.

@@ -22,7 +22,10 @@ class Config:
     watchlist: list[str] = field(
         default_factory=lambda: [
             s.strip().upper()
-            for s in os.getenv("WATCHLIST", "AAPL,MSFT,GOOGL").split(",")
+            for s in os.getenv(
+                "WATCHLIST",
+                "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS",
+            ).split(",")
             if s.strip()
         ]
     )

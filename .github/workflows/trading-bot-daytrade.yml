@@ -35,7 +35,7 @@ jobs:
           # Separate from the swing bot's DRY_RUN so you arm each mode independently.
           DRY_RUN: ${{ github.event.inputs.dry_run || vars.DAYTRADE_DRY_RUN || 'true' }}
           I_UNDERSTAND_LIVE_TRADING_RISK: ${{ vars.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
-          WATCHLIST: ${{ vars.DAYTRADE_WATCHLIST || vars.WATCHLIST || 'AAPL,MSFT,GOOGL' }}
+          WATCHLIST: ${{ vars.DAYTRADE_WATCHLIST || vars.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS' }}
           MAX_POSITION_PCT: ${{ vars.MAX_POSITION_PCT || '0.10' }}
           MAX_OPEN_POSITIONS: ${{ vars.MAX_OPEN_POSITIONS || '5' }}
           CASH_BUFFER_PCT: ${{ vars.CASH_BUFFER_PCT || '0.05' }}
