@@ -11,7 +11,7 @@ import logging
 
 import pandas as pd
 
-from . import daily_target, history
+from . import daily_target, history, trade_stats
 from .client import Trading212Client
 from .config import Config
 from .data import fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
@@ -42,6 +42,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
 
         daily_state = daily_target.load()
         blocked = daily_target.entries_blocked(daily_state)
+        tstats = trade_stats.load()
 
         prices = fetch_history(sorted(set(cfg.watchlist) | held_symbols))
         signals = strategy.generate_signals(prices)
@@ -49,6 +50,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         decisions = []
         hold_symbols = []
         blocked_symbols = []
+        paused_symbols = []
 
         for sym, signal in sorted(signals.items()):
             t212_ticker = to_t212_ticker(sym)
@@ -58,7 +60,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL")
-                daily_target.record_trade_pct(daily_state, (last_price - avg_price) * qty / account_value)
+                pnl_pct = (last_price - avg_price) * qty / account_value
+                daily_target.record_trade_pct(daily_state, pnl_pct)
+                trade_stats.record_trade(tstats, "swing", sym, pnl_pct,
+                                          cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -66,6 +71,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 if blocked:
                     log.debug("BUY %s skipped: daily target/loss-limit already reached", sym)
                     blocked_symbols.append(sym)
+                    continue
+                if trade_stats.is_paused(tstats, "swing", sym):
+                    log.info("BUY %s skipped: in a losing-streak cooldown", sym)
+                    paused_symbols.append(sym)
                     continue
                 if not risk.can_open_position(len(positions)):
                     log.info("BUY %s skipped: max open positions reached", sym)
@@ -94,9 +103,13 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "
                               "already reached, no new entries today."))
+        if paused_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(paused_symbols)} — in a losing-streak cooldown."))
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
+        trade_stats.save(tstats)
 
         history.append("swing", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},
@@ -130,6 +143,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
 
         daily_state = daily_target.load()
         blocked = daily_target.entries_blocked(daily_state)
+        tstats = trade_stats.load()
 
         prices = fetch_intraday(sorted(set(cfg.watchlist) | held_symbols))
         signals = strategy.generate_signals(prices)
@@ -138,6 +152,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         stale_symbols = []
         hold_symbols = []
         blocked_symbols = []
+        paused_symbols = []
 
         for sym, df in sorted(prices.items()):
             t212_ticker = to_t212_ticker(sym)
@@ -151,7 +166,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL (EOD flatten)")
-                daily_target.record_trade_pct(daily_state, (last_price - avg_price) * qty / account_value)
+                pnl_pct = (last_price - avg_price) * qty / account_value
+                daily_target.record_trade_pct(daily_state, pnl_pct)
+                trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
+                                          cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"EOD flatten — closed {qty:g} shares."))
                 continue
@@ -168,7 +186,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL")
-                daily_target.record_trade_pct(daily_state, (last_price - avg_price) * qty / account_value)
+                pnl_pct = (last_price - avg_price) * qty / account_value
+                daily_target.record_trade_pct(daily_state, pnl_pct)
+                trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
+                                          cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -176,6 +197,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 if blocked:
                     log.debug("BUY %s skipped: daily target/loss-limit already reached", sym)
                     blocked_symbols.append(sym)
+                    continue
+                if trade_stats.is_paused(tstats, "daytrade", sym):
+                    log.info("BUY %s skipped: in a losing-streak cooldown", sym)
+                    paused_symbols.append(sym)
                     continue
                 if minutes_to_close <= NO_NEW_ENTRIES_MINUTES_BEFORE_CLOSE:
                     log.info("BUY %s skipped: too close to the close for a new day-trade entry", sym)
@@ -212,9 +237,13 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "
                               "already reached, no new entries today."))
+        if paused_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(paused_symbols)} — in a losing-streak cooldown."))
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
+        trade_stats.save(tstats)
 
         history.append("daytrade", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},

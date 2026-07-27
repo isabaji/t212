@@ -48,24 +48,27 @@ jobs:
           CASH_BUFFER_PCT: ${{ secrets.CASH_BUFFER_PCT || '0.05' }}
           DAILY_PROFIT_TARGET_PCT: ${{ secrets.DAILY_PROFIT_TARGET_PCT || '0.0075' }}
           DAILY_LOSS_LIMIT_PCT: ${{ secrets.DAILY_LOSS_LIMIT_PCT || '0.01' }}
+          LOSING_STREAK_LIMIT: ${{ secrets.LOSING_STREAK_LIMIT || '3' }}
+          LOSING_STREAK_COOLDOWN_DAYS: ${{ secrets.LOSING_STREAK_COOLDOWN_DAYS || '5' }}
         run: python main.py daytrade
 
-      - name: Persist daily target state
-        # Percentages only, never a dollar figure — see t212bot/daily_target.py.
-        # Shared with the swing workflow, so pushes can race; retry a few
-        # times with a rebase in between rather than failing the job over it.
+      - name: Persist daily target and trade-stats state
+        # Percentages/counts only, never a dollar figure — see
+        # t212bot/daily_target.py and t212bot/trade_stats.py. Shared with the
+        # swing workflow, so pushes can race; retry a few times with a
+        # rebase in between rather than failing the job over it.
         if: always()
         run: |
-          if [ -n "$(git status --porcelain state/daily_target.json 2>/dev/null)" ]; then
+          if [ -n "$(git status --porcelain state/ 2>/dev/null)" ]; then
             git config user.name "t212-bot"
             git config user.email "actions@users.noreply.github.com"
-            git add state/daily_target.json
-            git commit -m "chore: update daily target state"
+            git add state/
+            git commit -m "chore: update bot state"
             for i in 1 2 3; do
               git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
               echo "Push attempt $i failed, retrying..."
               sleep $((i * 3))
             done
           else
-            echo "No change to daily target state."
+            echo "No change to bot state."
           fi

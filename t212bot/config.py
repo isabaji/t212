@@ -38,6 +38,10 @@ class Config:
     daily_loss_limit_pct: float = field(
         default_factory=lambda: float(os.getenv("DAILY_LOSS_LIMIT_PCT", "0.01"))
     )
+    losing_streak_limit: int = field(default_factory=lambda: int(os.getenv("LOSING_STREAK_LIMIT", "3")))
+    losing_streak_cooldown_days: int = field(
+        default_factory=lambda: int(os.getenv("LOSING_STREAK_COOLDOWN_DAYS", "5"))
+    )
 
     @property
     def base_url(self) -> str:

@@ -67,6 +67,8 @@ Key settings in `.env`:
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS` | Yahoo symbols the strategy scans (15 large-caps across sectors by default) |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
+| `LOSING_STREAK_LIMIT` | `3` | Pause a symbol's new entries after this many losses in a row on it |
+| `LOSING_STREAK_COOLDOWN_DAYS` | `5` | How long a symbol stays paused before resuming with a reset streak |
 
 The bot refuses to run against `live` unless you also set
 `I_UNDERSTAND_LIVE_TRADING_RISK=yes`.
@@ -101,6 +103,30 @@ Implementation notes, since this involves cross-run state on a public repo:
   still reasonable behavior even when it technically accrued earlier.
 - Both bots share the same daily state (one target for the whole account, not
   one each), since the goal was framed as "the account," not "each bot."
+
+### About trade tracking and the losing-streak pause
+
+The bot **does not learn or adapt its own strategy logic from outcomes** — the
+SMA-crossover and opening-range parameters are fixed regardless of results.
+That's deliberate: letting a strategy quietly retune itself from a small
+number of live trades is a classic way to overfit to noise rather than find a
+real edge, with no visibility into why it changed. Instead there are two
+honest, explainable pieces:
+
+1. **Trade outcome tracking** (`t212bot/trade_stats.py`) — every closed trade
+   is recorded as a win or loss per symbol per strategy: win/loss counts,
+   cumulative realized %, and the current streak. This is a track record for
+   *you* to look at (surfaced on the dashboard), not something the bot acts
+   on beyond point 2 below.
+2. **A per-symbol losing-streak circuit breaker** — after `LOSING_STREAK_LIMIT`
+   losses in a row on one symbol, new entries on *that symbol only* pause for
+   `LOSING_STREAK_COOLDOWN_DAYS`, then automatically resume with the streak
+   reset. It's a simple, transparent rule ("this specific thing keeps not
+   working, stop trying it for a while"), not a model rewriting its own
+   decision logic.
+
+Same public-repo constraint as the daily target: `state/trade_stats.json`
+tracks only win/loss counts and percentages, never a dollar figure.
 
 ### 4. Use it
 
