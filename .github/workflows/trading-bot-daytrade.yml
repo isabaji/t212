@@ -1,0 +1,42 @@
+name: Trading212 Day-Trading Bot
+
+on:
+  # Every 5 minutes across a padded market-hours window (13:00-21:00 UTC covers
+  # US market hours across both EST and EDT). The bot itself decides, from the
+  # actual data timestamps, whether the market is really open — extra firings
+  # outside real market hours are safe no-ops (see STALE_BAR_MINUTES in bot.py).
+  schedule:
+    - cron: '*/5 13-20 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (log intended orders, do not place them)'
+        type: boolean
+        default: true
+
+jobs:
+  run-daytrade-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Run day-trading bot
+        env:
+          T212_API_KEY: ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+          T212_ENV: ${{ vars.T212_ENV || 'demo' }}
+          # Separate from the swing bot's DRY_RUN so you arm each mode independently.
+          DRY_RUN: ${{ github.event.inputs.dry_run || vars.DAYTRADE_DRY_RUN || 'true' }}
+          I_UNDERSTAND_LIVE_TRADING_RISK: ${{ vars.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
+          WATCHLIST: ${{ vars.DAYTRADE_WATCHLIST || vars.WATCHLIST || 'AAPL,MSFT,GOOGL' }}
+          MAX_POSITION_PCT: ${{ vars.MAX_POSITION_PCT || '0.10' }}
+          MAX_OPEN_POSITIONS: ${{ vars.MAX_OPEN_POSITIONS || '5' }}
+          CASH_BUFFER_PCT: ${{ vars.CASH_BUFFER_PCT || '0.05' }}
+        run: python main.py daytrade

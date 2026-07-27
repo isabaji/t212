@@ -38,3 +38,12 @@ def fetch_history(symbols: list[str], period: str = "1y", interval: str = "1d") 
             continue
         out[sym] = df
     return out
+
+
+def fetch_intraday(symbols: list[str], period: str = "5d", interval: str = "5m") -> dict[str, pd.DataFrame]:
+    """Return {symbol: intraday OHLCV DataFrame}, index tz-aware in the exchange's local time.
+
+    5 days of 5-minute bars gives enough history to warm up EMA/RSI while still
+    being cheap; yfinance only retains a limited intraday history anyway.
+    """
+    return fetch_history(symbols, period=period, interval=interval)

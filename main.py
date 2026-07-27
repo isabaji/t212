@@ -10,10 +10,10 @@ import argparse
 import logging
 
 from t212bot.backtest import print_backtest
-from t212bot.bot import run_cycle
+from t212bot.bot import run_cycle, run_day_trade_cycle
 from t212bot.client import Trading212Client
 from t212bot.config import Config
-from t212bot.strategy import SMACrossover
+from t212bot.strategy import OpeningRangeConfluence, SMACrossover
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -37,9 +37,10 @@ def cmd_account(cfg: Config) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Trading212 algorithmic trading bot")
-    parser.add_argument("command", choices=["account", "backtest", "run"])
-    parser.add_argument("--fast", type=int, default=20, help="fast SMA window")
-    parser.add_argument("--slow", type=int, default=50, help="slow SMA window")
+    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade"])
+    parser.add_argument("--fast", type=int, default=20, help="fast SMA window (swing strategy)")
+    parser.add_argument("--slow", type=int, default=50, help="slow SMA window (swing strategy)")
+    parser.add_argument("--or-minutes", type=int, default=30, help="opening range window (day-trade strategy)")
     args = parser.parse_args()
 
     cfg = Config()
@@ -53,6 +54,8 @@ def main() -> None:
         cmd_account(cfg)
     elif args.command == "run":
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
+    elif args.command == "daytrade":
+        run_day_trade_cycle(cfg, OpeningRangeConfluence(or_minutes=args.or_minutes))
 
 
 if __name__ == "__main__":
