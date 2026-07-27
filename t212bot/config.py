@@ -32,6 +32,12 @@ class Config:
     max_position_pct: float = field(default_factory=lambda: float(os.getenv("MAX_POSITION_PCT", "0.10")))
     max_open_positions: int = field(default_factory=lambda: int(os.getenv("MAX_OPEN_POSITIONS", "5")))
     cash_buffer_pct: float = field(default_factory=lambda: float(os.getenv("CASH_BUFFER_PCT", "0.05")))
+    daily_profit_target_pct: float = field(
+        default_factory=lambda: float(os.getenv("DAILY_PROFIT_TARGET_PCT", "0.0075"))
+    )
+    daily_loss_limit_pct: float = field(
+        default_factory=lambda: float(os.getenv("DAILY_LOSS_LIMIT_PCT", "0.01"))
+    )
 
     @property
     def base_url(self) -> str:

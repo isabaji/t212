@@ -28,7 +28,8 @@ is split into three layers:
    Two are included: a daily SMA-crossover (swing trading) and an intraday
    opening-range breakout (day trading) — see below.
 3. **Risk** — position sizing, max open positions, and a cash buffer are enforced
-   before any order is sent.
+   before any order is sent. A daily profit-target/loss-limit sits alongside this
+   (see below) — it's a stop mechanism, not a return guarantee.
 4. **Execution** — a rate-limit-aware client for the Trading212 REST API places
    market orders (practice or live).
 
@@ -64,9 +65,42 @@ Key settings in `.env`:
 | `T212_ENV` | `demo` | `demo` (practice) or `live` |
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS` | Yahoo symbols the strategy scans (15 large-caps across sectors by default) |
+| `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
+| `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
 
 The bot refuses to run against `live` unless you also set
 `I_UNDERSTAND_LIVE_TRADING_RISK=yes`.
+
+### About the daily profit target
+
+**No algorithm can guarantee a specific daily return, and this one doesn't
+pretend to.** 0.5–1% *every single day* compounds to triple-digit annual
+returns — not something any legitimate rules-based retail strategy delivers
+consistently. What `DAILY_PROFIT_TARGET_PCT`/`DAILY_LOSS_LIMIT_PCT` actually do
+is simpler and honest: once **realized** gains from closed trades today reach
+the target, both bots stop opening *new* positions for the rest of the day —
+existing positions still get managed and closed normally, the win just isn't
+pushed further. The loss limit is the mirror image: past that threshold, no
+new positions either, so a bad day doesn't compound. Some days will hit the
+target, some won't, some will hit the loss limit instead — that's markets,
+not a bug.
+
+Implementation notes, since this involves cross-run state on a public repo:
+
+- State (`state/daily_target.json`) tracks **only a running percentage**,
+  never a dollar figure — the file is git-tracked and this repo is public, so
+  it must never contain the account's actual value. Each workflow run commits
+  it back so the target/limit persists across separate, ephemeral GitHub
+  Actions runs; it resets at UTC midnight.
+- The percentage is *realized* P&L only (from actual closed trades), not
+  unrealized mark-to-market on open positions. For the day-trade bot (always
+  flat by end of day) this is a complete picture of the day. For the swing
+  bot, a single sale can realize gains that accrued over many prior days —
+  so a big close can look like a big "today" in this tracker. That's an
+  accepted approximation: pausing new entries after a large realized gain is
+  still reasonable behavior even when it technically accrued earlier.
+- Both bots share the same daily state (one target for the whole account, not
+  one each), since the goal was framed as "the account," not "each bot."
 
 ### 4. Use it
 
