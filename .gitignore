@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 bot.log
 .DS_Store
+logs/*.jsonl
