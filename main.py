@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 
 def cmd_account(cfg: Config) -> None:
-    client = Trading212Client(cfg.api_key, cfg.base_url)
+    client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
     cash = client.account_cash()
     print(f"Environment: {cfg.env}")
     print(f"Free cash:   {cash.get('free')}")

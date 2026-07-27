@@ -15,6 +15,7 @@ def _bool(name: str, default: str = "false") -> bool:
 @dataclass
 class Config:
     api_key: str = field(default_factory=lambda: os.getenv("T212_API_KEY", ""))
+    api_secret: str = field(default_factory=lambda: os.getenv("T212_API_SECRET", ""))
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))
@@ -36,6 +37,8 @@ class Config:
     def validate(self) -> None:
         if not self.api_key:
             raise SystemExit("T212_API_KEY is not set. Copy .env.example to .env and fill it in.")
+        if not self.api_secret:
+            raise SystemExit("T212_API_SECRET is not set. Copy .env.example to .env and fill it in.")
         if self.env not in ("demo", "live"):
             raise SystemExit(f"T212_ENV must be 'demo' or 'live', got {self.env!r}")
         if self.env == "live" and not self.live_ack:

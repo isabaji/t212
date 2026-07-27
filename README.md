@@ -59,6 +59,7 @@ Key settings in `.env`:
 | Variable | Default | Meaning |
 |---|---|---|
 | `T212_API_KEY` | — | Your API key |
+| `T212_API_SECRET` | — | Your API secret (shown alongside the key when you generate it) |
 | `T212_ENV` | `demo` | `demo` (practice) or `live` |
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL` | Yahoo symbols the strategy scans |
@@ -87,9 +88,9 @@ A workflow at `.github/workflows/trading-bot.yml` is already set up to run the b
 every 15 minutes during US market hours. To turn it on:
 
 1. On GitHub, go to this repo → **Settings → Secrets and variables → Actions**.
-2. Under **Secrets**, click **New repository secret**:
-   - Name: `T212_API_KEY`
-   - Value: your Trading212 API key
+2. Under **Secrets**, click **New repository secret** and add two secrets:
+   - Name: `T212_API_KEY` — Value: your Trading212 API key
+   - Name: `T212_API_SECRET` — Value: your Trading212 API secret
 3. (Optional) Under **Variables**, add any of `T212_ENV`, `DRY_RUN`,
    `WATCHLIST`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to
    override the defaults (`demo`, `true`, `AAPL,MSFT,GOOGL`, `0.10`, `5`, `0.05`).
@@ -117,7 +118,8 @@ or a GitHub Actions scheduled workflow, or any server/Raspberry Pi.
 ## Trading212 API notes & limitations
 
 - Base URLs: `https://demo.trading212.com` (practice), `https://live.trading212.com`.
-- Auth: `Authorization: <api-key>` header.
+- Auth: HTTP Basic (`Authorization: Basic base64(api_key:api_secret)`). Demo and
+  live keys/secrets are each valid only against their matching base URL.
 - Sell orders are placed by sending a **negative quantity**.
 - Endpoints are rate-limited (the client auto-retries on HTTP 429 with backoff).
 - Max 50 pending orders per ticker per account.

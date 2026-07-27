@@ -2,8 +2,11 @@
 
 Docs: https://t212public-api-docs.redoc.ly/
 Sell orders use a negative quantity — that is the API's convention.
+Auth is HTTP Basic with the API key as username and the API secret as password
+(demo and live keys/secrets are each valid only against their own base URL).
 """
 
+import base64
 import logging
 import time
 
@@ -19,10 +22,11 @@ class Trading212Error(RuntimeError):
 
 
 class Trading212Client:
-    def __init__(self, api_key: str, base_url: str):
+    def __init__(self, api_key: str, api_secret: str, base_url: str):
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
-        self.session.headers.update({"Authorization": api_key})
+        credentials = base64.b64encode(f"{api_key}:{api_secret}".encode()).decode()
+        self.session.headers.update({"Authorization": f"Basic {credentials}"})
 
     def _request(self, method: str, path: str, json: dict | None = None) -> dict | list:
         url = f"{self.base_url}/api/v0{path}"

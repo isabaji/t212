@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 def run_cycle(cfg: Config, strategy: Strategy) -> None:
-    client = Trading212Client(cfg.api_key, cfg.base_url)
+    client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
     risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct)
 
     cash = client.account_cash()

@@ -28,6 +28,7 @@ jobs:
       - name: Run trading bot
         env:
           T212_API_KEY: ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
           T212_ENV: ${{ vars.T212_ENV || 'demo' }}
           DRY_RUN: ${{ github.event.inputs.dry_run || vars.DRY_RUN || 'true' }}
           I_UNDERSTAND_LIVE_TRADING_RISK: ${{ vars.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
