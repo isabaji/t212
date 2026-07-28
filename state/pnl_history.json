@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "t": "2026-07-28T18:02:15Z",
+    "strategy": "daytrade",
+    "symbol": "AVGO",
+    "pnl_pct": -0.00029076903197105733
+  },
+  {
+    "t": "2026-07-28T18:02:15Z",
+    "strategy": "daytrade",
+    "symbol": "NVDA",
+    "pnl_pct": -5.203120849312221e-05
+  }
+]

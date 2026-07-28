@@ -1,1 +1,20 @@
-{}
+{
+  "daytrade": {
+    "AVGO": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.00029076903197105733,
+      "wins": 0
+    },
+    "NVDA": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -5.203120849312221e-05,
+      "wins": 0
+    }
+  }
+}
