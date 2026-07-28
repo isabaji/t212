@@ -24,12 +24,44 @@
       "total_pnl_pct": -0.00043434093857500484,
       "wins": 0
     },
+    "DIS": {
+      "losses": 0,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": 0.000298822772818789,
+      "wins": 1
+    },
+    "GOOGL": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0008975941572755214,
+      "wins": 0
+    },
     "NVDA": {
       "losses": 1,
       "paused_until": null,
       "streak": 1,
       "streak_type": "loss",
       "total_pnl_pct": -5.203120849312221e-05,
+      "wins": 0
+    },
+    "UNH": {
+      "losses": 0,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": 0.0008719002521009198,
+      "wins": 1
+    },
+    "V": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0009929361651624406,
       "wins": 0
     }
   }

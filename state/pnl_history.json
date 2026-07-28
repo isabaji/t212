@@ -22,5 +22,29 @@
     "strategy": "daytrade",
     "symbol": "CRM",
     "pnl_pct": -0.00043434093857500484
+  },
+  {
+    "t": "2026-07-28T22:17:54Z",
+    "strategy": "daytrade",
+    "symbol": "DIS",
+    "pnl_pct": 0.000298822772818789
+  },
+  {
+    "t": "2026-07-28T22:17:54Z",
+    "strategy": "daytrade",
+    "symbol": "GOOGL",
+    "pnl_pct": -0.0008975941572755214
+  },
+  {
+    "t": "2026-07-28T22:17:54Z",
+    "strategy": "daytrade",
+    "symbol": "UNH",
+    "pnl_pct": 0.0008719002521009198
+  },
+  {
+    "t": "2026-07-28T22:17:54Z",
+    "strategy": "daytrade",
+    "symbol": "V",
+    "pnl_pct": -0.0009929361651624406
   }
 ]
