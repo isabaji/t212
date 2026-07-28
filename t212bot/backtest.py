@@ -70,7 +70,11 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
             if stop_atr_multiple and atr_series is not None:
                 a = atr_series.get(date)
                 if a and a > 0:
-                    stop_price = price - stop_atr_multiple * a
+                    # Floored just above zero: an abnormally large ATR (e.g. a data-quality
+                    # spike around a split/dividend adjustment) could otherwise push the
+                    # computed stop below zero, which is not a real order price and would
+                    # corrupt the equity curve (negative equity -> nan CAGR downstream).
+                    stop_price = max(price - stop_atr_multiple * a, price * 0.001)
             position = {"entry_date": date, "entry_price": entry_price, "stop_price": stop_price}
         elif position is not None and sig is Signal.SELL:
             exit_price = price * (1 - cost_frac)
