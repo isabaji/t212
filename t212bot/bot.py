@@ -105,6 +105,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
 
         decisions = []
         hold_symbols = []
+        chased_symbols = []
         blocked_symbols = []
         drawdown_symbols = []
         paused_symbols = []
@@ -167,6 +168,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
                                   f"signal strength {sig.strength:.0%}."))
 
+            elif sig.reason == "chased":
+                log.info("BUY %s skipped: too far past the signal trigger, not chasing", sym)
+                chased_symbols.append(sym)
+
             else:
                 log.debug("%s: %s (no action)", sym, signal.value)
                 hold_symbols.append(sym)
@@ -174,6 +179,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         if hold_symbols:
             decisions.append(history.decision(None, "neutral", "Hold",
                                                 f"{', '.join(hold_symbols)} — no crossover, no action taken."))
+        if chased_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(chased_symbols)} — price already too far past the signal "
+                              "trigger by the time it was checked, skipped to avoid chasing."))
         if blocked_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "
@@ -240,6 +249,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         decisions = []
         stale_symbols = []
         hold_symbols = []
+        chased_symbols = []
         blocked_symbols = []
         drawdown_symbols = []
         paused_symbols = []
@@ -333,6 +343,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
                                   f"signal strength {sig.strength:.0%}."))
 
+            elif sig.reason == "chased":
+                log.info("BUY %s skipped: too far past the signal trigger, not chasing", sym)
+                chased_symbols.append(sym)
+
             else:
                 log.debug("%s: %s (no action)", sym, signal.value)
                 hold_symbols.append(sym)
@@ -343,6 +357,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         if hold_symbols:
             decisions.append(history.decision(None, "neutral", "Hold",
                               f"{', '.join(hold_symbols)} — no breakout, no action taken."))
+        if chased_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(chased_symbols)} — price already too far past the signal "
+                              "trigger by the time it was checked, skipped to avoid chasing."))
         if blocked_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "

@@ -191,6 +191,23 @@ Each normalization constant (e.g. `strength_norm_pct`) is a constructor
 parameter with a sane default, not a new env var — tune it in code if the
 defaults size too aggressively or too conservatively for a given strategy.
 
+### About the anti-chase guard
+
+Both strategies also have a `max_chase_pct` — if a check is late (a delayed
+cron tick, a gap between manual triggers) and price has already run well past
+the signal's own trigger level by the time it's evaluated, the BUY is
+suppressed entirely rather than sized down. "Too far" means: more than 15%
+above the slow SMA for swing, or more than 2% past the opening-range high for
+day-trade — both configurable per strategy instance, and both independent of
+`strength_norm_pct` (which controls sizing *within* the allowed range, not
+whether a signal is allowed at all). This shows up in run history as its own
+"Skipped ... to avoid chasing" line, distinct from a genuine no-signal Hold.
+Set `max_chase_pct=None` on a strategy instance to disable it.
+
+Backtests share this logic for free (same `generate_signals()` code path,
+see `t212bot/backtest.py`) — a suppressed BUY just shows up as a HOLD in the
+simulated trade history, same as live.
+
 ### About currency conversion
 
 Yahoo Finance quotes US equities in USD, but a Trading212 account can be

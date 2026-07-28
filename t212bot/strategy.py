@@ -25,10 +25,15 @@ class SignalResult:
     strength feeds RiskManager.size_buy: a strong signal is sized toward the
     MAX_POSITION_PCT ceiling, a weak one gets a smaller slice of it. Only
     meaningful for BUY — SELL/HOLD carry the default and are ignored by sizing.
+
+    reason: set on a HOLD that used to be a BUY before an anti-chase guard
+    suppressed it (see max_chase_pct on each strategy below) -- lets bot.py
+    log "skipped, too extended" separately from a genuine no-signal HOLD.
     """
 
     signal: Signal
     strength: float = 1.0
+    reason: str | None = None
 
 
 class Strategy(ABC):
@@ -53,16 +58,23 @@ class SMACrossover(Strategy):
     its own slow SMA, as a fraction of that SMA, scaled so strength_norm_pct
     of extension maps to full strength (1.0). A crossover right at the SMA
     (barely triggered) sizes small; one already running scores near the cap.
+
+    max_chase_pct: anti-chase guard. If price has already extended past the
+    slow SMA by more than this fraction, the BUY is suppressed entirely
+    (HOLD, reason="chased") rather than just capped at full strength -- a
+    move this far along is more likely to be bought at a local top than to
+    be an early, plannable entry. None disables the guard.
     """
 
     def __init__(self, fast: int = 20, slow: int = 50, trend_filter: int | None = None,
-                 strength_norm_pct: float = 0.05):
+                 strength_norm_pct: float = 0.05, max_chase_pct: float | None = 0.15):
         if fast >= slow:
             raise ValueError("fast window must be shorter than slow window")
         self.fast = fast
         self.slow = slow
         self.trend_filter = trend_filter
         self.strength_norm_pct = strength_norm_pct
+        self.max_chase_pct = max_chase_pct
 
     def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
         signals: dict[str, SignalResult] = {}
@@ -83,6 +95,9 @@ class SMACrossover(Strategy):
                         signals[sym] = SignalResult(Signal.HOLD)
                         continue
                 extension_pct = (close.iloc[-1] - slow.iloc[-1]) / slow.iloc[-1]
+                if self.max_chase_pct is not None and extension_pct > self.max_chase_pct:
+                    signals[sym] = SignalResult(Signal.HOLD, reason="chased")
+                    continue
                 strength = max(0.0, min(1.0, extension_pct / self.strength_norm_pct))
                 signals[sym] = SignalResult(Signal.BUY, strength)
             elif not above_now and above_prev:
@@ -106,6 +121,12 @@ class OpeningRangeConfluence(Strategy):
     the entry bar scores low and one that cleared it comfortably scores near
     1.0: how far price broke past the opening range, how close RSI sits to
     the top of the bullish band, and how wide the EMA spread is.
+
+    max_chase_pct: anti-chase guard. If price has already run more than this
+    fraction past the opening-range high by the time the signal is evaluated
+    (e.g. because a check was delayed), the BUY is suppressed entirely (HOLD,
+    reason="chased") instead of just capped at full strength -- avoids buying
+    into a breakout that's already mostly spent. None disables the guard.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
@@ -113,7 +134,8 @@ class OpeningRangeConfluence(Strategy):
                  rsi_buy_range: tuple[float, float] = (50, 70),
                  rsi_exit_floor: float = 40, rsi_exit_ceiling: float = 78,
                  breakout_strength_norm_pct: float = 0.005,
-                 ema_strength_norm_pct: float = 0.01):
+                 ema_strength_norm_pct: float = 0.01,
+                 max_chase_pct: float | None = 0.02):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -125,6 +147,7 @@ class OpeningRangeConfluence(Strategy):
         self.rsi_exit_ceiling = rsi_exit_ceiling
         self.breakout_strength_norm_pct = breakout_strength_norm_pct
         self.ema_strength_norm_pct = ema_strength_norm_pct
+        self.max_chase_pct = max_chase_pct
 
     def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
@@ -159,8 +182,10 @@ class OpeningRangeConfluence(Strategy):
         momentum_fade = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
 
         if breakout_up and uptrend and bullish_momentum:
-            breakout_score = max(0.0, min(1.0,
-                ((last_close - or_high) / or_high) / self.breakout_strength_norm_pct))
+            breakout_pct = (last_close - or_high) / or_high
+            if self.max_chase_pct is not None and breakout_pct > self.max_chase_pct:
+                return SignalResult(Signal.HOLD, reason="chased")
+            breakout_score = max(0.0, min(1.0, breakout_pct / self.breakout_strength_norm_pct))
             momentum_score = max(0.0, min(1.0,
                 (last_rsi - self.rsi_buy_min) / (self.rsi_buy_max - self.rsi_buy_min)))
             trend_score = max(0.0, min(1.0,
