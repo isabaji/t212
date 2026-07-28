@@ -27,19 +27,28 @@ class SMACrossover(Strategy):
     """Buy when the fast SMA crosses above the slow SMA; sell on the reverse cross.
 
     Deliberately simple — a starting point, not an edge.
+
+    trend_filter (optional): require price above its own trend_filter-day SMA
+    before taking a BUY — a regime filter that skips crossover signals in a
+    longer-term downtrend, where crossovers are more likely to be noise/chop
+    rather than a real trend starting. Off by default (None) to keep existing
+    behavior unchanged; SELL is never filtered, since exiting promptly is
+    still correct in any regime.
     """
 
-    def __init__(self, fast: int = 20, slow: int = 50):
+    def __init__(self, fast: int = 20, slow: int = 50, trend_filter: int | None = None):
         if fast >= slow:
             raise ValueError("fast window must be shorter than slow window")
         self.fast = fast
         self.slow = slow
+        self.trend_filter = trend_filter
 
     def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, Signal]:
         signals: dict[str, Signal] = {}
         for sym, df in prices.items():
             close = df["Close"]
-            if len(close) < self.slow + 1:
+            min_bars = max(self.slow, self.trend_filter or 0)
+            if len(close) < min_bars + 1:
                 signals[sym] = Signal.HOLD
                 continue
             fast = close.rolling(self.fast).mean()
@@ -47,6 +56,11 @@ class SMACrossover(Strategy):
             above_now = fast.iloc[-1] > slow.iloc[-1]
             above_prev = fast.iloc[-2] > slow.iloc[-2]
             if above_now and not above_prev:
+                if self.trend_filter:
+                    trend = close.rolling(self.trend_filter).mean()
+                    if close.iloc[-1] <= trend.iloc[-1]:
+                        signals[sym] = Signal.HOLD
+                        continue
                 signals[sym] = Signal.BUY
             elif not above_now and above_prev:
                 signals[sym] = Signal.SELL

@@ -18,6 +18,7 @@ windows rather than hidden inside a single blended average.
 import pandas as pd
 
 from .data import fetch_history, fetch_intraday
+from .indicators import atr as compute_atr
 from .strategy import OpeningRangeConfluence, SMACrossover, Signal
 
 TRADING_DAYS_PER_YEAR = 252
@@ -36,21 +37,48 @@ def _signal_series(strategy, df: pd.DataFrame, min_bars: int) -> pd.Series:
     return pd.Series(signals, index=df.index[min_bars - 1:])
 
 
-def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage_bps: float) -> list:
+def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage_bps: float,
+                   stop_atr_multiple: float | None = None, atr_series: pd.Series | None = None) -> list:
+    """stop_atr_multiple (optional): force-close a position the first day its bar Low
+    touches entry_price - stop_atr_multiple * (ATR at entry), regardless of what the
+    strategy's own signal says that day — models a real stop order sitting with the
+    broker. Off by default (None), matching the current live bot's behavior, which
+    sizes positions as if this stop exists (see RiskManager.size_buy) but never
+    actually places one."""
     cost_frac = (fee_bps + slippage_bps) / 10000.0
     trades = []
     position = None
     for date, sig in signals.items():
-        price = float(df.loc[date, "Close"])
+        row = df.loc[date]
+        price = float(row["Close"])
+
+        if position is not None and position.get("stop_price") is not None:
+            if float(row["Low"]) <= position["stop_price"]:
+                exit_price = position["stop_price"] * (1 - cost_frac)
+                trades.append({
+                    "entry_date": position["entry_date"], "exit_date": date,
+                    "entry_price": position["entry_price"], "exit_price": exit_price,
+                    "pnl_pct": exit_price / position["entry_price"] - 1,
+                    "open_at_end": False, "exit_reason": "stop_loss",
+                })
+                position = None
+                continue
+
         if position is None and sig is Signal.BUY:
-            position = {"entry_date": date, "entry_price": price * (1 + cost_frac)}
+            entry_price = price * (1 + cost_frac)
+            stop_price = None
+            if stop_atr_multiple and atr_series is not None:
+                a = atr_series.get(date)
+                if a and a > 0:
+                    stop_price = price - stop_atr_multiple * a
+            position = {"entry_date": date, "entry_price": entry_price, "stop_price": stop_price}
         elif position is not None and sig is Signal.SELL:
             exit_price = price * (1 - cost_frac)
             trades.append({
                 "entry_date": position["entry_date"], "exit_date": date,
                 "entry_price": position["entry_price"], "exit_price": exit_price,
                 "pnl_pct": exit_price / position["entry_price"] - 1,
-                "open_at_end": False,
+                "open_at_end": False, "exit_reason": "signal",
             })
             position = None
     if position is not None:
@@ -60,7 +88,7 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
             "entry_date": position["entry_date"], "exit_date": last_date,
             "entry_price": position["entry_price"], "exit_price": exit_price,
             "pnl_pct": exit_price / position["entry_price"] - 1,
-            "open_at_end": True,
+            "open_at_end": True, "exit_reason": "end_of_data",
         })
     return trades
 
@@ -90,7 +118,8 @@ def _equity_curve(dates, df: pd.DataFrame, trades: list) -> pd.Series:
 
 
 def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
-             slippage_bps: float = DEFAULT_SLIPPAGE_BPS, min_bars: int = 60):
+             slippage_bps: float = DEFAULT_SLIPPAGE_BPS, min_bars: int = 60,
+             stop_atr_multiple: float | None = None, atr_period: int = 14):
     """Long-only, single position at a time, all-in/all-out, cost-aware.
 
     Returns (equity_curve, trades). Not enough data -> a flat 1-bar curve
@@ -100,7 +129,8 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
     if len(df) <= min_bars:
         return pd.Series([1.0], index=df.index[-1:]), []
     signals = _signal_series(strategy, df, min_bars)
-    trades = _build_trades(df, signals, fee_bps, slippage_bps)
+    atr_series = compute_atr(df, period=atr_period) if stop_atr_multiple else None
+    trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series)
     equity = _equity_curve(signals.index, df, trades)
     return equity, trades
 
@@ -136,6 +166,7 @@ def compute_metrics(equity: pd.Series, trades: list, periods_per_year: int = TRA
             max_consec_losses = max(max_consec_losses, streak)
         else:
             streak = 0
+    stopped_out = sum(1 for t in closed if t.get("exit_reason") == "stop_loss")
 
     return {
         "total_return": total_return,
@@ -150,12 +181,15 @@ def compute_metrics(equity: pd.Series, trades: list, periods_per_year: int = TRA
         "avg_loss": avg_loss,
         "profit_factor": profit_factor,
         "max_consecutive_losses": max_consec_losses,
+        "stopped_out": stopped_out,
+        "trades": trades,
     }
 
 
 def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                   fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
-                  min_bars: int = 60, periods_per_year: int = TRADING_DAYS_PER_YEAR) -> list:
+                  min_bars: int = 60, periods_per_year: int = TRADING_DAYS_PER_YEAR,
+                  stop_atr_multiple: float | None = None, atr_period: int = 14) -> list:
     """Split df into n_windows sequential, non-overlapping chunks and backtest
     each independently with a fresh strategy instance.
 
@@ -179,7 +213,8 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
         start = i * size
         end = n if i == n_windows - 1 else (i + 1) * size
         window_df = df.iloc[start:end]
-        equity, trades = simulate(strategy_factory(), window_df, fee_bps, slippage_bps, min_bars)
+        equity, trades = simulate(strategy_factory(), window_df, fee_bps, slippage_bps, min_bars,
+                                   stop_atr_multiple, atr_period)
         metrics = compute_metrics(equity, trades, periods_per_year)
         metrics["window"] = i + 1
         metrics["start"] = window_df.index[0]
@@ -194,8 +229,13 @@ def _pct(x) -> str:
 
 def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int = 4,
                     fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
-                    period: str = "5y") -> None:
+                    period: str = "5y", stop_atr_multiple: float | None = None,
+                    trend_filter: int | None = None) -> None:
     print(f"Swing strategy: SMA({fast}/{slow}) crossover, {period} daily bars, long-only.")
+    if trend_filter:
+        print(f"Trend filter: BUY only when price is above its {trend_filter}-day SMA.")
+    if stop_atr_multiple:
+        print(f"Stop-loss: {stop_atr_multiple}x ATR(14) below entry, checked against each bar's Low.")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side "
           f"(Trading212 charges no stock commission; this approximates spread/slippage).")
     print(f"Walk-forward: {n_windows} sequential out-of-sample windows per symbol.\n")
@@ -207,7 +247,8 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
 
     for sym, df in price_data.items():
         try:
-            windows = walk_forward(lambda: SMACrossover(fast, slow), df, n_windows, fee_bps, slippage_bps)
+            windows = walk_forward(lambda: SMACrossover(fast, slow, trend_filter), df, n_windows,
+                                    fee_bps, slippage_bps, stop_atr_multiple=stop_atr_multiple)
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue

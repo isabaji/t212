@@ -55,6 +55,12 @@ def main() -> None:
                          help="backtest command only: simulated fee in basis points per side")
     parser.add_argument("--slippage-bps", type=float, default=DEFAULT_SLIPPAGE_BPS,
                          help="backtest command only: simulated slippage in basis points per side")
+    parser.add_argument("--stop-atr-multiple", type=float, default=None,
+                         help="backtest command only (swing): force-exit at entry - N x ATR(14), "
+                              "modeling a real stop order (off by default)")
+    parser.add_argument("--trend-filter", type=int, default=None,
+                         help="backtest command only (swing): require price above its own N-day SMA "
+                              "to take a BUY signal (off by default)")
     args = parser.parse_args()
 
     cfg = Config()
@@ -65,7 +71,8 @@ def main() -> None:
                                      args.fee_bps, args.slippage_bps)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
-                            args.fee_bps, args.slippage_bps)
+                            args.fee_bps, args.slippage_bps,
+                            stop_atr_multiple=args.stop_atr_multiple, trend_filter=args.trend_filter)
         return
 
     cfg.validate()

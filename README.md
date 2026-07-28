@@ -227,6 +227,27 @@ in most windows. That's the backtest doing its job, not a bug: a genuinely
 profitable strategy should look consistent *across* windows, not just show
 one attractive blended number.
 
+#### Optional: stop-loss and trend filter (swing only)
+
+Two things worth testing before trusting the swing strategy with real money,
+both off by default so existing behavior doesn't silently change:
+
+- `--stop-atr-multiple N` — force-exits a position the first day its bar Low
+  touches `entry_price - N × ATR(14)`, modeling a real stop order, instead of
+  only ever exiting on the (slow) reverse crossover. Notably, `RiskManager`
+  already *sizes* positions as if a stop like this exists (via
+  `RISK_PER_TRADE_PCT`/`ATR_MULTIPLE`) — without one, that sizing assumption
+  was never actually enforced. `--stop-atr-multiple 2.0` tests the same
+  multiple the live bot already assumes.
+- `--trend-filter N` — only takes a BUY signal when price is above its own
+  N-day SMA, skipping crossover signals in a longer-term downtrend. 200 is
+  the conventional choice (roughly a "golden cross" regime filter).
+
+Both can be combined and run through the same walk-forward/cost-aware
+machinery as everything else. `.github/workflows/backtest.yml` runs any
+combination from the Actions tab (no secrets needed — this never touches the
+live account) if you'd rather not run it locally.
+
 ### 4. Use it
 
 ```bash
