@@ -4,6 +4,9 @@ on:
   # Every 15 minutes during roughly US market hours (13:00-21:00 UTC), weekdays.
   # Starts alongside the day-trade bot at 13:00 UTC (2pm BST / 9am EDT).
   schedule:
+    # Re-committed 2026-07-28 to re-register the schedule with GitHub — it
+    # had only fired via schedule once ever (and at an odd, out-of-window
+    # time), suggesting GitHub's scheduler had effectively stopped ticking it.
     - cron: '*/15 13-21 * * 1-5'
   # Lets you trigger a run by hand from the Actions tab, with an override on dry-run.
   workflow_dispatch:

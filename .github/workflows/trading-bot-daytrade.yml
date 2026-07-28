@@ -6,6 +6,9 @@ on:
   # actual data timestamps, whether the market is really open — extra firings
   # outside real market hours are safe no-ops (see STALE_BAR_MINUTES in bot.py).
   schedule:
+    # Re-committed 2026-07-28 to re-register the schedule with GitHub after it
+    # stopped firing entirely (0 schedule-triggered runs despite valid cron
+    # and an active workflow) — see the run history if this needs revisiting.
     - cron: '*/5 13-20 * * 1-5'
   workflow_dispatch:
     inputs:
