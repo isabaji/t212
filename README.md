@@ -168,6 +168,29 @@ get sized arbitrarily large), and available cash is still respected. If
 there isn't enough price history yet to compute ATR, sizing falls back to
 the flat `MAX_POSITION_PCT` cap.
 
+### About signal-strength position sizing
+
+On top of volatility-aware sizing, each BUY now carries a strength score
+(0..1) from the strategy itself, and `RiskManager.size_buy` scales the
+`MAX_POSITION_PCT` ceiling by that score — a strong signal is sized toward
+the full cap, a marginal one gets a proportionally smaller slice of it. The
+other caps (volatility, cash, sector) still apply on top via the same `min()`
+as before, so strength only ever shrinks the position further, never grows
+it past what those already allow.
+
+What "strength" means is strategy-specific:
+- **Swing (`SMACrossover`)**: how far price has already extended above its
+  own slow SMA at the moment of the crossover, as a fraction of that SMA.
+  A crossover that barely triggered sizes small; one that's already running
+  sizes near the cap.
+- **Day-trade (`OpeningRangeConfluence`)**: the average of three sub-scores —
+  how far price broke past the opening range, how close RSI sits to the top
+  of the bullish 50–70 band, and how wide the fast/slow EMA spread is.
+
+Each normalization constant (e.g. `strength_norm_pct`) is a constructor
+parameter with a sane default, not a new env var — tune it in code if the
+defaults size too aggressively or too conservatively for a given strategy.
+
 ### About portfolio-level risk controls
 
 Everything above sizes and gates *one symbol at a time*. Two more checks look

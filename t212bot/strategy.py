@@ -4,6 +4,7 @@ To add your own strategy, subclass Strategy and implement generate_signals().
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 
 import pandas as pd
@@ -17,10 +18,23 @@ class Signal(Enum):
     HOLD = "HOLD"
 
 
+@dataclass
+class SignalResult:
+    """A signal plus, for BUY, how strong the setup is (0..1).
+
+    strength feeds RiskManager.size_buy: a strong signal is sized toward the
+    MAX_POSITION_PCT ceiling, a weak one gets a smaller slice of it. Only
+    meaningful for BUY — SELL/HOLD carry the default and are ignored by sizing.
+    """
+
+    signal: Signal
+    strength: float = 1.0
+
+
 class Strategy(ABC):
     @abstractmethod
-    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, Signal]:
-        """Map each symbol to a Signal, given its OHLCV history."""
+    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
+        """Map each symbol to a SignalResult, given its OHLCV history."""
 
 
 class SMACrossover(Strategy):
@@ -34,22 +48,29 @@ class SMACrossover(Strategy):
     rather than a real trend starting. Off by default (None) to keep existing
     behavior unchanged; SELL is never filtered, since exiting promptly is
     still correct in any regime.
+
+    strength_norm_pct: a BUY's strength is how far price has extended above
+    its own slow SMA, as a fraction of that SMA, scaled so strength_norm_pct
+    of extension maps to full strength (1.0). A crossover right at the SMA
+    (barely triggered) sizes small; one already running scores near the cap.
     """
 
-    def __init__(self, fast: int = 20, slow: int = 50, trend_filter: int | None = None):
+    def __init__(self, fast: int = 20, slow: int = 50, trend_filter: int | None = None,
+                 strength_norm_pct: float = 0.05):
         if fast >= slow:
             raise ValueError("fast window must be shorter than slow window")
         self.fast = fast
         self.slow = slow
         self.trend_filter = trend_filter
+        self.strength_norm_pct = strength_norm_pct
 
-    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, Signal]:
-        signals: dict[str, Signal] = {}
+    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
+        signals: dict[str, SignalResult] = {}
         for sym, df in prices.items():
             close = df["Close"]
             min_bars = max(self.slow, self.trend_filter or 0)
             if len(close) < min_bars + 1:
-                signals[sym] = Signal.HOLD
+                signals[sym] = SignalResult(Signal.HOLD)
                 continue
             fast = close.rolling(self.fast).mean()
             slow = close.rolling(self.slow).mean()
@@ -59,13 +80,15 @@ class SMACrossover(Strategy):
                 if self.trend_filter:
                     trend = close.rolling(self.trend_filter).mean()
                     if close.iloc[-1] <= trend.iloc[-1]:
-                        signals[sym] = Signal.HOLD
+                        signals[sym] = SignalResult(Signal.HOLD)
                         continue
-                signals[sym] = Signal.BUY
+                extension_pct = (close.iloc[-1] - slow.iloc[-1]) / slow.iloc[-1]
+                strength = max(0.0, min(1.0, extension_pct / self.strength_norm_pct))
+                signals[sym] = SignalResult(Signal.BUY, strength)
             elif not above_now and above_prev:
-                signals[sym] = Signal.SELL
+                signals[sym] = SignalResult(Signal.SELL)
             else:
-                signals[sym] = Signal.HOLD
+                signals[sym] = SignalResult(Signal.HOLD)
         return signals
 
 
@@ -77,12 +100,20 @@ class OpeningRangeConfluence(Strategy):
     out: any one of a range breakdown, a trend flip, or momentum fading exits.
     Forcing positions flat before the close is enforced by the bot's
     day-trading cycle (run_day_trade_cycle), not by this class.
+
+    A BUY's strength averages three 0..1 sub-scores, each normalized against
+    its own *_strength_norm_pct/param so a signal that just barely cleared
+    the entry bar scores low and one that cleared it comfortably scores near
+    1.0: how far price broke past the opening range, how close RSI sits to
+    the top of the bullish band, and how wide the EMA spread is.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
                  ema_fast: int = 9, ema_slow: int = 21, rsi_period: int = 14,
                  rsi_buy_range: tuple[float, float] = (50, 70),
-                 rsi_exit_floor: float = 40, rsi_exit_ceiling: float = 78):
+                 rsi_exit_floor: float = 40, rsi_exit_ceiling: float = 78,
+                 breakout_strength_norm_pct: float = 0.005,
+                 ema_strength_norm_pct: float = 0.01):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -92,13 +123,15 @@ class OpeningRangeConfluence(Strategy):
         self.rsi_buy_min, self.rsi_buy_max = rsi_buy_range
         self.rsi_exit_floor = rsi_exit_floor
         self.rsi_exit_ceiling = rsi_exit_ceiling
+        self.breakout_strength_norm_pct = breakout_strength_norm_pct
+        self.ema_strength_norm_pct = ema_strength_norm_pct
 
-    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, Signal]:
+    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
 
-    def _signal_for(self, df: pd.DataFrame) -> Signal:
+    def _signal_for(self, df: pd.DataFrame) -> SignalResult:
         if df.empty or len(df) < self.ema_slow + 1:
-            return Signal.HOLD
+            return SignalResult(Signal.HOLD)
 
         close = df["Close"]
         fast = ema(close, self.ema_fast)
@@ -108,7 +141,7 @@ class OpeningRangeConfluence(Strategy):
         today = df.index[-1].date()
         today_bars = df[df.index.date == today]
         if len(today_bars) <= self.or_bars:
-            return Signal.HOLD  # opening range not yet established for today
+            return SignalResult(Signal.HOLD)  # opening range not yet established for today
 
         opening_range = today_bars.iloc[: self.or_bars]
         or_high = opening_range["High"].max()
@@ -126,7 +159,14 @@ class OpeningRangeConfluence(Strategy):
         momentum_fade = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
 
         if breakout_up and uptrend and bullish_momentum:
-            return Signal.BUY
+            breakout_score = max(0.0, min(1.0,
+                ((last_close - or_high) / or_high) / self.breakout_strength_norm_pct))
+            momentum_score = max(0.0, min(1.0,
+                (last_rsi - self.rsi_buy_min) / (self.rsi_buy_max - self.rsi_buy_min)))
+            trend_score = max(0.0, min(1.0,
+                ((last_fast - last_slow) / last_slow) / self.ema_strength_norm_pct))
+            strength = (breakout_score + momentum_score + trend_score) / 3
+            return SignalResult(Signal.BUY, strength)
         if breakdown or trend_flip_down or momentum_fade:
-            return Signal.SELL
-        return Signal.HOLD
+            return SignalResult(Signal.SELL)
+        return SignalResult(Signal.HOLD)

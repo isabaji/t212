@@ -33,7 +33,7 @@ DEFAULT_SLIPPAGE_BPS = 5.0
 def _signal_series(strategy, df: pd.DataFrame, min_bars: int) -> pd.Series:
     signals = []
     for i in range(min_bars, len(df) + 1):
-        signals.append(strategy.generate_signals({"X": df.iloc[:i]})["X"])
+        signals.append(strategy.generate_signals({"X": df.iloc[:i]})["X"].signal)
     return pd.Series(signals, index=df.index[min_bars - 1:])
 
 

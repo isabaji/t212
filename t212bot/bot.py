@@ -18,7 +18,7 @@ from .data import fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
 from .indicators import atr as compute_atr
 from .risk import RiskManager
 from .sectors import sector_of
-from .strategy import Signal, Strategy
+from .strategy import Signal, SignalResult, Strategy
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +70,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         drawdown_symbols = []
         paused_symbols = []
 
-        for sym, signal in sorted(signals.items()):
+        for sym, sig in sorted(signals.items()):
+            signal = sig.signal
             t212_ticker = to_t212_ticker(sym)
             last_price = float(prices[sym]["Close"].iloc[-1])
 
@@ -113,7 +114,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                                                         f"{sector} sector exposure cap reached."))
                     continue
                 atr_value = compute_atr(prices[sym], period=cfg.atr_period).iloc[-1]
-                qty = risk.size_buy(account_value, free_cash, last_price, atr_value, sector_value_held)
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value,
+                                     sector_value_held, sig.strength)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -123,7 +125,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 positions[t212_ticker] = {"quantity": qty}
                 sector_exposure[sector] = sector_value_held + qty * last_price
                 decisions.append(history.decision(sym, "good", "Buy",
-                                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f})."))
+                                  f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
+                                  f"signal strength {sig.strength:.0%}."))
 
             else:
                 log.debug("%s: %s (no action)", sym, signal.value)
@@ -228,7 +231,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 stale_symbols.append(sym)
                 continue
 
-            signal = signals.get(sym, Signal.HOLD)
+            sig = signals.get(sym, SignalResult(Signal.HOLD))
+            signal = sig.signal
 
             if signal is Signal.SELL and holding:
                 qty = float(positions[t212_ticker]["quantity"])
@@ -274,7 +278,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                                                         f"{sector} sector exposure cap reached."))
                     continue
                 atr_value = compute_atr(df, period=cfg.atr_period).iloc[-1]
-                qty = risk.size_buy(account_value, free_cash, last_price, atr_value, sector_value_held)
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value,
+                                     sector_value_held, sig.strength)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -284,7 +289,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 positions[t212_ticker] = {"quantity": qty}
                 sector_exposure[sector] = sector_value_held + qty * last_price
                 decisions.append(history.decision(sym, "good", "Buy",
-                                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f})."))
+                                  f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
+                                  f"signal strength {sig.strength:.0%}."))
 
             else:
                 log.debug("%s: %s (no action)", sym, signal.value)
