@@ -11,12 +11,13 @@ import logging
 
 import pandas as pd
 
-from . import daily_target, history, trade_stats
+from . import daily_target, history, portfolio_risk, trade_stats
 from .client import Trading212Client
 from .config import Config
 from .data import fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
 from .indicators import atr as compute_atr
 from .risk import RiskManager
+from .sectors import sector_of
 from .strategy import Signal, Strategy
 
 log = logging.getLogger(__name__)
@@ -28,22 +29,35 @@ NO_NEW_ENTRIES_MINUTES_BEFORE_CLOSE = 30   # don't open a fresh day-trade this c
 STALE_BAR_MINUTES = 20                     # if the latest bar is older than this, treat as market-closed/no-data
 
 
+def _sector_exposure(positions: dict) -> dict:
+    """Current $ value held per sector, from a {t212_ticker: position} snapshot."""
+    exposure = {}
+    for ticker, pos in positions.items():
+        sector = sector_of(to_yahoo_symbol(ticker))
+        value = float(pos.get("quantity", 0)) * float(pos.get("currentPrice", 0))
+        exposure[sector] = exposure.get(sector, 0.0) + value
+    return exposure
+
+
 def run_cycle(cfg: Config, strategy: Strategy) -> None:
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
         risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct,
-                            cfg.risk_per_trade_pct, cfg.atr_multiple)
+                            cfg.risk_per_trade_pct, cfg.atr_multiple, cfg.max_sector_exposure_pct)
 
         cash = client.account_cash()
         free_cash = float(cash.get("free", 0))
         account_value = float(cash.get("total", free_cash))
         positions = {p["ticker"]: p for p in client.portfolio()}
         held_symbols = {to_yahoo_symbol(t) for t in positions}
+        sector_exposure = _sector_exposure(positions)
         log.info("Account snapshot retrieved (%d open position%s)",
                  len(positions), "" if len(positions) == 1 else "s")
 
         daily_state = daily_target.load()
         blocked = daily_target.entries_blocked(daily_state)
+        pr_state = portfolio_risk.load()
+        drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
         tstats = trade_stats.load()
 
         prices = fetch_history(sorted(set(cfg.watchlist) | held_symbols))
@@ -52,6 +66,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         decisions = []
         hold_symbols = []
         blocked_symbols = []
+        drawdown_symbols = []
         paused_symbols = []
 
         for sym, signal in sorted(signals.items()):
@@ -64,6 +79,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL")
                 pnl_pct = (last_price - avg_price) * qty / account_value
                 daily_target.record_trade_pct(daily_state, pnl_pct)
+                portfolio_risk.record_trade_pct(pr_state, pnl_pct)
                 trade_stats.record_trade(tstats, "swing", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 decisions.append(history.decision(sym, "serious", "Sell",
@@ -74,6 +90,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                     log.debug("BUY %s skipped: daily target/loss-limit already reached", sym)
                     blocked_symbols.append(sym)
                     continue
+                if drawdown_blocked:
+                    log.debug("BUY %s skipped: account-wide drawdown pause in effect", sym)
+                    drawdown_symbols.append(sym)
+                    continue
                 if trade_stats.is_paused(tstats, "swing", sym):
                     log.info("BUY %s skipped: in a losing-streak cooldown", sym)
                     paused_symbols.append(sym)
@@ -83,8 +103,15 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                     decisions.append(history.decision(sym, "warning", "Skipped",
                                                         "Max open positions reached."))
                     continue
+                sector = sector_of(sym)
+                sector_value_held = sector_exposure.get(sector, 0.0)
+                if risk.sector_capacity_shares(account_value, last_price, sector_value_held) <= 0:
+                    log.info("BUY %s skipped: %s sector exposure cap reached", sym, sector)
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                                        f"{sector} sector exposure cap reached."))
+                    continue
                 atr_value = compute_atr(prices[sym], period=cfg.atr_period).iloc[-1]
-                qty = risk.size_buy(account_value, free_cash, last_price, atr_value)
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value, sector_value_held)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -92,6 +119,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY")
                 free_cash -= qty * last_price
                 positions[t212_ticker] = {"quantity": qty}
+                sector_exposure[sector] = sector_value_held + qty * last_price
                 decisions.append(history.decision(sym, "good", "Buy",
                                                    f"Bought {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -106,12 +134,18 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "
                               "already reached, no new entries today."))
+        if drawdown_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(drawdown_symbols)} — account-wide drawdown pause in effect, "
+                              "no new entries until it recovers."))
         if paused_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(paused_symbols)} — in a losing-streak cooldown."))
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
+        portfolio_risk.evaluate(pr_state, cfg.max_portfolio_drawdown_pct)
+        portfolio_risk.save(pr_state)
         trade_stats.save(tstats)
 
         history.append("swing", cfg.env, cfg.dry_run,
@@ -135,18 +169,21 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
         risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct,
-                            cfg.risk_per_trade_pct, cfg.atr_multiple)
+                            cfg.risk_per_trade_pct, cfg.atr_multiple, cfg.max_sector_exposure_pct)
 
         cash = client.account_cash()
         free_cash = float(cash.get("free", 0))
         account_value = float(cash.get("total", free_cash))
         positions = {p["ticker"]: p for p in client.portfolio()}
         held_symbols = {to_yahoo_symbol(t) for t in positions}
+        sector_exposure = _sector_exposure(positions)
         log.info("Account snapshot retrieved (%d open position%s)",
                  len(positions), "" if len(positions) == 1 else "s")
 
         daily_state = daily_target.load()
         blocked = daily_target.entries_blocked(daily_state)
+        pr_state = portfolio_risk.load()
+        drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
         tstats = trade_stats.load()
 
         prices = fetch_intraday(sorted(set(cfg.watchlist) | held_symbols))
@@ -156,6 +193,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         stale_symbols = []
         hold_symbols = []
         blocked_symbols = []
+        drawdown_symbols = []
         paused_symbols = []
 
         for sym, df in sorted(prices.items()):
@@ -172,6 +210,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL (EOD flatten)")
                 pnl_pct = (last_price - avg_price) * qty / account_value
                 daily_target.record_trade_pct(daily_state, pnl_pct)
+                portfolio_risk.record_trade_pct(pr_state, pnl_pct)
                 trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 decisions.append(history.decision(sym, "serious", "Sell",
@@ -192,6 +231,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL")
                 pnl_pct = (last_price - avg_price) * qty / account_value
                 daily_target.record_trade_pct(daily_state, pnl_pct)
+                portfolio_risk.record_trade_pct(pr_state, pnl_pct)
                 trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 decisions.append(history.decision(sym, "serious", "Sell",
@@ -201,6 +241,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 if blocked:
                     log.debug("BUY %s skipped: daily target/loss-limit already reached", sym)
                     blocked_symbols.append(sym)
+                    continue
+                if drawdown_blocked:
+                    log.debug("BUY %s skipped: account-wide drawdown pause in effect", sym)
+                    drawdown_symbols.append(sym)
                     continue
                 if trade_stats.is_paused(tstats, "daytrade", sym):
                     log.info("BUY %s skipped: in a losing-streak cooldown", sym)
@@ -216,8 +260,15 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                     decisions.append(history.decision(sym, "warning", "Skipped",
                                                         "Max open positions reached."))
                     continue
+                sector = sector_of(sym)
+                sector_value_held = sector_exposure.get(sector, 0.0)
+                if risk.sector_capacity_shares(account_value, last_price, sector_value_held) <= 0:
+                    log.info("BUY %s skipped: %s sector exposure cap reached", sym, sector)
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                                        f"{sector} sector exposure cap reached."))
+                    continue
                 atr_value = compute_atr(df, period=cfg.atr_period).iloc[-1]
-                qty = risk.size_buy(account_value, free_cash, last_price, atr_value)
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value, sector_value_held)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -225,6 +276,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY")
                 free_cash -= qty * last_price
                 positions[t212_ticker] = {"quantity": qty}
+                sector_exposure[sector] = sector_value_held + qty * last_price
                 decisions.append(history.decision(sym, "good", "Buy",
                                                    f"Bought {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -242,12 +294,18 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "
                               "already reached, no new entries today."))
+        if drawdown_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(drawdown_symbols)} — account-wide drawdown pause in effect, "
+                              "no new entries until it recovers."))
         if paused_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(paused_symbols)} — in a losing-streak cooldown."))
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
+        portfolio_risk.evaluate(pr_state, cfg.max_portfolio_drawdown_pct)
+        portfolio_risk.save(pr_state)
         trade_stats.save(tstats)
 
         history.append("daytrade", cfg.env, cfg.dry_run,

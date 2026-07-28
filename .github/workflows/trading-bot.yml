@@ -50,13 +50,16 @@ jobs:
           RISK_PER_TRADE_PCT: ${{ secrets.RISK_PER_TRADE_PCT || '0.01' }}
           ATR_MULTIPLE: ${{ secrets.ATR_MULTIPLE || '2.0' }}
           ATR_PERIOD: ${{ secrets.ATR_PERIOD || '14' }}
+          MAX_SECTOR_EXPOSURE_PCT: ${{ secrets.MAX_SECTOR_EXPOSURE_PCT || '0.25' }}
+          MAX_PORTFOLIO_DRAWDOWN_PCT: ${{ secrets.MAX_PORTFOLIO_DRAWDOWN_PCT || '0.15' }}
         run: python main.py run
 
-      - name: Persist daily target and trade-stats state
+      - name: Persist bot state (daily target, trade stats, portfolio risk)
         # Percentages/counts only, never a dollar figure — see
-        # t212bot/daily_target.py and t212bot/trade_stats.py. Shared with the
-        # day-trade workflow, so pushes can race; retry a few times with a
-        # rebase in between rather than failing the job over it.
+        # t212bot/daily_target.py, t212bot/trade_stats.py and
+        # t212bot/portfolio_risk.py. Shared with the day-trade workflow, so
+        # pushes can race; retry a few times with a rebase in between rather
+        # than failing the job over it.
         if: always()
         run: |
           if [ -n "$(git status --porcelain state/ 2>/dev/null)" ]; then

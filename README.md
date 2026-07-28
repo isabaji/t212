@@ -72,6 +72,8 @@ Key settings in `.env`:
 | `RISK_PER_TRADE_PCT` | `0.01` | Fraction of account risked per trade (see volatility-aware sizing below) |
 | `ATR_MULTIPLE` | `2.0` | Stop distance for sizing = this × ATR |
 | `ATR_PERIOD` | `14` | Bars used to compute ATR (daily bars for swing, 5-min bars for day-trade) |
+| `MAX_SECTOR_EXPOSURE_PCT` | `0.25` | Max fraction of account value held in one sector at once (see portfolio-level risk below) |
+| `MAX_PORTFOLIO_DRAWDOWN_PCT` | `0.15` | Pause new entries account-wide once realized returns fall this far below their high-water mark |
 
 The bot refuses to run against `live` unless you also set
 `I_UNDERSTAND_LIVE_TRADING_RISK=yes`.
@@ -148,6 +150,37 @@ still applies as a hard ceiling on top of this (so a very calm stock can't
 get sized arbitrarily large), and available cash is still respected. If
 there isn't enough price history yet to compute ATR, sizing falls back to
 the flat `MAX_POSITION_PCT` cap.
+
+### About portfolio-level risk controls
+
+Everything above sizes and gates *one symbol at a time*. Two more checks look
+at the account as a whole:
+
+1. **Sector exposure cap** (`t212bot/sectors.py`, `MAX_SECTOR_EXPOSURE_PCT`) —
+   the default watchlist is tagged with a rough sector for each symbol (e.g.
+   AAPL/MSFT/NVDA → Technology, JPM/V → Financials). Before opening a new
+   position, the bot totals up what's already held in that symbol's sector
+   across open positions and caps the buy so the sector as a whole never
+   exceeds `MAX_SECTOR_EXPOSURE_PCT` of account value — even if each
+   individual buy looks affordable on its own. Five max-sized tech positions
+   would all be exposed to the same sector-wide move; this stops that from
+   happening by accident. Symbols outside the built-in map (anything you add
+   to `WATCHLIST` that isn't in the default 15) each get treated as their own
+   single-symbol sector, since there's no classification for them.
+2. **Account-wide drawdown throttle** (`t212bot/portfolio_risk.py`,
+   `MAX_PORTFOLIO_DRAWDOWN_PCT`) — tracks a running high-water mark of
+   *realized* cumulative return, similar in spirit to the daily target but
+   never resetting on its own. If realized returns fall `MAX_PORTFOLIO_DRAWDOWN_PCT`
+   below that high-water mark, both bots stop opening new positions
+   account-wide — existing positions still get managed and closed normally —
+   until the drawdown recovers to less than half the threshold. That
+   hysteresis is deliberate: without it, a drawdown sitting right at the
+   boundary would flip the pause on and off every cycle.
+
+Same public-repo constraint as the other state files: `state/portfolio_risk.json`
+tracks only a compounded running percentage, never a dollar figure, and
+persists across runs the same way (the workflow commits it back after each
+cycle, shared between both bots).
 
 ### About the backtest
 

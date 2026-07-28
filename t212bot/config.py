@@ -45,6 +45,12 @@ class Config:
     risk_per_trade_pct: float = field(default_factory=lambda: float(os.getenv("RISK_PER_TRADE_PCT", "0.01")))
     atr_multiple: float = field(default_factory=lambda: float(os.getenv("ATR_MULTIPLE", "2.0")))
     atr_period: int = field(default_factory=lambda: int(os.getenv("ATR_PERIOD", "14")))
+    max_sector_exposure_pct: float = field(
+        default_factory=lambda: float(os.getenv("MAX_SECTOR_EXPOSURE_PCT", "0.25"))
+    )
+    max_portfolio_drawdown_pct: float = field(
+        default_factory=lambda: float(os.getenv("MAX_PORTFOLIO_DRAWDOWN_PCT", "0.15"))
+    )
 
     @property
     def base_url(self) -> str:
