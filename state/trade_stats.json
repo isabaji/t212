@@ -8,6 +8,22 @@
       "total_pnl_pct": -0.00029076903197105733,
       "wins": 0
     },
+    "BA": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0007817256541559816,
+      "wins": 0
+    },
+    "CRM": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.00043434093857500484,
+      "wins": 0
+    },
     "NVDA": {
       "losses": 1,
       "paused_until": null,
