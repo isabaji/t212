@@ -72,7 +72,7 @@ Key settings in `.env`:
 | `RISK_PER_TRADE_PCT` | `0.01` | Fraction of account risked per trade (see volatility-aware sizing below) |
 | `ATR_MULTIPLE` | `2.0` | Stop distance for sizing = this × ATR |
 | `ATR_PERIOD` | `14` | Bars used to compute ATR (daily bars for swing, 5-min bars for day-trade) |
-| `MAX_SECTOR_EXPOSURE_PCT` | `0.25` | Max fraction of account value held in one sector at once (see portfolio-level risk below) |
+| `MAX_SECTOR_EXPOSURE_PCT` | `0.35` | Max fraction of account value held in one sector at once (see portfolio-level risk below) |
 | `MAX_PORTFOLIO_DRAWDOWN_PCT` | `0.15` | Pause new entries account-wide once realized returns fall this far below their high-water mark |
 
 The bot refuses to run against `live` unless you also set

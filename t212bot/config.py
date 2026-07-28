@@ -30,7 +30,7 @@ class Config:
             if s.strip()
         ]
     )
-    max_position_pct: float = field(default_factory=lambda: float(os.getenv("MAX_POSITION_PCT", "0.10")))
+    max_position_pct: float = field(default_factory=lambda: float(os.getenv("MAX_POSITION_PCT", "0.35")))
     max_open_positions: int = field(default_factory=lambda: int(os.getenv("MAX_OPEN_POSITIONS", "10")))
     cash_buffer_pct: float = field(default_factory=lambda: float(os.getenv("CASH_BUFFER_PCT", "0.05")))
     daily_profit_target_pct: float = field(
@@ -47,7 +47,7 @@ class Config:
     atr_multiple: float = field(default_factory=lambda: float(os.getenv("ATR_MULTIPLE", "2.0")))
     atr_period: int = field(default_factory=lambda: int(os.getenv("ATR_PERIOD", "14")))
     max_sector_exposure_pct: float = field(
-        default_factory=lambda: float(os.getenv("MAX_SECTOR_EXPOSURE_PCT", "0.25"))
+        default_factory=lambda: float(os.getenv("MAX_SECTOR_EXPOSURE_PCT", "0.35"))
     )
     max_portfolio_drawdown_pct: float = field(
         default_factory=lambda: float(os.getenv("MAX_PORTFOLIO_DRAWDOWN_PCT", "0.15"))

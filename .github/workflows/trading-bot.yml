@@ -44,7 +44,7 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run || secrets.DRY_RUN || 'true' }}
           I_UNDERSTAND_LIVE_TRADING_RISK: ${{ secrets.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
           WATCHLIST: ${{ secrets.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE' }}
-          MAX_POSITION_PCT: ${{ secrets.MAX_POSITION_PCT || '0.10' }}
+          MAX_POSITION_PCT: ${{ secrets.MAX_POSITION_PCT || '0.35' }}
           MAX_OPEN_POSITIONS: ${{ secrets.MAX_OPEN_POSITIONS || '10' }}
           CASH_BUFFER_PCT: ${{ secrets.CASH_BUFFER_PCT || '0.05' }}
           DAILY_PROFIT_TARGET_PCT: ${{ secrets.DAILY_PROFIT_TARGET_PCT || '0.0075' }}
@@ -54,7 +54,7 @@ jobs:
           RISK_PER_TRADE_PCT: ${{ secrets.RISK_PER_TRADE_PCT || '0.01' }}
           ATR_MULTIPLE: ${{ secrets.ATR_MULTIPLE || '2.0' }}
           ATR_PERIOD: ${{ secrets.ATR_PERIOD || '14' }}
-          MAX_SECTOR_EXPOSURE_PCT: ${{ secrets.MAX_SECTOR_EXPOSURE_PCT || '0.25' }}
+          MAX_SECTOR_EXPOSURE_PCT: ${{ secrets.MAX_SECTOR_EXPOSURE_PCT || '0.35' }}
           MAX_PORTFOLIO_DRAWDOWN_PCT: ${{ secrets.MAX_PORTFOLIO_DRAWDOWN_PCT || '0.15' }}
         run: python main.py run
 
