@@ -314,7 +314,7 @@ No terminal or local Python install required — GitHub runs it for you.
 **Option B — your own machine/server with cron:**
 
 ```cron
-*/15 14-21 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py run       >> swing.log 2>&1
+*/15 13-21 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py run       >> swing.log 2>&1
 */5  13-20 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py daytrade  >> daytrade.log 2>&1
 ```
 
