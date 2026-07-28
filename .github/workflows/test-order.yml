@@ -1,0 +1,49 @@
+name: Trading212 Test Order
+
+# Manual-only smoke test: places one small order to verify the API
+# connection actually works end-to-end (auth, symbol mapping, execution),
+# outside of either bot's strategy logic. Not on a schedule — triggered by
+# hand from the Actions tab (or via the API) when you want to check
+# connectivity, not as part of normal trading.
+on:
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: 'Yahoo symbol to buy (small fractional quantity)'
+        type: string
+        default: 'AAPL'
+      qty:
+        description: 'Share quantity to buy'
+        type: string
+        default: '0.01'
+      dry_run:
+        description: 'Dry run (log the intended order, do not place it)'
+        type: boolean
+        default: false
+
+jobs:
+  test-order:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Place test order
+        # T212_ENV is deliberately hardcoded to demo here, not read from the
+        # shared secret — this workflow only ever exists to smoke-test
+        # against paper money, regardless of what the scheduled bots are
+        # configured for. Same log-masking reasoning as the other workflows:
+        # config lives in Secrets so GitHub auto-redacts it from this
+        # public repo's Actions logs.
+        env:
+          T212_API_KEY: ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+          T212_ENV: demo
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: python main.py test-order --symbol "${{ inputs.symbol }}" --qty "${{ inputs.qty }}"

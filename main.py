@@ -5,6 +5,7 @@
   python main.py backtest            # walk-forward backtest the swing strategy
   python main.py backtest --daytrade # walk-forward backtest the day-trade strategy
   python main.py run                 # run one trading cycle (respects DRY_RUN)
+  python main.py test-order          # place one small manual order (respects DRY_RUN)
 """
 
 import argparse
@@ -15,6 +16,7 @@ from t212bot.bot import run_cycle, run_day_trade_cycle
 from t212bot.client import Trading212Client
 from t212bot.config import Config
 from t212bot.strategy import OpeningRangeConfluence, SMACrossover
+from t212bot.test_order import place_test_order
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -38,7 +40,10 @@ def cmd_account(cfg: Config) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Trading212 algorithmic trading bot")
-    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade"])
+    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade", "test-order"])
+    parser.add_argument("--symbol", default="AAPL", help="test-order command only: Yahoo symbol to buy")
+    parser.add_argument("--qty", type=float, default=0.01,
+                         help="test-order command only: share quantity to buy (small, fractional)")
     parser.add_argument("--fast", type=int, default=20, help="fast SMA window (swing strategy)")
     parser.add_argument("--slow", type=int, default=50, help="slow SMA window (swing strategy)")
     parser.add_argument("--or-minutes", type=int, default=30, help="opening range window (day-trade strategy)")
@@ -70,6 +75,8 @@ def main() -> None:
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
     elif args.command == "daytrade":
         run_day_trade_cycle(cfg, OpeningRangeConfluence(or_minutes=args.or_minutes))
+    elif args.command == "test-order":
+        place_test_order(cfg, args.symbol, args.qty)
 
 
 if __name__ == "__main__":
