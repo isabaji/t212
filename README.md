@@ -133,6 +133,23 @@ honest, explainable pieces:
 Same public-repo constraint as the daily target: `state/trade_stats.json`
 tracks only win/loss counts and percentages, never a dollar figure.
 
+### About the performance breakdown chart
+
+The dashboard also shows realized P&L across five trailing windows — last
+hour, day, week, month, and year — as a bar chart, so you can see whether
+recent performance looks different from the longer-run picture at a glance.
+
+Every closed trade (both bots) is appended to a timestamped ledger
+(`t212bot/pnl_history.py`, `state/pnl_history.json`) as `{time, strategy,
+symbol, pnl_pct}` — same public-repo constraint as everywhere else, a
+percentage of account value at the time of the trade, never a dollar figure.
+Each window's bar is just the sum of `pnl_pct` for trades closed within that
+window — the same "realized % relative to account value at each trade"
+approximation the daily target uses, not a precisely compounded return. The
+ledger is capped at the most recent 2000 trades so the file doesn't grow
+unbounded. Until trades have actually closed, all five windows correctly
+show 0% / no data — the chart never fabricates a number.
+
 ### About volatility-aware position sizing
 
 Position sizing used to be flat: every symbol got up to the same percentage

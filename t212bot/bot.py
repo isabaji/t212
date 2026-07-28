@@ -11,7 +11,7 @@ import logging
 
 import pandas as pd
 
-from . import daily_target, history, portfolio_risk, trade_stats
+from . import daily_target, history, pnl_history, portfolio_risk, trade_stats
 from .client import Trading212Client
 from .config import Config
 from .data import fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
@@ -59,6 +59,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         pr_state = portfolio_risk.load()
         drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
         tstats = trade_stats.load()
+        pnl_hist = pnl_history.load()
 
         prices = fetch_history(sorted(set(cfg.watchlist) | held_symbols))
         signals = strategy.generate_signals(prices)
@@ -82,6 +83,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 portfolio_risk.record_trade_pct(pr_state, pnl_pct)
                 trade_stats.record_trade(tstats, "swing", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
+                pnl_history.record_trade(pnl_hist, "swing", sym, pnl_pct)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -147,6 +149,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         portfolio_risk.evaluate(pr_state, cfg.max_portfolio_drawdown_pct)
         portfolio_risk.save(pr_state)
         trade_stats.save(tstats)
+        pnl_history.save(pnl_hist)
 
         history.append("swing", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},
@@ -185,6 +188,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         pr_state = portfolio_risk.load()
         drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
         tstats = trade_stats.load()
+        pnl_hist = pnl_history.load()
 
         prices = fetch_intraday(sorted(set(cfg.watchlist) | held_symbols))
         signals = strategy.generate_signals(prices)
@@ -213,6 +217,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 portfolio_risk.record_trade_pct(pr_state, pnl_pct)
                 trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
+                pnl_history.record_trade(pnl_hist, "daytrade", sym, pnl_pct)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"EOD flatten — closed {qty:g} shares."))
                 continue
@@ -234,6 +239,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 portfolio_risk.record_trade_pct(pr_state, pnl_pct)
                 trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
+                pnl_history.record_trade(pnl_hist, "daytrade", sym, pnl_pct)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -307,6 +313,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         portfolio_risk.evaluate(pr_state, cfg.max_portfolio_drawdown_pct)
         portfolio_risk.save(pr_state)
         trade_stats.save(tstats)
+        pnl_history.save(pnl_hist)
 
         history.append("daytrade", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},
