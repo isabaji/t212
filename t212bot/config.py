@@ -42,6 +42,9 @@ class Config:
     losing_streak_cooldown_days: int = field(
         default_factory=lambda: int(os.getenv("LOSING_STREAK_COOLDOWN_DAYS", "5"))
     )
+    risk_per_trade_pct: float = field(default_factory=lambda: float(os.getenv("RISK_PER_TRADE_PCT", "0.01")))
+    atr_multiple: float = field(default_factory=lambda: float(os.getenv("ATR_MULTIPLE", "2.0")))
+    atr_period: int = field(default_factory=lambda: int(os.getenv("ATR_PERIOD", "14")))
 
     @property
     def base_url(self) -> str:

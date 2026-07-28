@@ -50,6 +50,9 @@ jobs:
           DAILY_LOSS_LIMIT_PCT: ${{ secrets.DAILY_LOSS_LIMIT_PCT || '0.01' }}
           LOSING_STREAK_LIMIT: ${{ secrets.LOSING_STREAK_LIMIT || '3' }}
           LOSING_STREAK_COOLDOWN_DAYS: ${{ secrets.LOSING_STREAK_COOLDOWN_DAYS || '5' }}
+          RISK_PER_TRADE_PCT: ${{ secrets.RISK_PER_TRADE_PCT || '0.01' }}
+          ATR_MULTIPLE: ${{ secrets.ATR_MULTIPLE || '2.0' }}
+          ATR_PERIOD: ${{ secrets.ATR_PERIOD || '14' }}
         run: python main.py daytrade
 
       - name: Persist daily target and trade-stats state

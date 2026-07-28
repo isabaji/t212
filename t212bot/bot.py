@@ -15,6 +15,7 @@ from . import daily_target, history, trade_stats
 from .client import Trading212Client
 from .config import Config
 from .data import fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
+from .indicators import atr as compute_atr
 from .risk import RiskManager
 from .strategy import Signal, Strategy
 
@@ -30,7 +31,8 @@ STALE_BAR_MINUTES = 20                     # if the latest bar is older than thi
 def run_cycle(cfg: Config, strategy: Strategy) -> None:
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
-        risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct)
+        risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct,
+                            cfg.risk_per_trade_pct, cfg.atr_multiple)
 
         cash = client.account_cash()
         free_cash = float(cash.get("free", 0))
@@ -81,7 +83,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                     decisions.append(history.decision(sym, "warning", "Skipped",
                                                         "Max open positions reached."))
                     continue
-                qty = risk.size_buy(account_value, free_cash, last_price)
+                atr_value = compute_atr(prices[sym], period=cfg.atr_period).iloc[-1]
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -131,7 +134,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
     """
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
-        risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct)
+        risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct,
+                            cfg.risk_per_trade_pct, cfg.atr_multiple)
 
         cash = client.account_cash()
         free_cash = float(cash.get("free", 0))
@@ -212,7 +216,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                     decisions.append(history.decision(sym, "warning", "Skipped",
                                                         "Max open positions reached."))
                     continue
-                qty = risk.size_buy(account_value, free_cash, last_price)
+                atr_value = compute_atr(df, period=cfg.atr_period).iloc[-1]
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))

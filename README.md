@@ -69,6 +69,9 @@ Key settings in `.env`:
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
 | `LOSING_STREAK_LIMIT` | `3` | Pause a symbol's new entries after this many losses in a row on it |
 | `LOSING_STREAK_COOLDOWN_DAYS` | `5` | How long a symbol stays paused before resuming with a reset streak |
+| `RISK_PER_TRADE_PCT` | `0.01` | Fraction of account risked per trade (see volatility-aware sizing below) |
+| `ATR_MULTIPLE` | `2.0` | Stop distance for sizing = this × ATR |
+| `ATR_PERIOD` | `14` | Bars used to compute ATR (daily bars for swing, 5-min bars for day-trade) |
 
 The bot refuses to run against `live` unless you also set
 `I_UNDERSTAND_LIVE_TRADING_RISK=yes`.
@@ -128,13 +131,61 @@ honest, explainable pieces:
 Same public-repo constraint as the daily target: `state/trade_stats.json`
 tracks only win/loss counts and percentages, never a dollar figure.
 
+### About volatility-aware position sizing
+
+Position sizing used to be flat: every symbol got up to the same percentage
+of the account, regardless of how much it actually moves. That's not how
+professional risk management works — a stock that swings 5% a day and one
+that swings 0.5% a day aren't equally risky at the same dollar size.
+
+`RiskManager` now sizes each position from its own recent volatility
+(**A**verage **T**rue **R**ange, `t212bot/indicators.py`): the position is
+sized so that a move of `ATR_MULTIPLE × ATR` against it costs roughly
+`RISK_PER_TRADE_PCT` of the account — a volatile stock gets fewer shares than
+a calm one for the same dollar risk, rather than every position getting an
+identical percentage regardless of how it actually behaves. `MAX_POSITION_PCT`
+still applies as a hard ceiling on top of this (so a very calm stock can't
+get sized arbitrarily large), and available cash is still respected. If
+there isn't enough price history yet to compute ATR, sizing falls back to
+the flat `MAX_POSITION_PCT` cap.
+
+### About the backtest
+
+`python main.py backtest` is no longer a single total-return number over one
+historical window — that style of backtest is easy to accidentally overfit
+to (or get lucky/unlucky with) without realizing it. It now:
+
+- **Models trading costs.** Trading212 charges no stock commission, but market
+  orders still pay the bid-ask spread — approximated as slippage in basis
+  points (`--slippage-bps`, default 5bps per side). A cost-free backtest
+  overstates performance, especially for strategies that trade often.
+- **Walks forward across multiple windows** (`--windows`, default 4 for swing,
+  2 for day-trade) instead of one blended period, so a strategy that only
+  "worked" in one lucky stretch shows up as inconsistent across windows
+  rather than hiding inside a single average.
+- **Reports risk-adjusted metrics** — CAGR, Sharpe, Sortino, max drawdown, win
+  rate, profit factor, max consecutive losses — not just total return.
+- **Runs the strategy's actual `generate_signals()`** at each historical
+  point using only data available up to that point. This is the most
+  important property: the backtest exercises the *exact same code* the live
+  bot runs, not a separate re-implementation that could quietly diverge from
+  it and give you a false sense of confidence.
+
+Try it and read the output skeptically — on a first run against the built-in
+SMA-crossover strategy on real recent data, don't be surprised to see it lose
+in most windows. That's the backtest doing its job, not a bug: a genuinely
+profitable strategy should look consistent *across* windows, not just show
+one attractive blended number.
+
 ### 4. Use it
 
 ```bash
-python main.py account     # sanity check: show cash + positions
-python main.py backtest    # backtest the SMA strategy on the watchlist
-python main.py run         # run one swing-trading cycle (dry-run by default)
-python main.py daytrade    # run one day-trading cycle (dry-run by default)
+python main.py account               # sanity check: show cash + positions
+python main.py backtest               # walk-forward backtest the swing strategy
+python main.py backtest --daytrade    # walk-forward backtest the day-trade strategy
+python main.py backtest --windows 6 --slippage-bps 10   # tune the assumptions
+python main.py run                    # run one swing-trading cycle (dry-run by default)
+python main.py daytrade               # run one day-trading cycle (dry-run by default)
 ```
 
 When you're happy with dry-run output, set `DRY_RUN=false` (still on `demo`) and
