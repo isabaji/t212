@@ -191,6 +191,29 @@ Each normalization constant (e.g. `strength_norm_pct`) is a constructor
 parameter with a sane default, not a new env var — tune it in code if the
 defaults size too aggressively or too conservatively for a given strategy.
 
+### About currency conversion
+
+Yahoo Finance quotes US equities in USD, but a Trading212 account can be
+denominated in any currency (e.g. GBP). Every cycle, the bot reads the
+account's actual currency from `client.account_info()["currencyCode"]` and,
+if it isn't USD, converts every USD price it works with — the watchlist
+quotes it just fetched, and the `averagePrice`/`currentPrice` on each open
+position from Trading212's own portfolio endpoint — into the account
+currency using a live rate (`t212bot/data.py:fetch_fx_rate`, from Yahoo
+Finance's `<ACCOUNT><INSTRUMENT>=X` pair, e.g. `GBPUSD=X`). This keeps
+position sizing, sector exposure, and realized P&L math internally
+consistent — without it, an account not denominated in USD would compare a
+USD price against an account value in a different currency, sizing
+positions off by roughly the exchange rate rather than the intended
+percentage.
+
+This assumes every instrument in the watchlist shares one currency (true
+today — it's US-equities only, see `YAHOO_TO_T212` in `t212bot/data.py`); a
+non-US instrument would need its own rate rather than this single blanket
+conversion. If no FX rate can be fetched, the cycle fails loudly (logged as
+a run error) rather than silently sizing a position as if two different
+currencies were the same number.
+
 ### About portfolio-level risk controls
 
 Everything above sizes and gates *one symbol at a time*. Two more checks look

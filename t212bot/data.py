@@ -47,3 +47,25 @@ def fetch_intraday(symbols: list[str], period: str = "5d", interval: str = "5m")
     being cheap; yfinance only retains a limited intraday history anyway.
     """
     return fetch_history(symbols, period=period, interval=interval)
+
+
+def fetch_fx_rate(account_currency: str, instrument_currency: str = "USD") -> float:
+    """Factor to multiply an instrument_currency price by to get account_currency.
+
+    Yahoo Finance quotes US equities in USD; a Trading212 account can be
+    denominated in any currency (e.g. GBP). Position sizing and P&L math need
+    everything in one currency, so live prices get converted to the account's
+    currency before use. Returns 1.0 (no-op) when they already match.
+
+    Raises if no rate can be fetched, rather than silently falling back to a
+    1.0 factor -- a missing FX rate should fail the cycle loudly, not size a
+    real order as if two different currencies were the same number.
+    """
+    if account_currency == instrument_currency:
+        return 1.0
+    pair = f"{account_currency}{instrument_currency}=X"
+    df = yf.Ticker(pair).history(period="5d", interval="1d", auto_adjust=True)
+    if df.empty:
+        raise RuntimeError(f"No FX data for {pair}")
+    quote = float(df["Close"].iloc[-1])  # instrument_currency per 1 account_currency
+    return 1.0 / quote

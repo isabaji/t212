@@ -14,7 +14,7 @@ import pandas as pd
 from . import daily_target, history, pnl_history, portfolio_risk, trade_stats
 from .client import Trading212Client
 from .config import Config
-from .data import fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
+from .data import fetch_fx_rate, fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
 from .indicators import atr as compute_atr
 from .risk import RiskManager
 from .sectors import sector_of
@@ -39,6 +39,43 @@ def _sector_exposure(positions: dict) -> dict:
     return exposure
 
 
+def _convert_positions_fx(positions: dict, fx_rate: float) -> dict:
+    """Convert each position's price fields from instrument currency to account currency.
+
+    Trading212 prices each instrument in its own trading currency (US equities
+    in USD) while account_cash() reports in the account's own currency —
+    sizing and P&L math need both sides in the same currency. Assumes every
+    held instrument shares one currency (true today: the watchlist is US-only,
+    see YAHOO_TO_T212 in data.py); a non-US instrument would need a per-symbol
+    rate instead of this single blanket one.
+    """
+    if fx_rate == 1.0:
+        return positions
+    converted = {}
+    for ticker, pos in positions.items():
+        pos = dict(pos)
+        for key in ("averagePrice", "currentPrice"):
+            if pos.get(key) is not None:
+                pos[key] = float(pos[key]) * fx_rate
+        converted[ticker] = pos
+    return converted
+
+
+def _convert_prices_fx(prices: dict, fx_rate: float) -> dict:
+    """Convert a {symbol: OHLCV DataFrame} fetch (USD, from Yahoo Finance) to
+    the account currency -- same rationale as _convert_positions_fx above."""
+    if fx_rate == 1.0:
+        return prices
+    converted = {}
+    for sym, df in prices.items():
+        df = df.copy()
+        for col in ("Open", "High", "Low", "Close"):
+            if col in df.columns:
+                df[col] = df[col] * fx_rate
+        converted[sym] = df
+    return converted
+
+
 def run_cycle(cfg: Config, strategy: Strategy) -> None:
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
@@ -48,7 +85,9 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         cash = client.account_cash()
         free_cash = float(cash.get("free", 0))
         account_value = float(cash.get("total", free_cash))
-        positions = {p["ticker"]: p for p in client.portfolio()}
+        account_currency = client.account_info().get("currencyCode", "USD")
+        fx_rate = fetch_fx_rate(account_currency)
+        positions = _convert_positions_fx({p["ticker"]: p for p in client.portfolio()}, fx_rate)
         held_symbols = {to_yahoo_symbol(t) for t in positions}
         sector_exposure = _sector_exposure(positions)
         log.info("Account snapshot retrieved (%d open position%s)",
@@ -61,7 +100,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         tstats = trade_stats.load()
         pnl_hist = pnl_history.load()
 
-        prices = fetch_history(sorted(set(cfg.watchlist) | held_symbols))
+        prices = _convert_prices_fx(fetch_history(sorted(set(cfg.watchlist) | held_symbols)), fx_rate)
         signals = strategy.generate_signals(prices)
 
         decisions = []
@@ -180,7 +219,9 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         cash = client.account_cash()
         free_cash = float(cash.get("free", 0))
         account_value = float(cash.get("total", free_cash))
-        positions = {p["ticker"]: p for p in client.portfolio()}
+        account_currency = client.account_info().get("currencyCode", "USD")
+        fx_rate = fetch_fx_rate(account_currency)
+        positions = _convert_positions_fx({p["ticker"]: p for p in client.portfolio()}, fx_rate)
         held_symbols = {to_yahoo_symbol(t) for t in positions}
         sector_exposure = _sector_exposure(positions)
         log.info("Account snapshot retrieved (%d open position%s)",
@@ -193,7 +234,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         tstats = trade_stats.load()
         pnl_hist = pnl_history.load()
 
-        prices = fetch_intraday(sorted(set(cfg.watchlist) | held_symbols))
+        prices = _convert_prices_fx(fetch_intraday(sorted(set(cfg.watchlist) | held_symbols)), fx_rate)
         signals = strategy.generate_signals(prices)
 
         decisions = []
