@@ -64,7 +64,7 @@ Key settings in `.env`:
 | `T212_API_SECRET` | — | Your API secret (shown alongside the key when you generate it) |
 | `T212_ENV` | `demo` | `demo` (practice) or `live` |
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
-| `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS` | Yahoo symbols the strategy scans (15 large-caps across sectors by default) |
+| `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Yahoo symbols the strategy scans (30 large-caps across 9 sectors by default) |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
 | `LOSING_STREAK_LIMIT` | `3` | Pause a symbol's new entries after this many losses in a row on it |
@@ -165,7 +165,7 @@ at the account as a whole:
    individual buy looks affordable on its own. Five max-sized tech positions
    would all be exposed to the same sector-wide move; this stops that from
    happening by accident. Symbols outside the built-in map (anything you add
-   to `WATCHLIST` that isn't in the default 15) each get treated as their own
+   to `WATCHLIST` that isn't in the default 30) each get treated as their own
    single-symbol sector, since there's no classification for them.
 2. **Account-wide drawdown throttle** (`t212bot/portfolio_risk.py`,
    `MAX_PORTFOLIO_DRAWDOWN_PCT`) — tracks a running high-water mark of

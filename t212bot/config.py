@@ -24,7 +24,8 @@ class Config:
             s.strip().upper()
             for s in os.getenv(
                 "WATCHLIST",
-                "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS",
+                "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,"
+                "AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE",
             ).split(",")
             if s.strip()
         ]
