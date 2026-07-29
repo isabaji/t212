@@ -12,7 +12,7 @@ import logging
 import pandas as pd
 
 from . import daily_target, history, pnl_history, portfolio_risk, trade_stats
-from .client import Trading212Client
+from .client import Trading212Client, Trading212Error
 from .config import Config
 from .data import fetch_fx_rate, fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
 from .indicators import atr as compute_atr
@@ -118,7 +118,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
             if signal is Signal.SELL and t212_ticker in positions:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
-                _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL")
+                if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL"):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      "Sell order rejected by Trading212 -- position may already be closed."))
+                    continue
                 pnl_pct = (last_price - avg_price) * qty / account_value
                 daily_target.record_trade_pct(daily_state, pnl_pct)
                 portfolio_risk.record_trade_pct(pr_state, pnl_pct)
@@ -160,7 +163,10 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
                     continue
-                _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY")
+                if not _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY"):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      "Buy order rejected by Trading212."))
+                    continue
                 free_cash -= qty * last_price
                 positions[t212_ticker] = {"quantity": qty}
                 sector_exposure[sector] = sector_value_held + qty * last_price
@@ -265,7 +271,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             if holding and minutes_to_close <= EOD_FLATTEN_MINUTES_BEFORE_CLOSE:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
-                _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL (EOD flatten)")
+                if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL (EOD flatten)"):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      "EOD flatten order rejected by Trading212 -- position may already be closed."))
+                    continue
                 pnl_pct = (last_price - avg_price) * qty / account_value
                 daily_target.record_trade_pct(daily_state, pnl_pct)
                 portfolio_risk.record_trade_pct(pr_state, pnl_pct)
@@ -288,7 +297,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             if signal is Signal.SELL and holding:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
-                _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL")
+                if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL"):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      "Sell order rejected by Trading212 -- position may already be closed."))
+                    continue
                 pnl_pct = (last_price - avg_price) * qty / account_value
                 daily_target.record_trade_pct(daily_state, pnl_pct)
                 portfolio_risk.record_trade_pct(pr_state, pnl_pct)
@@ -335,7 +347,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
                     continue
-                _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY")
+                if not _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY"):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      "Buy order rejected by Trading212."))
+                    continue
                 free_cash -= qty * last_price
                 positions[t212_ticker] = {"quantity": qty}
                 sector_exposure[sector] = sector_value_held + qty * last_price
@@ -396,12 +411,22 @@ def _minutes_until_close(bar_timestamp: pd.Timestamp) -> float:
 
 
 def _execute(client: Trading212Client, dry_run: bool, ticker: str,
-             quantity: float, ref_price: float, label: str) -> None:
-    # Deliberately identical output whether this was a dry run or a real
+             quantity: float, ref_price: float, label: str) -> bool:
+    """Places the order; returns False (instead of raising) if Trading212
+    rejects it, e.g. a stale local position snapshot tries to sell shares
+    already closed out from under the bot. One rejected order must not abort
+    the rest of the cycle -- the caller skips that symbol and moves on.
+    """
+    # Deliberately identical log output whether this was a dry run or a real
     # order, with no quantity/notional/order-id — this stdout is captured by
     # a public CI log, and even "did a real order get placed" is information
     # worth not leaking there. Full detail (figures, dry_run flag, order id)
     # goes only to the local, gitignored history.jsonl via the call site.
     if not dry_run:
-        client.place_market_order(ticker, quantity)
+        try:
+            client.place_market_order(ticker, quantity)
+        except Trading212Error as exc:
+            log.warning("Order rejected: %s %s (%s)", label, ticker, exc)
+            return False
     log.info("Signal: %s %s", label, ticker)
+    return True
