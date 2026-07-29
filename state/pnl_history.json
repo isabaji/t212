@@ -46,5 +46,47 @@
     "strategy": "daytrade",
     "symbol": "V",
     "pnl_pct": -0.0009929361651624406
+  },
+  {
+    "t": "2026-07-29T21:15:31Z",
+    "strategy": "daytrade",
+    "symbol": "AMZN",
+    "pnl_pct": -0.0012057407119945365
+  },
+  {
+    "t": "2026-07-29T21:15:31Z",
+    "strategy": "daytrade",
+    "symbol": "CRM",
+    "pnl_pct": -0.0005468365241903803
+  },
+  {
+    "t": "2026-07-29T21:15:31Z",
+    "strategy": "daytrade",
+    "symbol": "GOOGL",
+    "pnl_pct": -5.894895905946577e-05
+  },
+  {
+    "t": "2026-07-29T21:15:31Z",
+    "strategy": "daytrade",
+    "symbol": "MSFT",
+    "pnl_pct": -0.0012264039981668478
+  },
+  {
+    "t": "2026-07-29T21:15:32Z",
+    "strategy": "daytrade",
+    "symbol": "NFLX",
+    "pnl_pct": 0.001098821215280396
+  },
+  {
+    "t": "2026-07-29T21:15:32Z",
+    "strategy": "daytrade",
+    "symbol": "NKE",
+    "pnl_pct": 0.0011064974232803389
+  },
+  {
+    "t": "2026-07-29T21:15:32Z",
+    "strategy": "daytrade",
+    "symbol": "WMT",
+    "pnl_pct": -6.324271924653896e-05
   }
 ]
