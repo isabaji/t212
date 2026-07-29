@@ -15,6 +15,17 @@ on:
         description: 'Dry run (log intended orders, do not place them)'
         type: boolean
         default: true
+  # External-cron fallback trigger. GitHub's own `schedule` trigger has proven
+  # unreliable (stalls for hours with no diagnostic, sometimes doesn't recover
+  # after a UI disable/re-enable) — this event type lets a third-party
+  # scheduler (e.g. cron-job.org) drive runs via the repo dispatches API
+  # instead. Deliberately NOT workflow_dispatch: that event always carries a
+  # `dry_run` input (defaulting to true), which would silently force every
+  # externally-triggered run into dry-run regardless of the DRY_RUN secret.
+  # repository_dispatch carries no such input, so DRY_RUN below falls through
+  # to the secret exactly like a native `schedule` run would.
+  repository_dispatch:
+    types: [external-cron-swing]
 
 jobs:
   run-bot:
