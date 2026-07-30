@@ -24,6 +24,22 @@ class Config:
     alpaca_api_key: str = field(default_factory=lambda: os.getenv("ALPACA_API_KEY", ""))
     alpaca_api_secret: str = field(default_factory=lambda: os.getenv("ALPACA_API_SECRET", ""))
     daytrade_bar_minutes: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_BAR_MINUTES", "5")))
+    # Which day-trade strategy run_day_trade_cycle uses. "orb" (default,
+    # unchanged live behavior) is OpeningRangeConfluence alone -- all the
+    # knobs on this class (bar minutes, confirm bars, EMA gate below) apply
+    # to it. "ensemble" is the validated opening-range-breakout +
+    # mean-reversion pullback pairing (t212bot/strategy.py: EnsembleVote,
+    # unanimous) -- built exactly as backtested: ORB with confirm_bars=0 and
+    # no EMA-spread gate (that tuning is separate from this pairing, not
+    # layered on top of it), MeanReversionPullback at its own code defaults.
+    # Backtested across 30 symbols / 60 days at the stop-loss/take-profit
+    # defaults below: ~45% win rate (best of everything tried this session,
+    # vs ~30% for "orb" alone) and a positive average return that held up
+    # when the backtest windowing changed from 6 to 3 windows -- see
+    # `python main.py backtest --daytrade --strategy ensemble`. Still only a
+    # ~65-trade backtest sample, smaller than the "orb"-alone validation;
+    # review before enabling on a real account.
+    daytrade_strategy: str = field(default_factory=lambda: os.getenv("DAYTRADE_STRATEGY", "orb").strip().lower())
     # Entries only require the breakout to hold across this many 1-minute
     # closes before firing (t212bot/strategy.py: OpeningRangeConfluence's
     # confirm_bars). 0 disables the extra fetch/check entirely.

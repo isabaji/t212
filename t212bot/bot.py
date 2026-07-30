@@ -265,8 +265,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         # Optional finer-grained confirmation series (t212bot/strategy.py:
         # OpeningRangeConfluence.confirm_bars) -- reuse `prices` outright when
         # the primary bar size is already 1-minute, rather than double-fetching
-        # identical data.
-        if cfg.daytrade_confirm_bars <= 0:
+        # identical data. The validated ensemble strategy builds ORB with
+        # confirm_bars=0 itself (see main.py), so this fetch is skipped
+        # outright for it -- nothing would use it.
+        if cfg.daytrade_confirm_bars <= 0 or cfg.daytrade_strategy == "ensemble":
             confirm_prices = None
         elif cfg.daytrade_bar_minutes == 1:
             confirm_prices = prices
