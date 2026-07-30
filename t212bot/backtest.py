@@ -42,18 +42,21 @@ def _signal_series(strategy, df: pd.DataFrame, min_bars: int,
     """confirm_df (optional): a finer-grained bar series for the same symbol,
     sliced up to each step's current timestamp (no lookahead) and passed as
     the strategy's confirm_prices -- see OpeningRangeConfluence.confirm_bars.
-    """
+
+    Returns the full SignalResult per step (not just .signal), so callers
+    can inspect .reason -- e.g. EnsembleVote tags a BUY's reason with which
+    sub-strategies agreed, letting _build_trades attach that to the trade."""
     signals = []
     for i in range(min_bars, len(df) + 1):
         prices = {"X": df.iloc[:i]}
         confirm_prices = None
         if confirm_df is not None:
             confirm_prices = {"X": confirm_df[confirm_df.index <= df.index[i - 1]]}
-        signals.append(strategy.generate_signals(prices, confirm_prices)["X"].signal)
+        signals.append(strategy.generate_signals(prices, confirm_prices)["X"])
     return pd.Series(signals, index=df.index[min_bars - 1:])
 
 
-def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage_bps: float,
+def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, slippage_bps: float,
                    stop_atr_multiple: float | None = None, atr_series: pd.Series | None = None,
                    stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> list:
     """stop_atr_multiple (optional): force-close a position the first day its bar Low
@@ -68,11 +71,16 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
     or whose High touches entry_price * (1 + take_profit_pct). If both stops (ATR and
     fixed-pct) are active, the tighter (higher) stop price wins. If a single bar's
     range spans both the stop and the target, the stop is assumed to hit first (the
-    conservative, can't-know-intrabar-order assumption also used for the ATR stop)."""
+    conservative, can't-know-intrabar-order assumption also used for the ATR stop).
+
+    Each trade records entry_reason -- the entry signal's .reason (e.g. an
+    EnsembleVote's voting-strategy breakdown), None for strategies that
+    don't set one."""
     cost_frac = (fee_bps + slippage_bps) / 10000.0
     trades = []
     position = None
-    for date, sig in signals.items():
+    for date, sig_result in signal_results.items():
+        sig = sig_result.signal
         row = df.loc[date]
         price = float(row["Close"])
 
@@ -84,6 +92,7 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
                     "entry_price": position["entry_price"], "exit_price": exit_price,
                     "pnl_pct": exit_price / position["entry_price"] - 1,
                     "open_at_end": False, "exit_reason": "stop_loss",
+                    "entry_reason": position.get("entry_reason"),
                 })
                 position = None
                 continue
@@ -96,6 +105,7 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
                     "entry_price": position["entry_price"], "exit_price": exit_price,
                     "pnl_pct": exit_price / position["entry_price"] - 1,
                     "open_at_end": False, "exit_reason": "take_profit",
+                    "entry_reason": position.get("entry_reason"),
                 })
                 position = None
                 continue
@@ -116,7 +126,8 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
                 stop_price = max(stop_price, pct_stop) if stop_price is not None else pct_stop
             target_price = price * (1 + take_profit_pct) if take_profit_pct is not None else None
             position = {"entry_date": date, "entry_price": entry_price,
-                        "stop_price": stop_price, "target_price": target_price}
+                        "stop_price": stop_price, "target_price": target_price,
+                        "entry_reason": sig_result.reason}
         elif position is not None and sig is Signal.SELL:
             exit_price = price * (1 - cost_frac)
             trades.append({
@@ -124,16 +135,18 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
                 "entry_price": position["entry_price"], "exit_price": exit_price,
                 "pnl_pct": exit_price / position["entry_price"] - 1,
                 "open_at_end": False, "exit_reason": "signal",
+                "entry_reason": position.get("entry_reason"),
             })
             position = None
     if position is not None:
-        last_date = signals.index[-1]
+        last_date = signal_results.index[-1]
         exit_price = float(df.loc[last_date, "Close"]) * (1 - cost_frac)
         trades.append({
             "entry_date": position["entry_date"], "exit_date": last_date,
             "entry_price": position["entry_price"], "exit_price": exit_price,
             "pnl_pct": exit_price / position["entry_price"] - 1,
             "open_at_end": True, "exit_reason": "end_of_data",
+            "entry_reason": position.get("entry_reason"),
         })
     return trades
 
@@ -436,6 +449,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             min_strength=min_strength, min_volume_ratio=min_volume_ratio,
             require_retest=require_retest, retest_tolerance_pct=retest_tolerance_pct)
 
+    vote_breakdown = {}  # entry_reason -> {"trades": int, "wins": int, "pnl_sum": float}
+
     bars_per_day = 78  # ~6.5h US session / 5-min bars
     for sym, df in price_data.items():
         try:
@@ -458,4 +473,21 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                   f"win rate {_pct(w['win_rate'])}, {w['closed_trades']} trades, "
                   f"avg win {_pct(w['avg_win'])}, avg loss {_pct(w['avg_loss'])}, "
                   f"max drawdown {_pct(w['max_drawdown'])}")
+            if strategy_name == "ensemble":
+                for t in w["trades"]:
+                    if t.get("open_at_end"):
+                        continue
+                    key = t.get("entry_reason") or "unknown"
+                    bucket = vote_breakdown.setdefault(key, {"trades": 0, "wins": 0, "pnl_sum": 0.0})
+                    bucket["trades"] += 1
+                    bucket["wins"] += 1 if t["pnl_pct"] > 0 else 0
+                    bucket["pnl_sum"] += t["pnl_pct"]
+        print()
+
+    if strategy_name == "ensemble" and vote_breakdown:
+        print("=== Vote-composition breakdown (which strategies agreed) ===")
+        for key, b in sorted(vote_breakdown.items(), key=lambda kv: -kv[1]["trades"]):
+            win_rate = b["wins"] / b["trades"] if b["trades"] else 0.0
+            avg_pnl = b["pnl_sum"] / b["trades"] if b["trades"] else 0.0
+            print(f"  {key}: {b['trades']} trades, win rate {win_rate:+.1%}, avg pnl/trade {avg_pnl:+.2%}")
         print()

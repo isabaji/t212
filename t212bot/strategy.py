@@ -540,7 +540,11 @@ class EnsembleVote(Strategy):
 
     A BUY's strength averages the strengths of only the strategies that
     voted BUY (not all of them), so a marginal-but-sufficient consensus
-    still sizes smaller than a strong one.
+    still sizes smaller than a strong one. A BUY's reason is set to the
+    "+"-joined class names of the strategies that voted for it (e.g.
+    "MeanReversionPullback+VWAPReclaim"), so a backtest can break down
+    performance by which combination of strategies agreed -- see
+    _build_trades' entry_reason.
     """
 
     def __init__(self, strategies: list[Strategy], min_votes: int | None = None):
@@ -558,10 +562,11 @@ class EnsembleVote(Strategy):
             if any(s.signal is Signal.SELL for s in sigs):
                 result[sym] = SignalResult(Signal.SELL)
                 continue
-            buy_sigs = [s for s in sigs if s.signal is Signal.BUY]
-            if len(buy_sigs) >= self.min_votes:
-                strength = sum(s.strength for s in buy_sigs) / len(buy_sigs)
-                result[sym] = SignalResult(Signal.BUY, strength)
+            buy_indices = [i for i, s in enumerate(sigs) if s.signal is Signal.BUY]
+            if len(buy_indices) >= self.min_votes:
+                strength = sum(sigs[i].strength for i in buy_indices) / len(buy_indices)
+                voters = "+".join(type(self.strategies[i]).__name__ for i in buy_indices)
+                result[sym] = SignalResult(Signal.BUY, strength, reason=voters)
             else:
                 result[sym] = SignalResult(Signal.HOLD)
         return result
