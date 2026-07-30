@@ -25,8 +25,8 @@ is split into three layers:
 
 1. **Data** — the swing strategy's daily bars come from Yahoo Finance
    (`yfinance`); the day-trade strategy's intraday bars come from Alpaca's
-   free market data API instead (real-time IEX feed, 1-minute bars by
-   default — see below for why).
+   free market data API instead (real-time IEX feed, 5-minute bars by
+   default, configurable — see below for why).
 2. **Strategy** — a pluggable class turns price history into BUY/SELL/HOLD signals.
    Two are included: a daily SMA-crossover (swing trading) and an intraday
    opening-range breakout (day trading) — see below.
@@ -68,7 +68,7 @@ Key settings in `.env`:
 | `T212_ENV` | `demo` | `demo` (practice) or `live` |
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
-| `DAYTRADE_BAR_MINUTES` | `1` | Bar size for the day-trade strategy's intraday data (Alpaca) |
+| `DAYTRADE_BAR_MINUTES` | `5` | Bar size for the day-trade strategy's intraday data (Alpaca) |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
@@ -393,7 +393,7 @@ No terminal or local Python install required — GitHub runs it for you.
 ## Day trading: what "OpeningRangeConfluence" actually does, and its limits
 
 `python main.py daytrade` runs an intraday strategy (`OpeningRangeConfluence` in
-`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized bars (1-minute by default):
+`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized bars (5-minute by default):
 
 1. **Entry** — after the first 30 minutes of the session (the "opening range"),
    it buys only if *all three* agree: price breaks above the opening-range
@@ -419,11 +419,13 @@ No terminal or local Python install required — GitHub runs it for you.
 
 - Intraday data comes from Alpaca's free tier (real-time IEX feed, not
   delayed like Yahoo's free intraday data) — but it's still single-exchange
-  IEX, not the full consolidated tape, and the trigger cadence (every 5
-  minutes by default via GitHub Actions/cron-job.org) is coarser than the
-  1-minute bars themselves. Reacting to 1-minute bars only every 5 minutes
-  still narrows the reaction window versus 5-minute bars, but this isn't
-  built for scalping or anything needing sub-minute execution.
+  IEX, not the full consolidated tape. `DAYTRADE_BAR_MINUTES` defaults to 5
+  to match the bot's default 5-minute trigger cadence (GitHub
+  Actions/cron-job.org); set it to `1` for finer-grained bars, but only if
+  you also tighten the trigger cadence to match — otherwise you're just
+  looking at a 1-minute-old bar every 5 minutes instead of a fresh 5-minute
+  one, no real benefit. Either way, this isn't built for scalping or
+  anything needing sub-minute execution.
 - Backtesting the day-trade strategy (`--daytrade`) still pulls 5-minute
   bars regardless of `DAYTRADE_BAR_MINUTES`, to keep the backtest quick —
   see `t212bot/backtest.py`.

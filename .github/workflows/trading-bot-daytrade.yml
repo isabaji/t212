@@ -57,7 +57,7 @@ jobs:
           # still runs on yfinance daily bars.
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
-          DAYTRADE_BAR_MINUTES: ${{ secrets.DAYTRADE_BAR_MINUTES || '1' }}
+          DAYTRADE_BAR_MINUTES: ${{ secrets.DAYTRADE_BAR_MINUTES || '5' }}
           T212_ENV: ${{ secrets.T212_ENV || 'demo' }}
           # Separate from the swing bot's DRY_RUN so you arm each mode independently.
           DRY_RUN: ${{ github.event.inputs.dry_run || secrets.DAYTRADE_DRY_RUN || 'true' }}

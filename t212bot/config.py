@@ -23,7 +23,7 @@ class Config:
     # fetches intraday data.
     alpaca_api_key: str = field(default_factory=lambda: os.getenv("ALPACA_API_KEY", ""))
     alpaca_api_secret: str = field(default_factory=lambda: os.getenv("ALPACA_API_SECRET", ""))
-    daytrade_bar_minutes: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_BAR_MINUTES", "1")))
+    daytrade_bar_minutes: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_BAR_MINUTES", "5")))
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))

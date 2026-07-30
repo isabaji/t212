@@ -276,12 +276,12 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
 def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secret: str,
                              or_minutes: int = 30, n_windows: int = 2,
                              fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS) -> None:
-    """Backtests OpeningRangeConfluence on intraday bars. Deliberately still
-    backtests on 5-minute bars (not the live bot's 1-minute default) -- fewer,
-    steadier bars keep this a quick sanity check rather than a slow pull of
-    tens of thousands of bars per symbol; pass a different symbol/timeframe
-    combination directly to fetch_intraday if you want to backtest 1-minute
-    behavior specifically."""
+    """Backtests OpeningRangeConfluence on intraday bars. Always backtests on
+    5-minute bars regardless of the live bot's DAYTRADE_BAR_MINUTES setting --
+    fewer, steadier bars keep this a quick sanity check rather than a slow
+    pull of tens of thousands of bars per symbol; pass a different
+    symbol/timeframe combination directly to fetch_intraday if you want to
+    backtest a different bar size specifically."""
     print("Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars.")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
     print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
