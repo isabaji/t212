@@ -1,11 +1,11 @@
 {
   "daytrade": {
     "AMZN": {
-      "losses": 1,
+      "losses": 2,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "win",
-      "total_pnl_pct": -0.0003700673326007505,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0006553602811901197,
       "wins": 1
     },
     "AVGO": {
