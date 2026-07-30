@@ -43,10 +43,10 @@
     "CVX": {
       "losses": 2,
       "paused_until": null,
-      "streak": 2,
-      "streak_type": "loss",
-      "total_pnl_pct": -0.00016134583147040367,
-      "wins": 1
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": -0.0001573443334647246,
+      "wins": 2
     },
     "DIS": {
       "losses": 0,
