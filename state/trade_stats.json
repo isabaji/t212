@@ -81,11 +81,11 @@
       "wins": 1
     },
     "NVDA": {
-      "losses": 1,
+      "losses": 2,
       "paused_until": null,
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": -5.203120849312221e-05,
+      "total_pnl_pct": -0.0023902815338109878,
       "wins": 0
     },
     "UNH": {
