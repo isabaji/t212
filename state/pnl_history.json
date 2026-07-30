@@ -172,5 +172,17 @@
     "strategy": "daytrade",
     "symbol": "CVX",
     "pnl_pct": 4.001498005679079e-06
+  },
+  {
+    "t": "2026-07-30T19:36:06Z",
+    "strategy": "daytrade",
+    "symbol": "CVX",
+    "pnl_pct": -3.163288410012511e-05
+  },
+  {
+    "t": "2026-07-30T19:36:06Z",
+    "strategy": "daytrade",
+    "symbol": "KO",
+    "pnl_pct": -0.00014576711466199798
   }
 ]

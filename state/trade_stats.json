@@ -41,11 +41,11 @@
       "wins": 0
     },
     "CVX": {
-      "losses": 2,
+      "losses": 3,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "win",
-      "total_pnl_pct": -0.0001573443334647246,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0001889772175648497,
       "wins": 2
     },
     "DIS": {
@@ -62,6 +62,14 @@
       "streak": 2,
       "streak_type": "loss",
       "total_pnl_pct": -0.0009565431163349872,
+      "wins": 0
+    },
+    "KO": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.00014576711466199798,
       "wins": 0
     },
     "MSFT": {
