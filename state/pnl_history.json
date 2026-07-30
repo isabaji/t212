@@ -184,5 +184,59 @@
     "strategy": "daytrade",
     "symbol": "KO",
     "pnl_pct": -0.00014576711466199798
+  },
+  {
+    "t": "2026-07-30T19:51:07Z",
+    "strategy": "daytrade",
+    "symbol": "ABBV",
+    "pnl_pct": -0.0005560279804869657
+  },
+  {
+    "t": "2026-07-30T19:51:07Z",
+    "strategy": "daytrade",
+    "symbol": "AMZN",
+    "pnl_pct": -0.00042358223745937685
+  },
+  {
+    "t": "2026-07-30T19:51:07Z",
+    "strategy": "daytrade",
+    "symbol": "AVGO",
+    "pnl_pct": 0.00010722306956272169
+  },
+  {
+    "t": "2026-07-30T19:51:07Z",
+    "strategy": "daytrade",
+    "symbol": "BA",
+    "pnl_pct": 0.0005589729150011178
+  },
+  {
+    "t": "2026-07-30T19:51:07Z",
+    "strategy": "daytrade",
+    "symbol": "BAC",
+    "pnl_pct": -5.390907752286293e-05
+  },
+  {
+    "t": "2026-07-30T19:51:08Z",
+    "strategy": "daytrade",
+    "symbol": "CVX",
+    "pnl_pct": -0.000658505586078032
+  },
+  {
+    "t": "2026-07-30T19:51:08Z",
+    "strategy": "daytrade",
+    "symbol": "JPM",
+    "pnl_pct": 0.000486646554261192
+  },
+  {
+    "t": "2026-07-30T19:51:08Z",
+    "strategy": "daytrade",
+    "symbol": "PFE",
+    "pnl_pct": 3.649888370549872e-05
+  },
+  {
+    "t": "2026-07-30T19:51:08Z",
+    "strategy": "daytrade",
+    "symbol": "XOM",
+    "pnl_pct": -3.750594946943671e-05
   }
 ]

@@ -1,27 +1,43 @@
 {
   "daytrade": {
-    "AMZN": {
-      "losses": 2,
+    "ABBV": {
+      "losses": 1,
       "paused_until": null,
       "streak": 1,
       "streak_type": "loss",
-      "total_pnl_pct": -0.0006553602811901197,
+      "total_pnl_pct": -0.0005560279804869657,
+      "wins": 0
+    },
+    "AMZN": {
+      "losses": 3,
+      "paused_until": null,
+      "streak": 2,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0010789425186494964,
       "wins": 1
     },
     "AVGO": {
       "losses": 1,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "loss",
-      "total_pnl_pct": -0.00029076903197105733,
-      "wins": 0
+      "streak_type": "win",
+      "total_pnl_pct": -0.00018354596240833566,
+      "wins": 1
     },
     "BA": {
       "losses": 2,
       "paused_until": null,
-      "streak": 2,
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": -0.00025503884391418275,
+      "wins": 1
+    },
+    "BAC": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
       "streak_type": "loss",
-      "total_pnl_pct": -0.0008140117589153005,
+      "total_pnl_pct": -5.390907752286293e-05,
       "wins": 0
     },
     "CAT": {
@@ -41,11 +57,11 @@
       "wins": 0
     },
     "CVX": {
-      "losses": 3,
+      "losses": 4,
       "paused_until": null,
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": -0.0001889772175648497,
+      "total_pnl_pct": -0.0008474828036428817,
       "wins": 2
     },
     "DIS": {
@@ -63,6 +79,14 @@
       "streak_type": "loss",
       "total_pnl_pct": -0.0009565431163349872,
       "wins": 0
+    },
+    "JPM": {
+      "losses": 0,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": 0.000486646554261192,
+      "wins": 1
     },
     "KO": {
       "losses": 1,
@@ -104,6 +128,14 @@
       "total_pnl_pct": -0.0023902815338109878,
       "wins": 0
     },
+    "PFE": {
+      "losses": 0,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": 3.649888370549872e-05,
+      "wins": 1
+    },
     "UNH": {
       "losses": 1,
       "paused_until": null,
@@ -129,11 +161,11 @@
       "wins": 0
     },
     "XOM": {
-      "losses": 1,
+      "losses": 2,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "win",
-      "total_pnl_pct": 0.000899527785625068,
+      "streak_type": "loss",
+      "total_pnl_pct": 0.0008620218361556313,
       "wins": 2
     }
   }
