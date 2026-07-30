@@ -354,7 +354,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              require_retest: bool = False,
                              retest_tolerance_pct: float = 0.003,
                              strategy_name: str = "orb",
-                             ensemble_min_votes: int | None = None) -> None:
+                             ensemble_min_votes: int | None = None,
+                             ensemble_strategies: str = "orb,mr,vwap") -> None:
     """Backtests a day-trade strategy on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
@@ -365,16 +366,23 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     params below except stop_loss_pct/take_profit_pct only apply to it.
     "mean_reversion" is MeanReversionPullback, tested with its own code
     defaults for now (no CLI knobs yet). "ensemble" is EnsembleVote wrapping
-    all three of OpeningRangeConfluence + MeanReversionPullback + VWAPReclaim
-    (each at its own code defaults, orb with confirm_bars=0 since no
-    1-minute data is fetched for this mode) -- requires ensemble_min_votes of
-    the three to agree before a BUY fires (None = unanimous, all three; a
-    3-strategy unanimous vote turned out to produce only 11 trades across a
-    60-day/30-symbol backtest, too few to draw any conclusion from -- try
-    ensemble_min_votes=2 for a majority instead). confirm_bars/rsi_buy_range/
+    the strategies named in ensemble_strategies (each at its own code
+    defaults, orb with confirm_bars=0 since no 1-minute data is fetched for
+    this mode) -- requires ensemble_min_votes of them to agree before a BUY
+    fires (None = unanimous, all of them). confirm_bars/rsi_buy_range/
     min_ema_spread_pct/min_strength/min_volume_ratio/require_retest are
     silently ignored outside "orb" mode since none of them apply to the
     other strategies.
+
+    ensemble_strategies (ensemble only): comma-separated subset of
+    "orb,mr,vwap" (OpeningRangeConfluence, MeanReversionPullback,
+    VWAPReclaim) to include in the vote -- e.g. "orb,mr" to test just that
+    pair. Unanimous 3-of-3 across all three produced only 11 trades across a
+    60-day/30-symbol backtest, too few to draw any conclusion from; the
+    per-combination breakdown from a 2-of-3 majority run showed
+    OpeningRangeConfluence+MeanReversionPullback agreeing (without VWAP) was
+    the strong pairing (44% win rate) while anything involving VWAPReclaim
+    dragged the average down -- hence testing "orb,mr" in isolation.
 
     confirm_bars > 0 (orb only) additionally pulls 1-minute bars and
     exercises the same confirm_bars entry gate the live bot uses (see
@@ -396,10 +404,13 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     if strategy_name == "mean_reversion":
         header = ["Day-trade strategy: mean-reversion pullback + EMA/RSI confluence, 5-min bars"]
     elif strategy_name == "ensemble":
-        votes_desc = "all 3 must agree" if not ensemble_min_votes or ensemble_min_votes >= 3 \
-            else f"{ensemble_min_votes} of 3 must agree"
-        header = ["Day-trade strategy: ensemble vote (opening-range breakout + "
-                   f"mean-reversion pullback + VWAP reclaim, {votes_desc}), 5-min bars"]
+        ensemble_names = {"orb": "opening-range breakout", "mr": "mean-reversion pullback",
+                           "vwap": "VWAP reclaim"}
+        selected = [s.strip() for s in ensemble_strategies.split(",") if s.strip()]
+        votes_desc = "all must agree" if not ensemble_min_votes or ensemble_min_votes >= len(selected) \
+            else f"{ensemble_min_votes} of {len(selected)} must agree"
+        names = " + ".join(ensemble_names.get(s, s) for s in selected)
+        header = [f"Day-trade strategy: ensemble vote ({names}, {votes_desc}), 5-min bars"]
     else:
         header = ["Day-trade strategy: opening-range breakout"
                   + (" + retest" if require_retest else "") + " + EMA/RSI confluence, 5-min bars"]
@@ -438,11 +449,13 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         if strategy_name == "mean_reversion":
             return MeanReversionPullback()
         if strategy_name == "ensemble":
-            return EnsembleVote([
-                OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=0),
-                MeanReversionPullback(),
-                VWAPReclaim(),
-            ], min_votes=ensemble_min_votes)
+            ensemble_factories = {
+                "orb": lambda: OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=0),
+                "mr": lambda: MeanReversionPullback(),
+                "vwap": lambda: VWAPReclaim(),
+            }
+            selected = [s.strip() for s in ensemble_strategies.split(",") if s.strip()]
+            return EnsembleVote([ensemble_factories[s]() for s in selected], min_votes=ensemble_min_votes)
         return OpeningRangeConfluence(
             or_minutes=or_minutes, confirm_bars=confirm_bars,
             rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,

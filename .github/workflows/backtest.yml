@@ -82,9 +82,13 @@ on:
           - ensemble
         default: orb
       ensemble_min_votes:
-        description: 'With strategy=ensemble: how many of the 3 sub-strategies must agree (blank = unanimous, all 3; try 2 for a majority vote)'
+        description: 'With strategy=ensemble: how many of the selected sub-strategies must agree (blank = unanimous, all of them)'
         type: string
         default: ''
+      ensemble_strategies:
+        description: 'With strategy=ensemble: comma-separated subset of orb,mr,vwap to include (default all three; try orb,mr for just that pair)'
+        type: string
+        default: 'orb,mr,vwap'
 
 jobs:
   backtest:
@@ -123,5 +127,6 @@ jobs:
           if [ -n "${{ inputs.retest_tolerance_pct }}" ]; then ARGS="$ARGS --retest-tolerance-pct ${{ inputs.retest_tolerance_pct }}"; fi
           if [ -n "${{ inputs.strategy }}" ]; then ARGS="$ARGS --strategy ${{ inputs.strategy }}"; fi
           if [ -n "${{ inputs.ensemble_min_votes }}" ]; then ARGS="$ARGS --ensemble-min-votes ${{ inputs.ensemble_min_votes }}"; fi
+          if [ -n "${{ inputs.ensemble_strategies }}" ]; then ARGS="$ARGS --ensemble-strategies ${{ inputs.ensemble_strategies }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS

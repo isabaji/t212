@@ -91,9 +91,12 @@ def main() -> None:
                               "(see --ensemble-min-votes) before buying. Non-orb strategies use their own "
                               "code defaults for now")
     parser.add_argument("--ensemble-min-votes", type=int, default=None,
-                         help="backtest --daytrade --strategy ensemble only: how many of the 3 "
-                              "sub-strategies must agree (default: unanimous, all 3 -- try 2 for a "
-                              "majority vote instead)")
+                         help="backtest --daytrade --strategy ensemble only: how many of the selected "
+                              "sub-strategies must agree (default: unanimous, all of them)")
+    parser.add_argument("--ensemble-strategies", default="orb,mr,vwap",
+                         help="backtest --daytrade --strategy ensemble only: comma-separated subset of "
+                              "orb,mr,vwap to include in the vote (default: all three; try 'orb,mr' to "
+                              "test just that pair)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -128,7 +131,8 @@ def main() -> None:
                                      require_retest=args.require_retest,
                                      retest_tolerance_pct=args.retest_tolerance_pct,
                                      strategy_name=args.strategy,
-                                     ensemble_min_votes=args.ensemble_min_votes)
+                                     ensemble_min_votes=args.ensemble_min_votes,
+                                     ensemble_strategies=args.ensemble_strategies)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
