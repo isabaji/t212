@@ -87,8 +87,13 @@ def main() -> None:
                               "the --confirm-bars/--rsi-buy-*/--min-*/--require-retest flags above only "
                               "apply to it. 'mean_reversion' is MeanReversionPullback (buys pullbacks to "
                               "the fast EMA within an uptrend instead of chasing breakouts). 'ensemble' "
-                              "requires orb + mean_reversion + a third VWAP-reclaim strategy to all agree "
-                              "before buying. Non-orb strategies use their own code defaults for now")
+                              "requires orb + mean_reversion + a third VWAP-reclaim strategy to agree "
+                              "(see --ensemble-min-votes) before buying. Non-orb strategies use their own "
+                              "code defaults for now")
+    parser.add_argument("--ensemble-min-votes", type=int, default=None,
+                         help="backtest --daytrade --strategy ensemble only: how many of the 3 "
+                              "sub-strategies must agree (default: unanimous, all 3 -- try 2 for a "
+                              "majority vote instead)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -122,7 +127,8 @@ def main() -> None:
                                      min_strength=args.min_strength, min_volume_ratio=args.min_volume_ratio,
                                      require_retest=args.require_retest,
                                      retest_tolerance_pct=args.retest_tolerance_pct,
-                                     strategy_name=args.strategy)
+                                     strategy_name=args.strategy,
+                                     ensemble_min_votes=args.ensemble_min_votes)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,

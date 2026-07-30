@@ -74,13 +74,17 @@ on:
         type: string
         default: ''
       strategy:
-        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), or ensemble (requires orb + mean_reversion + VWAP-reclaim to all agree)'
+        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), or ensemble (requires orb + mean_reversion + VWAP-reclaim to agree, see ensemble_min_votes)'
         type: choice
         options:
           - orb
           - mean_reversion
           - ensemble
         default: orb
+      ensemble_min_votes:
+        description: 'With strategy=ensemble: how many of the 3 sub-strategies must agree (blank = unanimous, all 3; try 2 for a majority vote)'
+        type: string
+        default: ''
 
 jobs:
   backtest:
@@ -118,5 +122,6 @@ jobs:
           if [ "${{ inputs.require_retest }}" = "true" ]; then ARGS="$ARGS --require-retest"; fi
           if [ -n "${{ inputs.retest_tolerance_pct }}" ]; then ARGS="$ARGS --retest-tolerance-pct ${{ inputs.retest_tolerance_pct }}"; fi
           if [ -n "${{ inputs.strategy }}" ]; then ARGS="$ARGS --strategy ${{ inputs.strategy }}"; fi
+          if [ -n "${{ inputs.ensemble_min_votes }}" ]; then ARGS="$ARGS --ensemble-min-votes ${{ inputs.ensemble_min_votes }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS

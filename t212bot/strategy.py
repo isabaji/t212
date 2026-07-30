@@ -518,28 +518,36 @@ class VWAPReclaim(Strategy):
 
 
 class EnsembleVote(Strategy):
-    """Combines multiple day-trade strategies, requiring ALL of them to
-    independently signal BUY before this wrapper signals BUY -- consensus
-    across structurally different strategies, rather than filtering false
-    positives within one strategy's own signal (everything else this
-    session). Exit stays a hair trigger: if ANY sub-strategy signals SELL,
-    this wrapper signals SELL -- unanimous agreement is required to get in,
-    but any one strategy losing confidence is enough to get out, the same
-    asymmetric philosophy every other strategy here uses.
+    """Combines multiple day-trade strategies, requiring at least min_votes
+    of them to independently signal BUY before this wrapper signals BUY --
+    consensus across structurally different strategies, rather than
+    filtering false positives within one strategy's own signal (everything
+    else this session). Exit stays a hair trigger: if ANY sub-strategy
+    signals SELL, this wrapper signals SELL -- consensus is required to get
+    in, but any one strategy losing confidence is enough to get out, the
+    same asymmetric philosophy every other strategy here uses.
 
     strategies: the sub-strategies to combine (>= 2), each evaluated
     against the same `prices` (and `confirm_prices`, passed through
     unchanged -- sub-strategies that don't use it just ignore it).
 
-    A BUY's strength is the average of the sub-strategies' individual
-    strengths, so a unanimous-but-marginal signal still sizes smaller than
-    a unanimous-and-strong one.
+    min_votes: how many of the sub-strategies must agree. None (default)
+    means unanimous (all of them) -- the first thing tried, which on a
+    3-strategy ensemble turned out to be far too strict to be practically
+    testable (11 trades across a 60-day, 30-symbol backtest). A majority
+    (e.g. 2 of 3) is meaningfully looser without dropping the cross-strategy
+    consensus idea entirely.
+
+    A BUY's strength averages the strengths of only the strategies that
+    voted BUY (not all of them), so a marginal-but-sufficient consensus
+    still sizes smaller than a strong one.
     """
 
-    def __init__(self, strategies: list[Strategy]):
+    def __init__(self, strategies: list[Strategy], min_votes: int | None = None):
         if len(strategies) < 2:
             raise ValueError("EnsembleVote needs at least 2 sub-strategies")
         self.strategies = strategies
+        self.min_votes = min_votes if min_votes is not None else len(strategies)
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
                           confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
@@ -549,8 +557,10 @@ class EnsembleVote(Strategy):
             sigs = [sig_map.get(sym, SignalResult(Signal.HOLD)) for sig_map in all_signals]
             if any(s.signal is Signal.SELL for s in sigs):
                 result[sym] = SignalResult(Signal.SELL)
-            elif all(s.signal is Signal.BUY for s in sigs):
-                strength = sum(s.strength for s in sigs) / len(sigs)
+                continue
+            buy_sigs = [s for s in sigs if s.signal is Signal.BUY]
+            if len(buy_sigs) >= self.min_votes:
+                strength = sum(s.strength for s in buy_sigs) / len(buy_sigs)
                 result[sym] = SignalResult(Signal.BUY, strength)
             else:
                 result[sym] = SignalResult(Signal.HOLD)
