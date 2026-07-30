@@ -47,13 +47,21 @@ def _signal_series(strategy, df: pd.DataFrame, min_bars: int,
 
 
 def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage_bps: float,
-                   stop_atr_multiple: float | None = None, atr_series: pd.Series | None = None) -> list:
+                   stop_atr_multiple: float | None = None, atr_series: pd.Series | None = None,
+                   stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> list:
     """stop_atr_multiple (optional): force-close a position the first day its bar Low
     touches entry_price - stop_atr_multiple * (ATR at entry), regardless of what the
     strategy's own signal says that day — models a real stop order sitting with the
     broker. Off by default (None), matching the current live bot's behavior, which
     sizes positions as if this stop exists (see RiskManager.size_buy) but never
-    actually places one."""
+    actually places one.
+
+    stop_loss_pct / take_profit_pct (optional): fixed-percentage alternative to the
+    ATR stop — exit the first bar whose Low touches entry_price * (1 - stop_loss_pct)
+    or whose High touches entry_price * (1 + take_profit_pct). If both stops (ATR and
+    fixed-pct) are active, the tighter (higher) stop price wins. If a single bar's
+    range spans both the stop and the target, the stop is assumed to hit first (the
+    conservative, can't-know-intrabar-order assumption also used for the ATR stop)."""
     cost_frac = (fee_bps + slippage_bps) / 10000.0
     trades = []
     position = None
@@ -73,6 +81,18 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
                 position = None
                 continue
 
+        if position is not None and position.get("target_price") is not None:
+            if float(row["High"]) >= position["target_price"]:
+                exit_price = position["target_price"] * (1 - cost_frac)
+                trades.append({
+                    "entry_date": position["entry_date"], "exit_date": date,
+                    "entry_price": position["entry_price"], "exit_price": exit_price,
+                    "pnl_pct": exit_price / position["entry_price"] - 1,
+                    "open_at_end": False, "exit_reason": "take_profit",
+                })
+                position = None
+                continue
+
         if position is None and sig is Signal.BUY:
             entry_price = price * (1 + cost_frac)
             stop_price = None
@@ -84,7 +104,12 @@ def _build_trades(df: pd.DataFrame, signals: pd.Series, fee_bps: float, slippage
                     # computed stop below zero, which is not a real order price and would
                     # corrupt the equity curve (negative equity -> nan CAGR downstream).
                     stop_price = max(price - stop_atr_multiple * a, price * 0.001)
-            position = {"entry_date": date, "entry_price": entry_price, "stop_price": stop_price}
+            if stop_loss_pct is not None:
+                pct_stop = price * (1 - stop_loss_pct)
+                stop_price = max(stop_price, pct_stop) if stop_price is not None else pct_stop
+            target_price = price * (1 + take_profit_pct) if take_profit_pct is not None else None
+            position = {"entry_date": date, "entry_price": entry_price,
+                        "stop_price": stop_price, "target_price": target_price}
         elif position is not None and sig is Signal.SELL:
             exit_price = price * (1 - cost_frac)
             trades.append({
@@ -133,7 +158,8 @@ def _equity_curve(dates, df: pd.DataFrame, trades: list) -> pd.Series:
 def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
              slippage_bps: float = DEFAULT_SLIPPAGE_BPS, min_bars: int = 60,
              stop_atr_multiple: float | None = None, atr_period: int = 14,
-             confirm_df: pd.DataFrame | None = None):
+             confirm_df: pd.DataFrame | None = None,
+             stop_loss_pct: float | None = None, take_profit_pct: float | None = None):
     """Long-only, single position at a time, all-in/all-out, cost-aware.
 
     Returns (equity_curve, trades). Not enough data -> a flat 1-bar curve
@@ -144,7 +170,8 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
         return pd.Series([1.0], index=df.index[-1:]), []
     signals = _signal_series(strategy, df, min_bars, confirm_df)
     atr_series = compute_atr(df, period=atr_period) if stop_atr_multiple else None
-    trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series)
+    trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series,
+                            stop_loss_pct, take_profit_pct)
     equity = _equity_curve(signals.index, df, trades)
     return equity, trades
 
@@ -181,6 +208,7 @@ def compute_metrics(equity: pd.Series, trades: list, periods_per_year: int = TRA
         else:
             streak = 0
     stopped_out = sum(1 for t in closed if t.get("exit_reason") == "stop_loss")
+    took_profit = sum(1 for t in closed if t.get("exit_reason") == "take_profit")
 
     return {
         "total_return": total_return,
@@ -196,6 +224,7 @@ def compute_metrics(equity: pd.Series, trades: list, periods_per_year: int = TRA
         "profit_factor": profit_factor,
         "max_consecutive_losses": max_consec_losses,
         "stopped_out": stopped_out,
+        "took_profit": took_profit,
         "trades": trades,
     }
 
@@ -204,7 +233,8 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                   fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
                   min_bars: int = 60, periods_per_year: int = TRADING_DAYS_PER_YEAR,
                   stop_atr_multiple: float | None = None, atr_period: int = 14,
-                  confirm_df: pd.DataFrame | None = None) -> list:
+                  confirm_df: pd.DataFrame | None = None,
+                  stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> list:
     """Split df into n_windows sequential, non-overlapping chunks and backtest
     each independently with a fresh strategy instance.
 
@@ -236,7 +266,8 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
             window_confirm_df = confirm_df[(confirm_df.index >= window_df.index[0])
                                             & (confirm_df.index <= window_df.index[-1])]
         equity, trades = simulate(strategy_factory(), window_df, fee_bps, slippage_bps, min_bars,
-                                   stop_atr_multiple, atr_period, confirm_df=window_confirm_df)
+                                   stop_atr_multiple, atr_period, confirm_df=window_confirm_df,
+                                   stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
         metrics = compute_metrics(equity, trades, periods_per_year)
         metrics["window"] = i + 1
         metrics["start"] = window_df.index[0]
@@ -294,7 +325,8 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
 def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secret: str,
                              or_minutes: int = 30, n_windows: int = 2,
                              fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
-                             confirm_bars: int = 3) -> None:
+                             confirm_bars: int = 3,
+                             stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> None:
     """Backtests OpeningRangeConfluence on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
@@ -304,9 +336,19 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     confirm_bars > 0 additionally pulls 1-minute bars and exercises the same
     confirm_bars entry gate the live bot uses (see OpeningRangeConfluence) --
     the whole point being to compare against a confirm_bars=0 run before
-    trusting the gate live."""
-    print("Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars"
-          + (f", {confirm_bars}-bar 1-min confirmation." if confirm_bars else "."))
+    trusting the gate live.
+
+    stop_loss_pct / take_profit_pct (optional): fixed-percentage exits checked
+    against each bar's Low/High -- see _build_trades. The live bot doesn't
+    place either order today; this is for evaluating whether it should."""
+    header = ["Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars"]
+    if confirm_bars:
+        header.append(f"{confirm_bars}-bar 1-min confirmation")
+    if stop_loss_pct or take_profit_pct:
+        sl = f"{stop_loss_pct:.1%} stop-loss" if stop_loss_pct else "no stop-loss"
+        tp = f"{take_profit_pct:.1%} take-profit" if take_profit_pct else "no take-profit"
+        header.append(f"{sl} / {tp}")
+    print(", ".join(header) + ".")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
     print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
           "sanity check, not a long-run edge validation.\n")
@@ -328,7 +370,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                 lambda: OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=confirm_bars),
                 df, n_windows, fee_bps, slippage_bps, min_bars=bars_per_day,
                 periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day,
-                confirm_df=confirm_data.get(sym))
+                confirm_df=confirm_data.get(sym),
+                stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue

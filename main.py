@@ -51,6 +51,12 @@ def main() -> None:
                          help="backtest --daytrade only: 1-min confirmation bars required to hold above the "
                               "breakout before entry (default: DAYTRADE_CONFIRM_BARS config value; pass 0 to "
                               "compare against the gate disabled)")
+    parser.add_argument("--stop-loss-pct", type=float, default=None,
+                         help="backtest --daytrade only: fixed stop-loss as a fraction of entry price "
+                              "(e.g. 0.002 for 0.2%%), checked against each bar's Low (off by default)")
+    parser.add_argument("--take-profit-pct", type=float, default=None,
+                         help="backtest --daytrade only: fixed take-profit as a fraction of entry price "
+                              "(e.g. 0.006 for 0.6%%), checked against each bar's High (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -74,7 +80,8 @@ def main() -> None:
             confirm_bars = args.confirm_bars if args.confirm_bars is not None else cfg.daytrade_confirm_bars
             print_daytrade_backtest(cfg.watchlist, cfg.alpaca_api_key, cfg.alpaca_api_secret,
                                      args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps,
-                                     confirm_bars=confirm_bars)
+                                     confirm_bars=confirm_bars,
+                                     stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,

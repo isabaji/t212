@@ -37,6 +37,14 @@ on:
         description: '1-min confirmation bars required before entry (daytrade only, blank = config default, 0 = disabled -- run twice to compare)'
         type: string
         default: ''
+      stop_loss_pct:
+        description: 'Fixed stop-loss as a fraction of entry price, e.g. 0.002 for 0.2%% (daytrade only, blank = off)'
+        type: string
+        default: ''
+      take_profit_pct:
+        description: 'Fixed take-profit as a fraction of entry price, e.g. 0.006 for 0.6%% (daytrade only, blank = off)'
+        type: string
+        default: ''
 
 jobs:
   backtest:
@@ -64,5 +72,7 @@ jobs:
           if [ -n "${{ inputs.stop_atr_multiple }}" ]; then ARGS="$ARGS --stop-atr-multiple ${{ inputs.stop_atr_multiple }}"; fi
           if [ -n "${{ inputs.trend_filter }}" ]; then ARGS="$ARGS --trend-filter ${{ inputs.trend_filter }}"; fi
           if [ -n "${{ inputs.confirm_bars }}" ]; then ARGS="$ARGS --confirm-bars ${{ inputs.confirm_bars }}"; fi
+          if [ -n "${{ inputs.stop_loss_pct }}" ]; then ARGS="$ARGS --stop-loss-pct ${{ inputs.stop_loss_pct }}"; fi
+          if [ -n "${{ inputs.take_profit_pct }}" ]; then ARGS="$ARGS --take-profit-pct ${{ inputs.take_profit_pct }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS
