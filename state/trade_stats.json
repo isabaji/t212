@@ -33,11 +33,11 @@
       "wins": 0
     },
     "CVX": {
-      "losses": 0,
+      "losses": 1,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "win",
-      "total_pnl_pct": 6.215245899019866e-05,
+      "streak_type": "loss",
+      "total_pnl_pct": -6.071508632068799e-05,
       "wins": 1
     },
     "DIS": {
@@ -113,11 +113,11 @@
       "wins": 0
     },
     "XOM": {
-      "losses": 0,
+      "losses": 1,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "win",
-      "total_pnl_pct": 7.875726032436843e-08,
+      "streak_type": "loss",
+      "total_pnl_pct": -1.4711527280964324e-05,
       "wins": 1
     }
   }
