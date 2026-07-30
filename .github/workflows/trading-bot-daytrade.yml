@@ -58,6 +58,9 @@ jobs:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
           DAYTRADE_BAR_MINUTES: ${{ secrets.DAYTRADE_BAR_MINUTES || '5' }}
+          # 'orb' (default) or 'ensemble' -- see t212bot/config.py and README
+          # for what each builds and its backtest validation status.
+          DAYTRADE_STRATEGY: ${{ secrets.DAYTRADE_STRATEGY || 'orb' }}
           DAYTRADE_CONFIRM_BARS: ${{ secrets.DAYTRADE_CONFIRM_BARS || '3' }}
           # Entry filter + fixed stop-loss/take-profit -- backtested across 30
           # symbols / 60 days, see t212bot/backtest.py and t212bot/strategy.py.
