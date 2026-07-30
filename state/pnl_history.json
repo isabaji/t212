@@ -154,5 +154,11 @@
     "strategy": "daytrade",
     "symbol": "UNH",
     "pnl_pct": -0.0011299386296510807
+  },
+  {
+    "t": "2026-07-30T19:21:12Z",
+    "strategy": "daytrade",
+    "symbol": "NFLX",
+    "pnl_pct": -0.00015149124668241935
   }
 ]
