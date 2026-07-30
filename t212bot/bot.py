@@ -262,22 +262,11 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                            timeframe=f"{cfg.daytrade_bar_minutes}Min"),
             fx_rate,
         )
-        # Optional finer-grained confirmation series (t212bot/strategy.py:
-        # OpeningRangeConfluence.confirm_bars) -- reuse `prices` outright when
-        # the primary bar size is already 1-minute, rather than double-fetching
-        # identical data. The validated ensemble strategy builds ORB with
-        # confirm_bars=0 itself (see main.py), so this fetch is skipped
-        # outright for it -- nothing would use it.
-        if cfg.daytrade_confirm_bars <= 0 or cfg.daytrade_strategy == "ensemble":
-            confirm_prices = None
-        elif cfg.daytrade_bar_minutes == 1:
-            confirm_prices = prices
-        else:
-            confirm_prices = _convert_prices_fx(
-                fetch_intraday(watch_symbols, cfg.alpaca_api_key, cfg.alpaca_api_secret, timeframe="1Min"),
-                fx_rate,
-            )
-        signals = strategy.generate_signals(prices, confirm_prices)
+        # The live day-trade strategy is always the validated ORB+MeanReversion
+        # ensemble (see main.py), which builds ORB with confirm_bars=0 itself,
+        # so the 1-minute confirmation series (t212bot/strategy.py:
+        # OpeningRangeConfluence.confirm_bars) is never needed here.
+        signals = strategy.generate_signals(prices, confirm_prices=None)
 
         decisions = []
         stale_symbols = []

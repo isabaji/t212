@@ -145,20 +145,18 @@ def main() -> None:
     elif args.command == "run":
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
     elif args.command == "daytrade":
-        if cfg.daytrade_strategy == "ensemble":
-            # Exactly as backtested (see --strategy ensemble): ORB with no
-            # confirm-bars gate and no EMA-spread gate -- both are separate
-            # orb-only tuning, not part of what was validated for this pair.
-            strategy = EnsembleVote([
-                OpeningRangeConfluence(or_minutes=args.or_minutes, bar_minutes=cfg.daytrade_bar_minutes,
-                                       confirm_bars=0),
-                MeanReversionPullback(),
-            ])
-        else:
-            strategy = OpeningRangeConfluence(or_minutes=args.or_minutes,
-                                              bar_minutes=cfg.daytrade_bar_minutes,
-                                              confirm_bars=cfg.daytrade_confirm_bars,
-                                              min_ema_spread_pct=cfg.daytrade_min_ema_spread_pct or None)
+        # The validated ORB+MeanReversion ensemble (see `backtest --daytrade
+        # --strategy ensemble`) is the only live day-trade strategy -- built
+        # exactly as backtested: ORB with no confirm-bars gate and no
+        # EMA-spread gate (those are separate orb-only tuning, not part of
+        # what was validated for this pair). The standalone ORB-only
+        # strategy is still available for backtesting/comparison via
+        # `backtest --daytrade --strategy orb`, just not for live trading.
+        strategy = EnsembleVote([
+            OpeningRangeConfluence(or_minutes=args.or_minutes, bar_minutes=cfg.daytrade_bar_minutes,
+                                   confirm_bars=0),
+            MeanReversionPullback(),
+        ])
         run_day_trade_cycle(cfg, strategy)
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)

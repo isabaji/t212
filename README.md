@@ -69,9 +69,7 @@ Key settings in `.env`:
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
 | `DAYTRADE_BAR_MINUTES` | `5` | Bar size for the day-trade strategy's intraday data (Alpaca) |
-| `DAYTRADE_STRATEGY` | `orb` | `orb` (OpeningRangeConfluence alone) or `ensemble` (validated ORB + mean-reversion pullback pairing, both must agree — see below) |
-| `DAYTRADE_CONFIRM_BARS` | `3` | Entries only: require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it |
-| `DAYTRADE_MIN_EMA_SPREAD_PCT` | `0.001` | Entries only: reject a breakout unless EMA(9)/EMA(21) have separated by at least this fraction of the slow EMA — `0` disables it |
+| `DAYTRADE_CONFIRM_BARS` | `3` | Backtest only (`--strategy orb`): require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it. Not used by the live bot, which always runs the ORB+MeanReversion ensemble — see below |
 | `DAYTRADE_STOP_LOSS_PCT` / `DAYTRADE_TAKE_PROFIT_PCT` | `0.01` / `0.02` | Day-trade bot only: force-exit a position if the latest bar's Low/High crosses this far from the actual average fill price — `0` disables either side independently |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
@@ -361,8 +359,7 @@ They're independent — enable one, both, or neither. To turn them on:
    - Name: `ALPACA_API_SECRET` — Value: the matching Alpaca API secret
 4. (Optional) **Also under Secrets** (not Variables — see the note below), add
    any of `T212_ENV`, `DRY_RUN`, `DAYTRADE_DRY_RUN`, `WATCHLIST`,
-   `DAYTRADE_WATCHLIST`, `DAYTRADE_BAR_MINUTES`, `DAYTRADE_STRATEGY`,
-   `DAYTRADE_CONFIRM_BARS`, `DAYTRADE_MIN_EMA_SPREAD_PCT`, `DAYTRADE_STOP_LOSS_PCT`,
+   `DAYTRADE_WATCHLIST`, `DAYTRADE_BAR_MINUTES`, `DAYTRADE_STOP_LOSS_PCT`,
    `DAYTRADE_TAKE_PROFIT_PCT`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`,
    `CASH_BUFFER_PCT` to override the defaults — see the env var table above.
    `DRY_RUN` and `DAYTRADE_DRY_RUN` are separate on purpose, so you can arm one
@@ -396,34 +393,39 @@ No terminal or local Python install required — GitHub runs it for you.
 */5  13-20 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py daytrade  >> daytrade.log 2>&1
 ```
 
-## Day trading: what "OpeningRangeConfluence" actually does, and its limits
+## Day trading: the ORB+MeanReversion ensemble, and its limits
 
-`python main.py daytrade` runs an intraday strategy (`OpeningRangeConfluence` in
-`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized bars (5-minute by default):
+`python main.py daytrade` runs an ensemble of two structurally different
+intraday strategies (`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized
+bars (5-minute by default) — **both must independently signal BUY** before an
+order is placed (`EnsembleVote`, unanimous across the two):
 
-1. **Entry** — after the first 30 minutes of the session (the "opening range"),
-   it buys only if *all three* agree: price breaks above the opening-range
-   high, the fast EMA (9) is above the slow EMA (21), and RSI(14) is in a
-   bullish-but-not-overbought band (50-70). Requiring confluence means fewer,
-   higher-conviction trades rather than firing on any single indicator.
-   On top of that, `DAYTRADE_CONFIRM_BARS` (default 3, 0 disables it) adds one
-   more gate: the breakout also has to hold across that many trailing
-   **1-minute** closes above the opening-range high, regardless of
-   `DAYTRADE_BAR_MINUTES` — catches a breakout that spiked above the range on
-   one coarse bar and had already faded by the time the bot checked again.
-   `DAYTRADE_MIN_EMA_SPREAD_PCT` (default `0.001`, 0 disables it) adds a
-   further hard gate: the fast/slow EMA spread must be at least this fraction
-   of the slow EMA, rejecting breakouts riding a barely-there "uptrend" —
-   this is what most improved the backtest's win rate (see below).
-2. **Exit** — a hair trigger by comparison: *any one* of a breakdown below the
-   opening-range low, the EMA trend flipping down, or RSI going overbought/
-   oversold closes the position. The confirmation gate and EMA-spread gate
-   above only apply to entries — exits stay immediate on purpose. On top of
-   the signal-based exit, `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT`
-   (default `0.01`/`0.02`, 0 disables either side) force-close the position
-   if the latest bar's Low/High crosses that far from the real average fill
-   price — checked every cycle, not a resting broker order (see
-   `run_day_trade_cycle` in `t212bot/bot.py`).
+- **`OpeningRangeConfluence`** — after the first 30 minutes of the session
+  (the "opening range"), signals BUY only if *all three* agree: price breaks
+  above the opening-range high, the fast EMA (9) is above the slow EMA (21),
+  and RSI(14) is in a bullish-but-not-overbought band (50-70). Exit is a hair
+  trigger by comparison: *any one* of a breakdown below the opening-range low,
+  the EMA trend flipping down, or RSI going overbought/oversold. The live bot
+  runs this with its confirm-bars and EMA-spread entry gates both disabled —
+  those are separate orb-only tuning (still available via
+  `DAYTRADE_CONFIRM_BARS` for `backtest --daytrade --strategy orb`), not part
+  of what was validated for this pairing.
+- **`MeanReversionPullback`** — a genuinely different bet: buys pullbacks to
+  the fast EMA within an established uptrend instead of chasing breakouts,
+  gated on a minimum pullback depth, a minimum EMA spread (established
+  trend), and recent prior RSI strength (a stateless proxy for "don't keep
+  re-buying the same flat chop," since a fresh strategy instance is built
+  every cycle with no persistent memory). Exits on a trend flip, a breakdown
+  below the recent pullback low, or RSI going overbought/oversold.
+
+On top of the signal-based exit (either strategy's SELL is enough to close),
+`DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT` (default `0.01`/`0.02`, 0
+disables either side) force-close the position if the latest bar's Low/High
+crosses that far from the real average fill price — checked every cycle, not
+a resting broker order (see `run_day_trade_cycle` in `t212bot/bot.py`).
+
+Beyond the strategy signal itself:
+
 3. **End-of-day flatten** — regardless of what the strategy signals, any open
    position is force-closed once the exchange-local time is within 15 minutes
    of the close (`t212bot/bot.py: run_day_trade_cycle`). No position is ever
@@ -437,40 +439,25 @@ No terminal or local Python install required — GitHub runs it for you.
    order fills at the live venue price regardless of the reference price the
    bot last saw.
 
-**Backtest evidence behind the defaults above:** across a 60-day walk-forward
-backtest on the 30-symbol watchlist, the un-tuned strategy's win rate (30.5%)
-sat about 3 percentage points below the breakeven rate implied by its own
-reward:risk. Narrowing the RSI buy band didn't help (made things marginally
-worse); the EMA-spread gate did — raising win rate to 33.1% and cutting
-average drawdown by roughly a third. Layering `DAYTRADE_STOP_LOSS_PCT`/
-`DAYTRADE_TAKE_PROFIT_PCT` on top compounds the risk reduction (lowest
-average drawdown and highest profitable-window rate of everything tested)
-without materially changing the return. None of this makes the backtested
-strategy net-profitable on that 60-day sample — these are the least-bad,
-most-de-risked settings found, not a validated edge. See
-`t212bot/backtest.py` and `python main.py backtest --daytrade` to reproduce
-or re-tune.
-
-**`DAYTRADE_STRATEGY=ensemble` — a second, structurally different strategy.**
-Every tuning attempt on `OpeningRangeConfluence` above converged to the same
-~-0.1% to -0.2% average-return ceiling and a ~30% win rate, regardless of
-how the entry was filtered. `MeanReversionPullback` (`t212bot/strategy.py`)
-is a genuinely different bet — it buys pullbacks to the fast EMA within an
-established uptrend instead of chasing breakouts. Neither strategy alone
-broke through that ceiling, but requiring **both to agree** before buying
-(`EnsembleVote`, unanimous) did: backtested across 30 symbols / 60 days at
-the `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT` defaults, it hit a
-~45% win rate (the best of everything tried this session) and a positive
-average return — driven by actually winning more often, not by a better
-payoff ratio, a different mechanism than every other improvement here. That
-result held up when the backtest windowing changed from 6 to 3 windows
-(win rate and reward:risk stayed stable), which is meaningful corroboration
+**Why an ensemble, and the backtest evidence behind it.** Tuning
+`OpeningRangeConfluence` alone (RSI band, EMA-spread gate, volume/strength
+filters, retest-confirmation entries) converged to the same ~-0.1% to -0.2%
+average-return ceiling and a ~30% win rate across a 60-day/30-symbol
+walk-forward backtest, regardless of how the entry was filtered — a
+per-filter sweet spot every time, never a breakthrough. `MeanReversionPullback`
+alone didn't break through that ceiling either. Requiring **both to agree**
+did: backtested at the `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT`
+defaults, it hit a ~45% win rate (the best of everything tried) and a
+positive average return — driven by actually winning more often, not a
+better payoff ratio, a different mechanism than every other improvement
+tried. That result held up when the backtest windowing changed from 6 to 3
+windows (win rate and reward:risk stayed stable), meaningful corroboration
 it isn't a windowing artifact. It's still a smaller backtest sample (~65
-trades) than `orb` alone (~700+), so treat it as the most promising
-candidate found, not a proven edge — reproduce with
-`python main.py backtest --daytrade --strategy ensemble --ensemble-strategies orb,mr`
-and dry-run extensively before enabling on a real account.
-`DAYTRADE_STRATEGY=orb` (default) leaves current behavior unchanged.
+trades) than standalone `orb` (~700+), so treat it as the most promising
+candidate found on this data, not a proven edge. Reproduce with
+`python main.py backtest --daytrade --strategy ensemble --ensemble-strategies orb,mr`,
+and the standalone strategy for comparison with
+`python main.py backtest --daytrade --strategy orb`.
 
 **Real constraints to know before trusting this with money:**
 
@@ -490,8 +477,8 @@ and dry-run extensively before enabling on a real account.
   isn't guaranteed to hit the exact minute under load (a third-party
   scheduler hitting the repo's `repository_dispatch` API is a more reliable
   alternative — see the workflow files' comments).
-- `OpeningRangeConfluence` is a reasonable, well-known starting pattern — not
-  a proven edge. Backtest and dry-run it extensively before considering
+- This ensemble is a reasonable, backtested-promising pattern — not a proven
+  edge. Backtest and dry-run it extensively before considering
   `DAYTRADE_DRY_RUN=false`, and separately again before `T212_ENV=live`.
 - Check your account's terms for any day-trading-specific restrictions before
   going live; this repo doesn't attempt to detect or enforce any such rules
