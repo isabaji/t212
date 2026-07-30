@@ -142,5 +142,11 @@
     "strategy": "daytrade",
     "symbol": "CAT",
     "pnl_pct": -0.002490372781975954
+  },
+  {
+    "t": "2026-07-30T18:16:12Z",
+    "strategy": "daytrade",
+    "symbol": "BA",
+    "pnl_pct": -3.228610475931891e-05
   }
 ]

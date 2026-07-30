@@ -17,11 +17,11 @@
       "wins": 0
     },
     "BA": {
-      "losses": 1,
+      "losses": 2,
       "paused_until": null,
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": -0.0007817256541559816,
+      "total_pnl_pct": -0.0008140117589153005,
       "wins": 0
     },
     "CAT": {
