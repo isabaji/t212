@@ -383,5 +383,6 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             span = f"{w['start'].date()} to {w['end'].date()}"
             print(f"  window {w['window']} ({span}): total return {_pct(w['total_return'])}, "
                   f"win rate {_pct(w['win_rate'])}, {w['closed_trades']} trades, "
+                  f"avg win {_pct(w['avg_win'])}, avg loss {_pct(w['avg_loss'])}, "
                   f"max drawdown {_pct(w['max_drawdown'])}")
         print()
