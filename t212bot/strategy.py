@@ -9,7 +9,7 @@ from enum import Enum
 
 import pandas as pd
 
-from .indicators import ema, rsi, vwap
+from .indicators import bollinger_bands, ema, rsi, vwap
 
 
 class Signal(Enum):
@@ -513,6 +513,105 @@ class VWAPReclaim(Strategy):
             strength = (distance_score + momentum_score) / 2
             return SignalResult(Signal.BUY, strength)
         if below_vwap or momentum_extreme:
+            return SignalResult(Signal.SELL)
+        return SignalResult(Signal.HOLD)
+
+
+class BollingerSqueezeBreakout(Strategy):
+    """Day-trading strategy: buy a breakout above the upper Bollinger Band
+    following a volatility squeeze -- a fourth, structurally distinct signal
+    (see EnsembleVote). Unlike OpeningRangeConfluence (a fixed opening-range
+    level), MeanReversionPullback (EMA-based pullback depth), or VWAPReclaim
+    (a volume-weighted price level), this reacts to *volatility* directly:
+    it looks for a period of unusually narrow bands (consolidation) followed
+    by an expansion through the upper band, rather than any fixed price
+    level or moving average. Long-only, intraday bars.
+
+    Entry requires all of:
+      - squeeze: band width ((upper - lower) / middle) was at or below its
+        own trailing squeeze_percentile (within squeeze_lookback_bars of its
+        own history) at some point in the squeeze_confirm_bars bars
+        immediately *preceding* the current bar -- confirms a genuine recent
+        contraction. Deliberately excludes the current (breakout) bar itself:
+        bands mechanically widen as soon as a real breakout candle enters
+        them, so requiring the squeeze to still hold on the breakout bar
+        would exclude the very breakout it's meant to catch.
+      - breakout: the current bar's Close is above the upper band
+      - momentum band: RSI(14) between rsi_floor and rsi_ceiling -- real
+        confirming momentum, not already overbought
+
+    Exit is a hair trigger, same philosophy as the other strategies here: the
+    current bar's Close falling back below the middle band (SMA) -- the
+    volatility expansion this trade was betting on has stalled or reversed
+    -- or RSI hitting rsi_exit_floor/rsi_exit_ceiling, closes the position.
+    EOD flatten is enforced by the bot's day-trading cycle, not this class.
+
+    A BUY's strength averages two 0..1 sub-scores: how tight the squeeze was
+    relative to its own recent average width (tighter scores higher -- more
+    energy released into the breakout) and how far RSI sits within the entry
+    band.
+    """
+
+    def __init__(self, bb_period: int = 20, bb_std: float = 2.0,
+                 squeeze_lookback_bars: int = 60, squeeze_percentile: float = 0.2,
+                 squeeze_confirm_bars: int = 3,
+                 rsi_period: int = 14, rsi_floor: float = 50, rsi_ceiling: float = 75,
+                 rsi_exit_floor: float = 30, rsi_exit_ceiling: float = 85):
+        self.bb_period = bb_period
+        self.bb_std = bb_std
+        self.squeeze_lookback_bars = squeeze_lookback_bars
+        self.squeeze_percentile = squeeze_percentile
+        self.squeeze_confirm_bars = squeeze_confirm_bars
+        self.rsi_period = rsi_period
+        self.rsi_floor = rsi_floor
+        self.rsi_ceiling = rsi_ceiling
+        self.rsi_exit_floor = rsi_exit_floor
+        self.rsi_exit_ceiling = rsi_exit_ceiling
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        return {sym: self._signal_for(df) for sym, df in prices.items()}
+
+    def _signal_for(self, df: pd.DataFrame) -> SignalResult:
+        # Band width itself needs bb_period bars of warmup before it produces
+        # a value at all, and squeeze_threshold's rolling quantile then needs
+        # squeeze_lookback_bars of *valid width* on top of that -- so the
+        # real requirement is the sum, not the max, of the two.
+        min_bars = self.bb_period + self.squeeze_lookback_bars + 1
+        if df.empty or len(df) < min_bars:
+            return SignalResult(Signal.HOLD)
+
+        close = df["Close"]
+        middle, upper, _ = bollinger_bands(close, self.bb_period, self.bb_std)
+        width = (upper - middle) * 2 / middle
+        r = rsi(close, self.rsi_period)
+
+        last_close = close.iloc[-1]
+        last_middle, last_upper = middle.iloc[-1], upper.iloc[-1]
+        last_rsi = r.iloc[-1]
+
+        squeeze_threshold = width.rolling(self.squeeze_lookback_bars).quantile(self.squeeze_percentile)
+        # Excludes the current bar -- see squeeze docstring above.
+        recent_width = width.iloc[-self.squeeze_confirm_bars - 1:-1]
+        recent_threshold = squeeze_threshold.iloc[-self.squeeze_confirm_bars - 1:-1]
+        was_squeezed = bool((recent_width <= recent_threshold).any())
+
+        breakout = last_close > last_upper
+        momentum_ok = self.rsi_floor <= last_rsi <= self.rsi_ceiling
+
+        below_middle = last_close < last_middle
+        momentum_extreme = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
+
+        if breakout and was_squeezed and momentum_ok:
+            current_width = width.iloc[-1]
+            recent_avg_width = width.iloc[-self.squeeze_lookback_bars:].mean()
+            tightness_pct = 1 - (current_width / recent_avg_width) if recent_avg_width else 0.0
+            tightness_score = max(0.0, min(1.0, tightness_pct))
+            momentum_score = max(0.0, min(1.0,
+                (last_rsi - self.rsi_floor) / (self.rsi_ceiling - self.rsi_floor)))
+            strength = (tightness_score + momentum_score) / 2
+            return SignalResult(Signal.BUY, strength)
+        if below_middle or momentum_extreme:
             return SignalResult(Signal.SELL)
         return SignalResult(Signal.HOLD)
 

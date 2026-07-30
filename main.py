@@ -82,21 +82,23 @@ def main() -> None:
                          help="backtest --daytrade only: with --require-retest, how far below the "
                               "opening-range high a pullback may go and still count as a valid retest "
                               "(default 0.003 = 0.3%%)")
-    parser.add_argument("--strategy", choices=["orb", "mean_reversion", "ensemble"], default="orb",
+    parser.add_argument("--strategy", choices=["orb", "mean_reversion", "bollinger", "ensemble"],
+                         default="orb",
                          help="backtest --daytrade only: 'orb' (default) is OpeningRangeConfluence -- all "
                               "the --confirm-bars/--rsi-buy-*/--min-*/--require-retest flags above only "
                               "apply to it. 'mean_reversion' is MeanReversionPullback (buys pullbacks to "
-                              "the fast EMA within an uptrend instead of chasing breakouts). 'ensemble' "
-                              "requires orb + mean_reversion + a third VWAP-reclaim strategy to agree "
-                              "(see --ensemble-min-votes) before buying. Non-orb strategies use their own "
-                              "code defaults for now")
+                              "the fast EMA within an uptrend instead of chasing breakouts). 'bollinger' "
+                              "is BollingerSqueezeBreakout (buys a volatility-squeeze breakout above the "
+                              "upper Bollinger Band). 'ensemble' requires a subset of these to agree (see "
+                              "--ensemble-strategies/--ensemble-min-votes) before buying. Non-orb "
+                              "strategies use their own code defaults for now")
     parser.add_argument("--ensemble-min-votes", type=int, default=None,
                          help="backtest --daytrade --strategy ensemble only: how many of the selected "
                               "sub-strategies must agree (default: unanimous, all of them)")
     parser.add_argument("--ensemble-strategies", default="orb,mr,vwap",
                          help="backtest --daytrade --strategy ensemble only: comma-separated subset of "
-                              "orb,mr,vwap to include in the vote (default: all three; try 'orb,mr' to "
-                              "test just that pair)")
+                              "orb,mr,vwap,bb to include in the vote (default: orb,mr,vwap; try 'orb,bb' "
+                              "to test the opening-range + Bollinger-squeeze pair)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,

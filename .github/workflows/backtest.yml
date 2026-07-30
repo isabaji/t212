@@ -74,11 +74,12 @@ on:
         type: string
         default: ''
       strategy:
-        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), or ensemble (requires orb + mean_reversion + VWAP-reclaim to agree, see ensemble_min_votes)'
+        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), bollinger (volatility-squeeze breakout above the upper Bollinger Band), or ensemble (requires a subset to agree, see ensemble_strategies/ensemble_min_votes)'
         type: choice
         options:
           - orb
           - mean_reversion
+          - bollinger
           - ensemble
         default: orb
       ensemble_min_votes:
@@ -86,7 +87,7 @@ on:
         type: string
         default: ''
       ensemble_strategies:
-        description: 'With strategy=ensemble: comma-separated subset of orb,mr,vwap to include (default all three; try orb,mr for just that pair)'
+        description: 'With strategy=ensemble: comma-separated subset of orb,mr,vwap,bb to include (default orb,mr,vwap; try orb,bb for the opening-range + Bollinger-squeeze pair)'
         type: string
         default: 'orb,mr,vwap'
 

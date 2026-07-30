@@ -30,6 +30,18 @@ def vwap(df: pd.DataFrame) -> pd.Series:
     return cum_pv / cum_vol
 
 
+def bollinger_bands(series: pd.Series, period: int = 20,
+                     num_std: float = 2.0) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Middle band (SMA), upper/lower bands (+/- num_std standard deviations).
+    Band width relative to the middle band is a volatility measure -- narrow
+    means a period of consolidation, wide means an active/trending move."""
+    middle = series.rolling(period).mean()
+    std = series.rolling(period).std()
+    upper = middle + num_std * std
+    lower = middle - num_std * std
+    return middle, upper, lower
+
+
 def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Average True Range — a volatility measure in price units (e.g. dollars/share),
     used for volatility-aware position sizing rather than a flat % of account per trade."""
