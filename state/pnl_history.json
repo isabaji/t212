@@ -88,5 +88,17 @@
     "strategy": "daytrade",
     "symbol": "WMT",
     "pnl_pct": -6.324271924653896e-05
+  },
+  {
+    "t": "2026-07-30T14:02:10Z",
+    "strategy": "daytrade",
+    "symbol": "CVX",
+    "pnl_pct": 6.215245899019866e-05
+  },
+  {
+    "t": "2026-07-30T14:02:11Z",
+    "strategy": "daytrade",
+    "symbol": "XOM",
+    "pnl_pct": 7.875726032436843e-08
   }
 ]
