@@ -118,5 +118,11 @@
     "strategy": "daytrade",
     "symbol": "CVX",
     "pnl_pct": -0.0001006307451497157
+  },
+  {
+    "t": "2026-07-30T17:05:54Z",
+    "strategy": "daytrade",
+    "symbol": "AMZN",
+    "pnl_pct": 0.000835673379393786
   }
 ]
