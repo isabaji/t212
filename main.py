@@ -66,6 +66,14 @@ def main() -> None:
     parser.add_argument("--min-ema-spread-pct", type=float, default=None,
                          help="backtest --daytrade only: hard minimum EMA(9)/EMA(21) spread required to "
                               "enter, as a fraction of the slow EMA e.g. 0.001 for 0.1%% (off by default)")
+    parser.add_argument("--min-strength", type=float, default=None,
+                         help="backtest --daytrade only: hard minimum combined setup-quality score "
+                              "(0-1, average of breakout/momentum/trend sub-scores) required to enter "
+                              "(off by default)")
+    parser.add_argument("--min-volume-ratio", type=float, default=None,
+                         help="backtest --daytrade only: hard minimum ratio of breakout-bar volume to its "
+                              "own trailing 20-bar average volume required to enter, e.g. 1.2 for 20%% "
+                              "above average (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -95,7 +103,8 @@ def main() -> None:
                                      args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps,
                                      confirm_bars=confirm_bars,
                                      stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct,
-                                     rsi_buy_range=rsi_buy_range, min_ema_spread_pct=args.min_ema_spread_pct)
+                                     rsi_buy_range=rsi_buy_range, min_ema_spread_pct=args.min_ema_spread_pct,
+                                     min_strength=args.min_strength, min_volume_ratio=args.min_volume_ratio)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,

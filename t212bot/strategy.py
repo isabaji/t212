@@ -148,13 +148,28 @@ class OpeningRangeConfluence(Strategy):
     get reason="unconfirmed". 0 (or missing/short confirm_prices) disables
     this -- it's an optional extra check, not a requirement.
 
-    min_ema_spread_pct: hard entry gate (backtest-only experiment, not yet
-    used by the live bot). Unlike ema_strength_norm_pct -- which only scales
-    a BUY's strength score -- this rejects a setup outright (HOLD,
-    reason="weak_trend") if (fast EMA - slow EMA) / slow EMA falls short of
-    this fraction, i.e. the EMAs have barely separated. None disables the
-    gate (default), matching prior behavior where any uptrend, however
+    min_ema_spread_pct: hard entry gate. Unlike ema_strength_norm_pct --
+    which only scales a BUY's strength score -- this rejects a setup outright
+    (HOLD, reason="weak_trend") if (fast EMA - slow EMA) / slow EMA falls
+    short of this fraction, i.e. the EMAs have barely separated. None
+    disables the gate, matching prior behavior where any uptrend, however
     marginal, was an eligible entry.
+
+    min_strength: hard entry gate (backtest-only experiment, not yet used by
+    the live bot) on the *combined* setup quality -- the same strength score
+    (average of the breakout/momentum/trend sub-scores) that otherwise only
+    feeds position sizing. Rejects outright (HOLD, reason="weak_signal") if
+    strength falls short, rather than just sizing a marginal setup smaller.
+    None disables the gate.
+
+    min_volume_ratio / volume_avg_period: hard entry gate (backtest-only
+    experiment) requiring the breakout bar's Volume to be at least
+    min_volume_ratio times the trailing volume_avg_period-bar average volume
+    (computed excluding the breakout bar itself, so it's a real "is this
+    move backed by above-average participation" check, not self-referential).
+    Rejects outright (HOLD, reason="low_volume") if not met. None disables
+    the gate; if there isn't yet volume_avg_period bars of history the gate
+    is skipped (fails open), same as confirm_bars with a short confirm_df.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
@@ -165,7 +180,10 @@ class OpeningRangeConfluence(Strategy):
                  ema_strength_norm_pct: float = 0.01,
                  max_chase_pct: float | None = 0.02,
                  confirm_bars: int = 3,
-                 min_ema_spread_pct: float | None = None):
+                 min_ema_spread_pct: float | None = None,
+                 min_strength: float | None = None,
+                 min_volume_ratio: float | None = None,
+                 volume_avg_period: int = 20):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -180,6 +198,9 @@ class OpeningRangeConfluence(Strategy):
         self.max_chase_pct = max_chase_pct
         self.confirm_bars = confirm_bars
         self.min_ema_spread_pct = min_ema_spread_pct
+        self.min_strength = min_strength
+        self.min_volume_ratio = min_volume_ratio
+        self.volume_avg_period = volume_avg_period
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
                           confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
@@ -187,7 +208,7 @@ class OpeningRangeConfluence(Strategy):
         return {sym: self._signal_for(df, confirm_prices.get(sym)) for sym, df in prices.items()}
 
     def _signal_for(self, df: pd.DataFrame, confirm_df: pd.DataFrame | None = None) -> SignalResult:
-        if df.empty or len(df) < self.ema_slow + 1:
+        if df.empty or len(df) < max(self.ema_slow, self.volume_avg_period) + 1:
             return SignalResult(Signal.HOLD)
 
         close = df["Close"]
@@ -219,6 +240,12 @@ class OpeningRangeConfluence(Strategy):
             ema_spread_pct = (last_fast - last_slow) / last_slow
             if self.min_ema_spread_pct is not None and ema_spread_pct < self.min_ema_spread_pct:
                 return SignalResult(Signal.HOLD, reason="weak_trend")
+            if self.min_volume_ratio is not None and "Volume" in df.columns:
+                avg_volume = df["Volume"].rolling(self.volume_avg_period).mean().shift(1).iloc[-1]
+                if pd.notna(avg_volume) and avg_volume > 0:
+                    last_volume = df["Volume"].iloc[-1]
+                    if last_volume < avg_volume * self.min_volume_ratio:
+                        return SignalResult(Signal.HOLD, reason="low_volume")
             breakout_pct = (last_close - or_high) / or_high
             if self.max_chase_pct is not None and breakout_pct > self.max_chase_pct:
                 return SignalResult(Signal.HOLD, reason="chased")
@@ -231,6 +258,8 @@ class OpeningRangeConfluence(Strategy):
                 (last_rsi - self.rsi_buy_min) / (self.rsi_buy_max - self.rsi_buy_min)))
             trend_score = max(0.0, min(1.0, ema_spread_pct / self.ema_strength_norm_pct))
             strength = (breakout_score + momentum_score + trend_score) / 3
+            if self.min_strength is not None and strength < self.min_strength:
+                return SignalResult(Signal.HOLD, reason="weak_signal")
             return SignalResult(Signal.BUY, strength)
         if breakdown or trend_flip_down or momentum_fade:
             return SignalResult(Signal.SELL)

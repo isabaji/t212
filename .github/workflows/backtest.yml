@@ -57,6 +57,14 @@ on:
         description: 'Hard minimum EMA(9)/EMA(21) spread required to enter, as a fraction e.g. 0.001 for 0.1%% (daytrade only, blank = off)'
         type: string
         default: ''
+      min_strength:
+        description: 'Hard minimum combined setup-quality score (0-1) required to enter (daytrade only, blank = off)'
+        type: string
+        default: ''
+      min_volume_ratio:
+        description: 'Hard minimum ratio of breakout-bar volume to its trailing 20-bar average, e.g. 1.2 for 20%% above average (daytrade only, blank = off)'
+        type: string
+        default: ''
 
 jobs:
   backtest:
@@ -89,5 +97,7 @@ jobs:
           if [ -n "${{ inputs.rsi_buy_min }}" ]; then ARGS="$ARGS --rsi-buy-min ${{ inputs.rsi_buy_min }}"; fi
           if [ -n "${{ inputs.rsi_buy_max }}" ]; then ARGS="$ARGS --rsi-buy-max ${{ inputs.rsi_buy_max }}"; fi
           if [ -n "${{ inputs.min_ema_spread_pct }}" ]; then ARGS="$ARGS --min-ema-spread-pct ${{ inputs.min_ema_spread_pct }}"; fi
+          if [ -n "${{ inputs.min_strength }}" ]; then ARGS="$ARGS --min-strength ${{ inputs.min_strength }}"; fi
+          if [ -n "${{ inputs.min_volume_ratio }}" ]; then ARGS="$ARGS --min-volume-ratio ${{ inputs.min_volume_ratio }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS
