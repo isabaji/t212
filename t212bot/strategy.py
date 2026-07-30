@@ -316,17 +316,35 @@ class MeanReversionPullback(Strategy):
     suggests these liquid large-caps may mean-revert intraday more reliably
     than they trend. Long-only, intended for intraday bars (e.g. 5-minute).
 
+    A first-pass version of this (checked into an earlier commit, no
+    min_pullback_depth_pct/min_ema_spread_pct/prior-strength check below)
+    overtraded badly -- 2.8x OpeningRangeConfluence's trade frequency on the
+    same 60-day backtest, because a fast EMA(9) tracks 5-minute price closely
+    enough that ordinary noise constantly "touches" it. The three additions
+    below exist specifically to fix that, not for their own sake.
+
     Entry requires all of:
       - uptrend: fast EMA above slow EMA (the near-term trend is up)
-      - pullback: the current bar's Low came down to within pullback_band_pct
-        of the fast EMA (a genuine dip toward/through it, not just drifting
-        near it)
+      - min_ema_spread_pct: that uptrend must be genuinely established, not
+        barely-there -- same hard gate that helped OpeningRangeConfluence's
+        win rate (see min_ema_spread_pct there). None disables it.
+      - pullback: the current bar's Low actually reached at least
+        min_pullback_depth_pct below the fast EMA -- a real retracement, not
+        just brushing past a line that's already hugging price
       - bounce: the current bar's Close has reclaimed the fast EMA, i.e. the
         pullback found support and reversed within the same bar it dipped in
       - momentum band: RSI(14) between rsi_floor and rsi_ceiling -- cooled
         off enough to be a real pullback (rules out buying a shallow wiggle
         or an already-overbought bounce with no room left) but not so
         depressed it looks like a real breakdown wearing a pullback's face
+      - prior_strength_rsi_min: RSI must have reached at least this level at
+        some point in the trailing prior_strength_lookback_bars -- confirms
+        there was an actual rally to pull back from, rather than the fast
+        EMA just chopping sideways through flat, noisy price. None disables
+        this (stateless proxy for "don't keep re-buying the same range" --
+        this class has no persistent memory between live bot cycles, since
+        main.py builds a fresh instance each cron run, so a real cooldown
+        isn't possible; this is the data-only substitute).
 
     max_chase_pct: if price has already run more than this fraction above
     the fast EMA by the time the signal is evaluated, the BUY is suppressed
@@ -335,10 +353,10 @@ class MeanReversionPullback(Strategy):
 
     A BUY's strength averages three 0..1 sub-scores: how wide the EMA
     spread is (trend conviction), how deep the pullback was relative to the
-    fast EMA (deeper, within the band, means more room for the bounce to
-    run), and how far RSI sits from rsi_ceiling (lower RSI within the band
-    scores higher -- bought closer to the dip's low, not after it's already
-    recovered most of the way).
+    fast EMA (deeper means more room for the bounce to run), and how far RSI
+    sits from rsi_ceiling (lower RSI within the band scores higher -- bought
+    closer to the dip's low, not after it's already recovered most of the
+    way).
 
     Exit is a hair trigger, same philosophy as OpeningRangeConfluence: any
     one of the trend flipping down, price closing below the lowest low of
@@ -349,19 +367,22 @@ class MeanReversionPullback(Strategy):
     """
 
     def __init__(self, ema_fast: int = 9, ema_slow: int = 21, rsi_period: int = 14,
-                 pullback_band_pct: float = 0.002,
+                 min_pullback_depth_pct: float = 0.0015,
                  rsi_floor: float = 35, rsi_ceiling: float = 60,
                  rsi_exit_floor: float = 25, rsi_exit_ceiling: float = 75,
                  max_chase_pct: float | None = 0.01,
                  pullback_lookback_bars: int = 12,
                  pullback_strength_norm_pct: float = 0.005,
-                 ema_strength_norm_pct: float = 0.01):
+                 ema_strength_norm_pct: float = 0.01,
+                 min_ema_spread_pct: float | None = 0.001,
+                 prior_strength_lookback_bars: int = 12,
+                 prior_strength_rsi_min: float | None = 55):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.ema_fast = ema_fast
         self.ema_slow = ema_slow
         self.rsi_period = rsi_period
-        self.pullback_band_pct = pullback_band_pct
+        self.min_pullback_depth_pct = min_pullback_depth_pct
         self.rsi_floor = rsi_floor
         self.rsi_ceiling = rsi_ceiling
         self.rsi_exit_floor = rsi_exit_floor
@@ -370,13 +391,17 @@ class MeanReversionPullback(Strategy):
         self.pullback_lookback_bars = pullback_lookback_bars
         self.pullback_strength_norm_pct = pullback_strength_norm_pct
         self.ema_strength_norm_pct = ema_strength_norm_pct
+        self.min_ema_spread_pct = min_ema_spread_pct
+        self.prior_strength_lookback_bars = prior_strength_lookback_bars
+        self.prior_strength_rsi_min = prior_strength_rsi_min
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
                           confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
 
     def _signal_for(self, df: pd.DataFrame) -> SignalResult:
-        min_bars = max(self.ema_slow, self.pullback_lookback_bars) + 1
+        min_bars = max(self.ema_slow, self.pullback_lookback_bars,
+                        self.prior_strength_lookback_bars) + 1
         if df.empty or len(df) < min_bars:
             return SignalResult(Signal.HOLD)
 
@@ -390,22 +415,29 @@ class MeanReversionPullback(Strategy):
         last_fast, last_slow, last_rsi = fast.iloc[-1], slow.iloc[-1], r.iloc[-1]
 
         uptrend = last_fast > last_slow
-        dipped_to_fast_ema = last_low <= last_fast * (1 + self.pullback_band_pct)
+        ema_spread_pct = (last_fast - last_slow) / last_slow
+        pullback_depth_pct = (last_fast - last_low) / last_fast
+        dipped_to_fast_ema = pullback_depth_pct >= self.min_pullback_depth_pct
         reclaimed = last_close > last_fast
         momentum_ok = self.rsi_floor <= last_rsi <= self.rsi_ceiling
+        if self.prior_strength_rsi_min is not None:
+            prior_rsi = r.iloc[-self.prior_strength_lookback_bars - 1:-1]
+            had_prior_strength = bool((prior_rsi >= self.prior_strength_rsi_min).any())
+        else:
+            had_prior_strength = True
 
         recent_low = df["Low"].iloc[-self.pullback_lookback_bars - 1:-1].min()
         trend_flip_down = last_fast < last_slow
         breakdown = last_close < recent_low
         momentum_extreme = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
 
-        if uptrend and dipped_to_fast_ema and reclaimed and momentum_ok:
+        if uptrend and dipped_to_fast_ema and reclaimed and momentum_ok and had_prior_strength:
+            if self.min_ema_spread_pct is not None and ema_spread_pct < self.min_ema_spread_pct:
+                return SignalResult(Signal.HOLD, reason="weak_trend")
             chase_pct = (last_close - last_fast) / last_fast
             if self.max_chase_pct is not None and chase_pct > self.max_chase_pct:
                 return SignalResult(Signal.HOLD, reason="chased")
-            ema_spread_pct = (last_fast - last_slow) / last_slow
             trend_score = max(0.0, min(1.0, ema_spread_pct / self.ema_strength_norm_pct))
-            pullback_depth_pct = (last_fast - last_low) / last_fast
             pullback_score = max(0.0, min(1.0, pullback_depth_pct / self.pullback_strength_norm_pct))
             momentum_score = max(0.0, min(1.0,
                 (self.rsi_ceiling - last_rsi) / (self.rsi_ceiling - self.rsi_floor)))
