@@ -97,11 +97,11 @@
       "wins": 0
     },
     "UNH": {
-      "losses": 0,
+      "losses": 1,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "win",
-      "total_pnl_pct": 0.0008719002521009198,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.0002580383775501609,
       "wins": 1
     },
     "V": {
