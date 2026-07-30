@@ -112,5 +112,11 @@
     "strategy": "daytrade",
     "symbol": "XOM",
     "pnl_pct": -1.4790284541288693e-05
+  },
+  {
+    "t": "2026-07-30T14:32:07Z",
+    "strategy": "daytrade",
+    "symbol": "CVX",
+    "pnl_pct": -0.0001006307451497157
   }
 ]
