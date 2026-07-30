@@ -170,6 +170,20 @@ class OpeningRangeConfluence(Strategy):
     Rejects outright (HOLD, reason="low_volume") if not met. None disables
     the gate; if there isn't yet volume_avg_period bars of history the gate
     is skipped (fails open), same as confirm_bars with a short confirm_df.
+
+    require_retest / retest_tolerance_pct: replaces the entry trigger itself
+    (backtest-only experiment). Instead of buying the *first* bar to close
+    above the opening-range high (which is what every setting above still
+    does -- all of them filter around that same trigger), this waits for a
+    pullback-and-hold pattern: since the opening range, price must have (1)
+    broken above or_high, (2) pulled back to within retest_tolerance_pct
+    below or_high without ever needing to fall further (a true retest of the
+    former resistance as new support, not a failed breakout), and (3) the
+    current bar closes back above or_high again. The pullback and the
+    reclaim can be the same bar (a single-bar dip-and-recover) or different
+    bars. All the other gates above (confirm_bars, min_ema_spread_pct, etc.)
+    still apply on top once this trigger fires. False when require_retest is
+    False (default) -- unrelated to and does not change existing behavior.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
@@ -183,7 +197,9 @@ class OpeningRangeConfluence(Strategy):
                  min_ema_spread_pct: float | None = None,
                  min_strength: float | None = None,
                  min_volume_ratio: float | None = None,
-                 volume_avg_period: int = 20):
+                 volume_avg_period: int = 20,
+                 require_retest: bool = False,
+                 retest_tolerance_pct: float = 0.003):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -197,6 +213,8 @@ class OpeningRangeConfluence(Strategy):
         self.ema_strength_norm_pct = ema_strength_norm_pct
         self.max_chase_pct = max_chase_pct
         self.confirm_bars = confirm_bars
+        self.require_retest = require_retest
+        self.retest_tolerance_pct = retest_tolerance_pct
         self.min_ema_spread_pct = min_ema_spread_pct
         self.min_strength = min_strength
         self.min_volume_ratio = min_volume_ratio
@@ -206,6 +224,25 @@ class OpeningRangeConfluence(Strategy):
                           confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         confirm_prices = confirm_prices or {}
         return {sym: self._signal_for(df, confirm_prices.get(sym)) for sym, df in prices.items()}
+
+    def _has_retest_setup(self, today_bars: pd.DataFrame, or_high: float) -> bool:
+        """True if, since the opening range, price broke above or_high,
+        pulled back to within retest_tolerance_pct below or_high (retesting
+        it as support rather than failing straight through it), and the
+        current (last) bar has reclaimed or_high again. The pullback and the
+        reclaim may be the same bar."""
+        post_range = today_bars.iloc[self.or_bars:]
+        if len(post_range) < 2:
+            return False
+        prior = post_range.iloc[:-1]
+        current = post_range.iloc[-1]
+        broke = prior[prior["High"] > or_high]
+        if broke.empty:
+            return False
+        since_break = post_range.loc[broke.index[0]:]
+        retest_low_bound = or_high * (1 - self.retest_tolerance_pct)
+        retested = ((since_break["Low"] <= or_high) & (since_break["Low"] >= retest_low_bound)).any()
+        return bool(retested) and current["Close"] > or_high
 
     def _signal_for(self, df: pd.DataFrame, confirm_df: pd.DataFrame | None = None) -> SignalResult:
         if df.empty or len(df) < max(self.ema_slow, self.volume_avg_period) + 1:
@@ -228,7 +265,10 @@ class OpeningRangeConfluence(Strategy):
         last_close = close.iloc[-1]
         last_fast, last_slow, last_rsi = fast.iloc[-1], slow.iloc[-1], r.iloc[-1]
 
-        breakout_up = last_close > or_high
+        if self.require_retest:
+            breakout_up = self._has_retest_setup(today_bars, or_high)
+        else:
+            breakout_up = last_close > or_high
         uptrend = last_fast > last_slow
         bullish_momentum = self.rsi_buy_min <= last_rsi <= self.rsi_buy_max
 

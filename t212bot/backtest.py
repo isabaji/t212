@@ -330,7 +330,9 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              rsi_buy_range: tuple[float, float] | None = None,
                              min_ema_spread_pct: float | None = None,
                              min_strength: float | None = None,
-                             min_volume_ratio: float | None = None) -> None:
+                             min_volume_ratio: float | None = None,
+                             require_retest: bool = False,
+                             retest_tolerance_pct: float = 0.003) -> None:
     """Backtests OpeningRangeConfluence on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
@@ -348,8 +350,13 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
 
     rsi_buy_range / min_ema_spread_pct / min_strength / min_volume_ratio
     (optional): entry-side experiments -- see OpeningRangeConfluence. None
-    uses the strategy's own defaults (no gate)."""
-    header = ["Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars"]
+    uses the strategy's own defaults (no gate).
+
+    require_retest / retest_tolerance_pct: replaces the entry trigger itself
+    with a pullback-and-hold retest of the opening-range high instead of
+    buying the first breakout bar -- see OpeningRangeConfluence."""
+    header = ["Day-trade strategy: opening-range breakout"
+              + (" + retest" if require_retest else "") + " + EMA/RSI confluence, 5-min bars"]
     if confirm_bars:
         header.append(f"{confirm_bars}-bar 1-min confirmation")
     if stop_loss_pct or take_profit_pct:
@@ -364,6 +371,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         header.append(f"min strength {min_strength:.2f}")
     if min_volume_ratio:
         header.append(f"min volume ratio {min_volume_ratio:.2f}x")
+    if require_retest:
+        header.append(f"retest tolerance {retest_tolerance_pct:.2%}")
     print(", ".join(header) + ".")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
     print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
@@ -386,7 +395,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                 lambda: OpeningRangeConfluence(
                     or_minutes=or_minutes, confirm_bars=confirm_bars,
                     rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,
-                    min_strength=min_strength, min_volume_ratio=min_volume_ratio),
+                    min_strength=min_strength, min_volume_ratio=min_volume_ratio,
+                    require_retest=require_retest, retest_tolerance_pct=retest_tolerance_pct),
                 df, n_windows, fee_bps, slippage_bps, min_bars=bars_per_day,
                 periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day,
                 confirm_df=confirm_data.get(sym),

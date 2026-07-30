@@ -65,6 +65,14 @@ on:
         description: 'Hard minimum ratio of breakout-bar volume to its trailing 20-bar average, e.g. 1.2 for 20%% above average (daytrade only, blank = off)'
         type: string
         default: ''
+      require_retest:
+        description: 'Replace the entry trigger with a pullback-and-hold retest of the opening-range high instead of buying the first breakout bar (daytrade only)'
+        type: boolean
+        default: false
+      retest_tolerance_pct:
+        description: 'With require_retest: how far below the opening-range high a pullback may go and still count as a valid retest (blank = strategy default 0.003 = 0.3%%)'
+        type: string
+        default: ''
 
 jobs:
   backtest:
@@ -99,5 +107,7 @@ jobs:
           if [ -n "${{ inputs.min_ema_spread_pct }}" ]; then ARGS="$ARGS --min-ema-spread-pct ${{ inputs.min_ema_spread_pct }}"; fi
           if [ -n "${{ inputs.min_strength }}" ]; then ARGS="$ARGS --min-strength ${{ inputs.min_strength }}"; fi
           if [ -n "${{ inputs.min_volume_ratio }}" ]; then ARGS="$ARGS --min-volume-ratio ${{ inputs.min_volume_ratio }}"; fi
+          if [ "${{ inputs.require_retest }}" = "true" ]; then ARGS="$ARGS --require-retest"; fi
+          if [ -n "${{ inputs.retest_tolerance_pct }}" ]; then ARGS="$ARGS --retest-tolerance-pct ${{ inputs.retest_tolerance_pct }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS

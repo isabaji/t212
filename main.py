@@ -74,6 +74,14 @@ def main() -> None:
                          help="backtest --daytrade only: hard minimum ratio of breakout-bar volume to its "
                               "own trailing 20-bar average volume required to enter, e.g. 1.2 for 20%% "
                               "above average (off by default)")
+    parser.add_argument("--require-retest", action="store_true",
+                         help="backtest --daytrade only: replace the entry trigger with a pullback-and-hold "
+                              "retest of the opening-range high instead of buying the first breakout bar "
+                              "(off by default)")
+    parser.add_argument("--retest-tolerance-pct", type=float, default=0.003,
+                         help="backtest --daytrade only: with --require-retest, how far below the "
+                              "opening-range high a pullback may go and still count as a valid retest "
+                              "(default 0.003 = 0.3%%)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -104,7 +112,9 @@ def main() -> None:
                                      confirm_bars=confirm_bars,
                                      stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct,
                                      rsi_buy_range=rsi_buy_range, min_ema_spread_pct=args.min_ema_spread_pct,
-                                     min_strength=args.min_strength, min_volume_ratio=args.min_volume_ratio)
+                                     min_strength=args.min_strength, min_volume_ratio=args.min_volume_ratio,
+                                     require_retest=args.require_retest,
+                                     retest_tolerance_pct=args.retest_tolerance_pct)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
