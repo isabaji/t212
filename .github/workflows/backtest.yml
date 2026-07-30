@@ -2,8 +2,10 @@ name: Trading212 Backtest
 
 # Manual-only: walk-forward backtest either strategy against the current
 # watchlist, optionally testing a stop-loss and/or trend filter (swing only).
-# No secrets needed — this only touches historical price data via yfinance,
-# never the live account, so it's safe to run anytime out of curiosity.
+# Never touches the live account, so it's safe to run anytime out of
+# curiosity. Swing needs no secrets (yfinance, no auth); daytrade needs
+# ALPACA_API_KEY/ALPACA_API_SECRET, same free data-only account as the live
+# day-trade workflow -- see trading-bot-daytrade.yml.
 on:
   workflow_dispatch:
     inputs:
@@ -31,6 +33,10 @@ on:
         description: 'Require price above its N-day SMA to buy (swing only, blank = off)'
         type: string
         default: ''
+      confirm_bars:
+        description: '1-min confirmation bars required before entry (daytrade only, blank = config default, 0 = disabled -- run twice to compare)'
+        type: string
+        default: ''
 
 jobs:
   backtest:
@@ -46,11 +52,17 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Run backtest
+        # Alpaca is only touched by the --daytrade path; harmless to set
+        # unconditionally since the swing backtest never reads them.
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
         run: |
           ARGS="backtest --fast ${{ inputs.fast }} --slow ${{ inputs.slow }}"
           if [ "${{ inputs.daytrade }}" = "true" ]; then ARGS="$ARGS --daytrade"; fi
           if [ -n "${{ inputs.windows }}" ]; then ARGS="$ARGS --windows ${{ inputs.windows }}"; fi
           if [ -n "${{ inputs.stop_atr_multiple }}" ]; then ARGS="$ARGS --stop-atr-multiple ${{ inputs.stop_atr_multiple }}"; fi
           if [ -n "${{ inputs.trend_filter }}" ]; then ARGS="$ARGS --trend-filter ${{ inputs.trend_filter }}"; fi
+          if [ -n "${{ inputs.confirm_bars }}" ]; then ARGS="$ARGS --confirm-bars ${{ inputs.confirm_bars }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS

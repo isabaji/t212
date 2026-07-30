@@ -38,8 +38,17 @@ class SignalResult:
 
 class Strategy(ABC):
     @abstractmethod
-    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
-        """Map each symbol to a SignalResult, given its OHLCV history."""
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        """Map each symbol to a SignalResult, given its OHLCV history.
+
+        confirm_prices (optional): a second, typically finer-grained bar
+        series per symbol that a strategy MAY use as extra confirmation
+        before acting on a signal computed from `prices` -- e.g. requiring a
+        breakout to hold across several 1-minute closes rather than firing
+        on a single coarser bar's close alone. Ignored by strategies that
+        don't use it (e.g. SMACrossover).
+        """
 
 
 class SMACrossover(Strategy):
@@ -76,7 +85,8 @@ class SMACrossover(Strategy):
         self.strength_norm_pct = strength_norm_pct
         self.max_chase_pct = max_chase_pct
 
-    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         signals: dict[str, SignalResult] = {}
         for sym, df in prices.items():
             close = df["Close"]
@@ -127,6 +137,16 @@ class OpeningRangeConfluence(Strategy):
     (e.g. because a check was delayed), the BUY is suppressed entirely (HOLD,
     reason="chased") instead of just capped at full strength -- avoids buying
     into a breakout that's already mostly spent. None disables the guard.
+
+    confirm_bars: extra safety gate on entry only (exits stay hair-trigger,
+    unaffected). When generate_signals() is given confirm_prices -- typically
+    finer-grained bars than `prices`, e.g. 1-minute vs. this strategy's usual
+    5-minute -- a BUY additionally requires the last confirm_bars closes of
+    that finer series to all still be above the opening-range high, i.e. the
+    breakout has genuinely held rather than spiked above the range on one
+    coarse bar and already faded by the time it's acted on. Suppressed BUYs
+    get reason="unconfirmed". 0 (or missing/short confirm_prices) disables
+    this -- it's an optional extra check, not a requirement.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
@@ -135,7 +155,8 @@ class OpeningRangeConfluence(Strategy):
                  rsi_exit_floor: float = 40, rsi_exit_ceiling: float = 78,
                  breakout_strength_norm_pct: float = 0.005,
                  ema_strength_norm_pct: float = 0.01,
-                 max_chase_pct: float | None = 0.02):
+                 max_chase_pct: float | None = 0.02,
+                 confirm_bars: int = 3):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -148,11 +169,14 @@ class OpeningRangeConfluence(Strategy):
         self.breakout_strength_norm_pct = breakout_strength_norm_pct
         self.ema_strength_norm_pct = ema_strength_norm_pct
         self.max_chase_pct = max_chase_pct
+        self.confirm_bars = confirm_bars
 
-    def generate_signals(self, prices: dict[str, pd.DataFrame]) -> dict[str, SignalResult]:
-        return {sym: self._signal_for(df) for sym, df in prices.items()}
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        confirm_prices = confirm_prices or {}
+        return {sym: self._signal_for(df, confirm_prices.get(sym)) for sym, df in prices.items()}
 
-    def _signal_for(self, df: pd.DataFrame) -> SignalResult:
+    def _signal_for(self, df: pd.DataFrame, confirm_df: pd.DataFrame | None = None) -> SignalResult:
         if df.empty or len(df) < self.ema_slow + 1:
             return SignalResult(Signal.HOLD)
 
@@ -185,6 +209,10 @@ class OpeningRangeConfluence(Strategy):
             breakout_pct = (last_close - or_high) / or_high
             if self.max_chase_pct is not None and breakout_pct > self.max_chase_pct:
                 return SignalResult(Signal.HOLD, reason="chased")
+            if self.confirm_bars and confirm_df is not None and len(confirm_df) >= self.confirm_bars:
+                recent_closes = confirm_df["Close"].iloc[-self.confirm_bars:]
+                if not (recent_closes > or_high).all():
+                    return SignalResult(Signal.HOLD, reason="unconfirmed")
             breakout_score = max(0.0, min(1.0, breakout_pct / self.breakout_strength_norm_pct))
             momentum_score = max(0.0, min(1.0,
                 (last_rsi - self.rsi_buy_min) / (self.rsi_buy_max - self.rsi_buy_min)))

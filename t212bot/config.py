@@ -24,6 +24,10 @@ class Config:
     alpaca_api_key: str = field(default_factory=lambda: os.getenv("ALPACA_API_KEY", ""))
     alpaca_api_secret: str = field(default_factory=lambda: os.getenv("ALPACA_API_SECRET", ""))
     daytrade_bar_minutes: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_BAR_MINUTES", "5")))
+    # Entries only require the breakout to hold across this many 1-minute
+    # closes before firing (t212bot/strategy.py: OpeningRangeConfluence's
+    # confirm_bars). 0 disables the extra fetch/check entirely.
+    daytrade_confirm_bars: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_CONFIRM_BARS", "3")))
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))

@@ -69,6 +69,7 @@ Key settings in `.env`:
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
 | `DAYTRADE_BAR_MINUTES` | `5` | Bar size for the day-trade strategy's intraday data (Alpaca) |
+| `DAYTRADE_CONFIRM_BARS` | `3` | Entries only: require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
@@ -313,8 +314,9 @@ both off by default so existing behavior doesn't silently change:
 
 Both can be combined and run through the same walk-forward/cost-aware
 machinery as everything else. `.github/workflows/backtest.yml` runs any
-combination from the Actions tab (no secrets needed — this never touches the
-live account) if you'd rather not run it locally.
+combination from the Actions tab if you'd rather not run it locally — no
+secrets needed for the swing backtest, `ALPACA_API_KEY`/`ALPACA_API_SECRET`
+needed for `--daytrade`. Never touches the live account either way.
 
 ### 4. Use it
 
@@ -322,6 +324,7 @@ live account) if you'd rather not run it locally.
 python main.py account               # sanity check: show cash + positions
 python main.py backtest               # walk-forward backtest the swing strategy
 python main.py backtest --daytrade    # walk-forward backtest the day-trade strategy
+python main.py backtest --daytrade --confirm-bars 0     # ...and again with the confirmation gate off, to compare
 python main.py backtest --windows 6 --slippage-bps 10   # tune the assumptions
 python main.py run                    # run one swing-trading cycle (dry-run by default)
 python main.py daytrade               # run one day-trading cycle (dry-run by default)
@@ -400,9 +403,15 @@ No terminal or local Python install required — GitHub runs it for you.
    high, the fast EMA (9) is above the slow EMA (21), and RSI(14) is in a
    bullish-but-not-overbought band (50-70). Requiring confluence means fewer,
    higher-conviction trades rather than firing on any single indicator.
+   On top of that, `DAYTRADE_CONFIRM_BARS` (default 3, 0 disables it) adds one
+   more gate: the breakout also has to hold across that many trailing
+   **1-minute** closes above the opening-range high, regardless of
+   `DAYTRADE_BAR_MINUTES` — catches a breakout that spiked above the range on
+   one coarse bar and had already faded by the time the bot checked again.
 2. **Exit** — a hair trigger by comparison: *any one* of a breakdown below the
    opening-range low, the EMA trend flipping down, or RSI going overbought/
-   oversold closes the position.
+   oversold closes the position. The confirmation gate above only applies to
+   entries — exits stay immediate on purpose.
 3. **End-of-day flatten** — regardless of what the strategy signals, any open
    position is force-closed once the exchange-local time is within 15 minutes
    of the close (`t212bot/bot.py: run_day_trade_cycle`). No position is ever

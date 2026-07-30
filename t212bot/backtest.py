@@ -30,10 +30,19 @@ DEFAULT_FEE_BPS = 0.0
 DEFAULT_SLIPPAGE_BPS = 5.0
 
 
-def _signal_series(strategy, df: pd.DataFrame, min_bars: int) -> pd.Series:
+def _signal_series(strategy, df: pd.DataFrame, min_bars: int,
+                    confirm_df: pd.DataFrame | None = None) -> pd.Series:
+    """confirm_df (optional): a finer-grained bar series for the same symbol,
+    sliced up to each step's current timestamp (no lookahead) and passed as
+    the strategy's confirm_prices -- see OpeningRangeConfluence.confirm_bars.
+    """
     signals = []
     for i in range(min_bars, len(df) + 1):
-        signals.append(strategy.generate_signals({"X": df.iloc[:i]})["X"].signal)
+        prices = {"X": df.iloc[:i]}
+        confirm_prices = None
+        if confirm_df is not None:
+            confirm_prices = {"X": confirm_df[confirm_df.index <= df.index[i - 1]]}
+        signals.append(strategy.generate_signals(prices, confirm_prices)["X"].signal)
     return pd.Series(signals, index=df.index[min_bars - 1:])
 
 
@@ -123,7 +132,8 @@ def _equity_curve(dates, df: pd.DataFrame, trades: list) -> pd.Series:
 
 def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
              slippage_bps: float = DEFAULT_SLIPPAGE_BPS, min_bars: int = 60,
-             stop_atr_multiple: float | None = None, atr_period: int = 14):
+             stop_atr_multiple: float | None = None, atr_period: int = 14,
+             confirm_df: pd.DataFrame | None = None):
     """Long-only, single position at a time, all-in/all-out, cost-aware.
 
     Returns (equity_curve, trades). Not enough data -> a flat 1-bar curve
@@ -132,7 +142,7 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
     """
     if len(df) <= min_bars:
         return pd.Series([1.0], index=df.index[-1:]), []
-    signals = _signal_series(strategy, df, min_bars)
+    signals = _signal_series(strategy, df, min_bars, confirm_df)
     atr_series = compute_atr(df, period=atr_period) if stop_atr_multiple else None
     trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series)
     equity = _equity_curve(signals.index, df, trades)
@@ -193,7 +203,8 @@ def compute_metrics(equity: pd.Series, trades: list, periods_per_year: int = TRA
 def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                   fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
                   min_bars: int = 60, periods_per_year: int = TRADING_DAYS_PER_YEAR,
-                  stop_atr_multiple: float | None = None, atr_period: int = 14) -> list:
+                  stop_atr_multiple: float | None = None, atr_period: int = 14,
+                  confirm_df: pd.DataFrame | None = None) -> list:
     """Split df into n_windows sequential, non-overlapping chunks and backtest
     each independently with a fresh strategy instance.
 
@@ -201,6 +212,9 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
     a documented simplification, not a seamless continuous backtest. The
     point is comparing independent periods for consistency, not precision at
     the window seam.
+
+    confirm_df (optional): sliced to each window's date range and passed
+    through to simulate() -- see _signal_series.
     """
     n = len(df)
     if n_windows < 1:
@@ -217,8 +231,12 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
         start = i * size
         end = n if i == n_windows - 1 else (i + 1) * size
         window_df = df.iloc[start:end]
+        window_confirm_df = None
+        if confirm_df is not None:
+            window_confirm_df = confirm_df[(confirm_df.index >= window_df.index[0])
+                                            & (confirm_df.index <= window_df.index[-1])]
         equity, trades = simulate(strategy_factory(), window_df, fee_bps, slippage_bps, min_bars,
-                                   stop_atr_multiple, atr_period)
+                                   stop_atr_multiple, atr_period, confirm_df=window_confirm_df)
         metrics = compute_metrics(equity, trades, periods_per_year)
         metrics["window"] = i + 1
         metrics["start"] = window_df.index[0]
@@ -275,14 +293,20 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
 
 def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secret: str,
                              or_minutes: int = 30, n_windows: int = 2,
-                             fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS) -> None:
-    """Backtests OpeningRangeConfluence on intraday bars. Always backtests on
-    5-minute bars regardless of the live bot's DAYTRADE_BAR_MINUTES setting --
-    fewer, steadier bars keep this a quick sanity check rather than a slow
-    pull of tens of thousands of bars per symbol; pass a different
-    symbol/timeframe combination directly to fetch_intraday if you want to
-    backtest a different bar size specifically."""
-    print("Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars.")
+                             fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+                             confirm_bars: int = 3) -> None:
+    """Backtests OpeningRangeConfluence on intraday bars. Always backtests the
+    primary signal on 5-minute bars regardless of the live bot's
+    DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
+    sanity check rather than a slow pull of tens of thousands of bars per
+    symbol.
+
+    confirm_bars > 0 additionally pulls 1-minute bars and exercises the same
+    confirm_bars entry gate the live bot uses (see OpeningRangeConfluence) --
+    the whole point being to compare against a confirm_bars=0 run before
+    trusting the gate live."""
+    print("Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars"
+          + (f", {confirm_bars}-bar 1-min confirmation." if confirm_bars else "."))
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
     print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
           "sanity check, not a long-run edge validation.\n")
@@ -292,12 +316,19 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         print("No intraday data for any symbol.")
         return
 
+    confirm_data = {}
+    if confirm_bars:
+        confirm_data = fetch_intraday(list(price_data.keys()), alpaca_api_key, alpaca_api_secret,
+                                       days=60, timeframe="1Min")
+
     bars_per_day = 78  # ~6.5h US session / 5-min bars
     for sym, df in price_data.items():
         try:
-            windows = walk_forward(lambda: OpeningRangeConfluence(or_minutes=or_minutes), df, n_windows,
-                                    fee_bps, slippage_bps, min_bars=bars_per_day,
-                                    periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day)
+            windows = walk_forward(
+                lambda: OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=confirm_bars),
+                df, n_windows, fee_bps, slippage_bps, min_bars=bars_per_day,
+                periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day,
+                confirm_df=confirm_data.get(sym))
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue

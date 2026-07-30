@@ -249,17 +249,32 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         tstats = trade_stats.load()
         pnl_hist = pnl_history.load()
 
+        watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
         prices = _convert_prices_fx(
-            fetch_intraday(sorted(set(cfg.watchlist) | held_symbols), cfg.alpaca_api_key, cfg.alpaca_api_secret,
+            fetch_intraday(watch_symbols, cfg.alpaca_api_key, cfg.alpaca_api_secret,
                            timeframe=f"{cfg.daytrade_bar_minutes}Min"),
             fx_rate,
         )
-        signals = strategy.generate_signals(prices)
+        # Optional finer-grained confirmation series (t212bot/strategy.py:
+        # OpeningRangeConfluence.confirm_bars) -- reuse `prices` outright when
+        # the primary bar size is already 1-minute, rather than double-fetching
+        # identical data.
+        if cfg.daytrade_confirm_bars <= 0:
+            confirm_prices = None
+        elif cfg.daytrade_bar_minutes == 1:
+            confirm_prices = prices
+        else:
+            confirm_prices = _convert_prices_fx(
+                fetch_intraday(watch_symbols, cfg.alpaca_api_key, cfg.alpaca_api_secret, timeframe="1Min"),
+                fx_rate,
+            )
+        signals = strategy.generate_signals(prices, confirm_prices)
 
         decisions = []
         stale_symbols = []
         hold_symbols = []
         chased_symbols = []
+        unconfirmed_symbols = []
         blocked_symbols = []
         drawdown_symbols = []
         paused_symbols = []
@@ -366,6 +381,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 log.info("BUY %s skipped: too far past the signal trigger, not chasing", sym)
                 chased_symbols.append(sym)
 
+            elif sig.reason == "unconfirmed":
+                log.info("BUY %s skipped: breakout didn't hold on the finer confirmation bars", sym)
+                unconfirmed_symbols.append(sym)
+
             else:
                 log.debug("%s: %s (no action)", sym, signal.value)
                 hold_symbols.append(sym)
@@ -380,6 +399,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(chased_symbols)} — price already too far past the signal "
                               "trigger by the time it was checked, skipped to avoid chasing."))
+        if unconfirmed_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(unconfirmed_symbols)} — breakout didn't hold across the "
+                              "confirmation window on finer bars, skipped."))
         if blocked_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(blocked_symbols)} — daily profit target or loss limit "

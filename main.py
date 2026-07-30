@@ -47,6 +47,10 @@ def main() -> None:
     parser.add_argument("--fast", type=int, default=20, help="fast SMA window (swing strategy)")
     parser.add_argument("--slow", type=int, default=50, help="slow SMA window (swing strategy)")
     parser.add_argument("--or-minutes", type=int, default=30, help="opening range window (day-trade strategy)")
+    parser.add_argument("--confirm-bars", type=int, default=None,
+                         help="backtest --daytrade only: 1-min confirmation bars required to hold above the "
+                              "breakout before entry (default: DAYTRADE_CONFIRM_BARS config value; pass 0 to "
+                              "compare against the gate disabled)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -67,8 +71,10 @@ def main() -> None:
 
     if args.command == "backtest":
         if args.daytrade:
+            confirm_bars = args.confirm_bars if args.confirm_bars is not None else cfg.daytrade_confirm_bars
             print_daytrade_backtest(cfg.watchlist, cfg.alpaca_api_key, cfg.alpaca_api_secret,
-                                     args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps)
+                                     args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps,
+                                     confirm_bars=confirm_bars)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
@@ -82,7 +88,8 @@ def main() -> None:
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
     elif args.command == "daytrade":
         run_day_trade_cycle(cfg, OpeningRangeConfluence(or_minutes=args.or_minutes,
-                                                         bar_minutes=cfg.daytrade_bar_minutes))
+                                                         bar_minutes=cfg.daytrade_bar_minutes,
+                                                         confirm_bars=cfg.daytrade_confirm_bars))
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)
 
