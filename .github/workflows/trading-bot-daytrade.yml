@@ -52,6 +52,12 @@ jobs:
         env:
           T212_API_KEY: ${{ secrets.T212_API_KEY }}
           T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+          # Intraday market data (t212bot/data.py) -- a free, data-only Alpaca
+          # account, no funding needed. Only this workflow needs it; swing
+          # still runs on yfinance daily bars.
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+          DAYTRADE_BAR_MINUTES: ${{ secrets.DAYTRADE_BAR_MINUTES || '1' }}
           T212_ENV: ${{ secrets.T212_ENV || 'demo' }}
           # Separate from the swing bot's DRY_RUN so you arm each mode independently.
           DRY_RUN: ${{ github.event.inputs.dry_run || secrets.DAYTRADE_DRY_RUN || 'true' }}

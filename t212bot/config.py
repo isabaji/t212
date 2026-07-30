@@ -16,6 +16,14 @@ def _bool(name: str, default: str = "false") -> bool:
 class Config:
     api_key: str = field(default_factory=lambda: os.getenv("T212_API_KEY", ""))
     api_secret: str = field(default_factory=lambda: os.getenv("T212_API_SECRET", ""))
+    # Market data for the day-trade cycle's intraday bars (t212bot/data.py).
+    # Free Alpaca account, data-only -- no funding needed. Swing doesn't use
+    # these (it still runs on yfinance daily bars), so they're not required
+    # by validate() below; a missing key only fails when daytrade actually
+    # fetches intraday data.
+    alpaca_api_key: str = field(default_factory=lambda: os.getenv("ALPACA_API_KEY", ""))
+    alpaca_api_secret: str = field(default_factory=lambda: os.getenv("ALPACA_API_SECRET", ""))
+    daytrade_bar_minutes: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_BAR_MINUTES", "1")))
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))

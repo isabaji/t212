@@ -1,16 +1,22 @@
-"""Market data via Yahoo Finance, and Yahoo <-> Trading212 ticker mapping.
+"""Market data via Yahoo Finance (swing) and Alpaca (day-trade), and Yahoo/
+Trading212 ticker mapping.
 
 Trading212's API has no real-time quote endpoint, so signals are computed from
-an external feed. Yahoo data is delayed — fine for daily/hourly strategies, not
-for high-frequency ones.
+an external feed. Yahoo's free intraday data is delayed and rate-limit-prone —
+fine for the swing strategy's daily bars, not for the day-trade strategy's
+1-minute ones, which is why intraday bars come from Alpaca's free market data
+API (real-time IEX feed, not delayed) instead.
 """
 
 import logging
 
 import pandas as pd
+import requests
 import yfinance as yf
 
 log = logging.getLogger(__name__)
+
+ALPACA_DATA_URL = "https://data.alpaca.markets/v2/stocks/bars"
 
 # Trading212 tickers look like "AAPL_US_EQ". US equities map mechanically;
 # add explicit entries here for LSE/EU listings (e.g. "VOD.L": "VODl_EQ").
@@ -40,13 +46,63 @@ def fetch_history(symbols: list[str], period: str = "1y", interval: str = "1d") 
     return out
 
 
-def fetch_intraday(symbols: list[str], period: str = "5d", interval: str = "5m") -> dict[str, pd.DataFrame]:
-    """Return {symbol: intraday OHLCV DataFrame}, index tz-aware in the exchange's local time.
+def fetch_intraday(symbols: list[str], api_key: str, api_secret: str,
+                    days: int = 5, timeframe: str = "1Min", feed: str = "iex") -> dict[str, pd.DataFrame]:
+    """Return {symbol: intraday OHLCV DataFrame} via Alpaca's market data API,
+    index tz-aware in the exchange's local time (US/Eastern) -- the rest of
+    the day-trade cycle (EOD-flatten timing, stale-bar age) assumes that.
 
-    5 days of 5-minute bars gives enough history to warm up EMA/RSI while still
-    being cheap; yfinance only retains a limited intraday history anyway.
+    days: how far back to request. 5 days of 1-minute bars is thousands of
+    bars per symbol, far more than EMA(21)/RSI(14) need to warm up -- it's
+    just comfortable headroom, not a requirement.
+    feed="iex": the feed available on Alpaca's free tier. It's real-time
+    (not delayed like Yahoo's free intraday data), but single-exchange (IEX)
+    rather than the paid consolidated SIP tape -- fine for signals built on
+    closing prices, not for anything needing the full order book.
     """
-    return fetch_history(symbols, period=period, interval=interval)
+    if not api_key or not api_secret:
+        raise RuntimeError(
+            "ALPACA_API_KEY/ALPACA_API_SECRET are not set. Sign up for a free "
+            "Alpaca account (data access needs no funding) and set both."
+        )
+
+    headers = {"APCA-API-KEY-ID": api_key, "APCA-API-SECRET-KEY": api_secret}
+    params = {
+        "symbols": ",".join(symbols),
+        "timeframe": timeframe,
+        "start": (pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=days)).isoformat(),
+        "feed": feed,
+        "adjustment": "raw",
+        "limit": 10000,
+    }
+
+    bars_by_symbol: dict[str, list] = {}
+    page_token = None
+    while True:
+        if page_token:
+            params["page_token"] = page_token
+        resp = requests.get(ALPACA_DATA_URL, headers=headers, params=params, timeout=30)
+        if not resp.ok:
+            raise RuntimeError(f"Alpaca bars request failed ({resp.status_code}): {resp.text}")
+        payload = resp.json()
+        for sym, bars in (payload.get("bars") or {}).items():
+            bars_by_symbol.setdefault(sym, []).extend(bars)
+        page_token = payload.get("next_page_token")
+        if not page_token:
+            break
+
+    out: dict[str, pd.DataFrame] = {}
+    for sym in symbols:
+        bars = bars_by_symbol.get(sym)
+        if not bars:
+            log.warning("No Alpaca data for %s, skipping", sym)
+            continue
+        df = pd.DataFrame(bars)
+        df.index = pd.to_datetime(df.pop("t"), utc=True).dt.tz_convert("America/New_York")
+        out[sym] = df.rename(columns={"o": "Open", "h": "High", "l": "Low", "c": "Close", "v": "Volume"})[
+            ["Open", "High", "Low", "Close", "Volume"]
+        ]
+    return out
 
 
 def fetch_fx_rate(account_currency: str, instrument_currency: str = "USD") -> float:

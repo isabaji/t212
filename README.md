@@ -15,15 +15,18 @@ your portfolio and cash) but does **not** provide real-time market data. So the 
 is split into three layers:
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌──────────────────┐
-│  Market data │ →  │   Strategy   │ →  │  Execution        │
-│  (yfinance)  │    │  (signals)   │    │  (Trading212 API) │
-└─────────────┘    └──────────────┘    └──────────────────┘
-                          ↑
-                   Risk manager (position sizing, limits)
+┌───────────────────┐    ┌──────────────┐    ┌──────────────────┐
+│  Market data       │ →  │   Strategy   │ →  │  Execution        │
+│  (yfinance/Alpaca) │    │  (signals)   │    │  (Trading212 API) │
+└───────────────────┘    └──────────────┘    └──────────────────┘
+                                ↑
+                         Risk manager (position sizing, limits)
 ```
 
-1. **Data** — historical/delayed prices are pulled from Yahoo Finance (`yfinance`).
+1. **Data** — the swing strategy's daily bars come from Yahoo Finance
+   (`yfinance`); the day-trade strategy's intraday bars come from Alpaca's
+   free market data API instead (real-time IEX feed, 1-minute bars by
+   default — see below for why).
 2. **Strategy** — a pluggable class turns price history into BUY/SELL/HOLD signals.
    Two are included: a daily SMA-crossover (swing trading) and an intraday
    opening-range breakout (day trading) — see below.
@@ -64,14 +67,16 @@ Key settings in `.env`:
 | `T212_API_SECRET` | — | Your API secret (shown alongside the key when you generate it) |
 | `T212_ENV` | `demo` | `demo` (practice) or `live` |
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
-| `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Yahoo symbols the strategy scans (30 large-caps across 9 sectors by default) |
+| `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
+| `DAYTRADE_BAR_MINUTES` | `1` | Bar size for the day-trade strategy's intraday data (Alpaca) |
+| `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
 | `LOSING_STREAK_LIMIT` | `3` | Pause a symbol's new entries after this many losses in a row on it |
 | `LOSING_STREAK_COOLDOWN_DAYS` | `5` | How long a symbol stays paused before resuming with a reset streak |
 | `RISK_PER_TRADE_PCT` | `0.01` | Fraction of account risked per trade (see volatility-aware sizing below) |
 | `ATR_MULTIPLE` | `2.0` | Stop distance for sizing = this × ATR |
-| `ATR_PERIOD` | `14` | Bars used to compute ATR (daily bars for swing, 5-min bars for day-trade) |
+| `ATR_PERIOD` | `14` | Bars used to compute ATR (daily bars for swing, `DAYTRADE_BAR_MINUTES`-sized bars for day-trade) |
 | `MAX_SECTOR_EXPOSURE_PCT` | `0.35` | Max fraction of account value held in one sector at once (see portfolio-level risk below) |
 | `MAX_PORTFOLIO_DRAWDOWN_PCT` | `0.15` | Pause new entries account-wide once realized returns fall this far below their high-water mark |
 
@@ -344,16 +349,20 @@ They're independent — enable one, both, or neither. To turn them on:
 2. Under **Secrets**, click **New repository secret** and add two secrets:
    - Name: `T212_API_KEY` — Value: your Trading212 API key
    - Name: `T212_API_SECRET` — Value: your Trading212 API secret
-3. (Optional) **Also under Secrets** (not Variables — see the note below), add
+3. If you're enabling the day-trade workflow, also add:
+   - Name: `ALPACA_API_KEY` — Value: your free Alpaca API key (data only, no
+     funding needed — generate one at [app.alpaca.markets](https://app.alpaca.markets))
+   - Name: `ALPACA_API_SECRET` — Value: the matching Alpaca API secret
+4. (Optional) **Also under Secrets** (not Variables — see the note below), add
    any of `T212_ENV`, `DRY_RUN`, `DAYTRADE_DRY_RUN`, `WATCHLIST`,
-   `DAYTRADE_WATCHLIST`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`,
-   `CASH_BUFFER_PCT` to override the defaults (`demo`, `true`, `true`, 15
-   large-caps across sectors — see the table above, same list for
-   `WATCHLIST`, `0.10`, `5`, `0.05`).
+   `DAYTRADE_WATCHLIST`, `DAYTRADE_BAR_MINUTES`, `MAX_POSITION_PCT`,
+   `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to override the defaults (`demo`,
+   `true`, `true`, 15 large-caps across sectors — see the table above, same
+   list for `WATCHLIST`, `1`, `0.10`, `5`, `0.05`).
    `DRY_RUN` and `DAYTRADE_DRY_RUN` are separate on purpose, so you can arm one
    mode without arming the other. Leave everything unset to start safely in
    demo/dry-run mode.
-4. Go to the **Actions** tab → pick a workflow → **Run workflow** to trigger
+5. Go to the **Actions** tab → pick a workflow → **Run workflow** to trigger
    it manually and check the logs, or just wait for the schedule.
 
 No terminal or local Python install required — GitHub runs it for you.
@@ -384,7 +393,7 @@ No terminal or local Python install required — GitHub runs it for you.
 ## Day trading: what "OpeningRangeConfluence" actually does, and its limits
 
 `python main.py daytrade` runs an intraday strategy (`OpeningRangeConfluence` in
-`t212bot/strategy.py`) on 5-minute bars:
+`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized bars (1-minute by default):
 
 1. **Entry** — after the first 30 minutes of the session (the "opening range"),
    it buys only if *all three* agree: price breaks above the opening-range
@@ -408,11 +417,20 @@ No terminal or local Python install required — GitHub runs it for you.
 
 **Real constraints to know before trusting this with money:**
 
-- Yahoo Finance's free intraday data is typically delayed ~15 minutes. This
-  strategy reacts to delayed prices, not live ticks — it's not built for
-  scalping or anything sub-minute.
+- Intraday data comes from Alpaca's free tier (real-time IEX feed, not
+  delayed like Yahoo's free intraday data) — but it's still single-exchange
+  IEX, not the full consolidated tape, and the trigger cadence (every 5
+  minutes by default via GitHub Actions/cron-job.org) is coarser than the
+  1-minute bars themselves. Reacting to 1-minute bars only every 5 minutes
+  still narrows the reaction window versus 5-minute bars, but this isn't
+  built for scalping or anything needing sub-minute execution.
+- Backtesting the day-trade strategy (`--daytrade`) still pulls 5-minute
+  bars regardless of `DAYTRADE_BAR_MINUTES`, to keep the backtest quick —
+  see `t212bot/backtest.py`.
 - GitHub Actions' cron scheduler fires at 5-minute granularity at best, and
-  isn't guaranteed to hit the exact minute under load.
+  isn't guaranteed to hit the exact minute under load (a third-party
+  scheduler hitting the repo's `repository_dispatch` API is a more reliable
+  alternative — see the workflow files' comments).
 - `OpeningRangeConfluence` is a reasonable, well-known starting pattern — not
   a proven edge. Backtest and dry-run it extensively before considering
   `DAYTRADE_DRY_RUN=false`, and separately again before `T212_ENV=live`.

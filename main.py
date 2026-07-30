@@ -67,8 +67,8 @@ def main() -> None:
 
     if args.command == "backtest":
         if args.daytrade:
-            print_daytrade_backtest(cfg.watchlist, args.or_minutes, args.windows or 2,
-                                     args.fee_bps, args.slippage_bps)
+            print_daytrade_backtest(cfg.watchlist, cfg.alpaca_api_key, cfg.alpaca_api_secret,
+                                     args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
@@ -81,7 +81,8 @@ def main() -> None:
     elif args.command == "run":
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
     elif args.command == "daytrade":
-        run_day_trade_cycle(cfg, OpeningRangeConfluence(or_minutes=args.or_minutes))
+        run_day_trade_cycle(cfg, OpeningRangeConfluence(or_minutes=args.or_minutes,
+                                                         bar_minutes=cfg.daytrade_bar_minutes))
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)
 

@@ -249,7 +249,11 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         tstats = trade_stats.load()
         pnl_hist = pnl_history.load()
 
-        prices = _convert_prices_fx(fetch_intraday(sorted(set(cfg.watchlist) | held_symbols)), fx_rate)
+        prices = _convert_prices_fx(
+            fetch_intraday(sorted(set(cfg.watchlist) | held_symbols), cfg.alpaca_api_key, cfg.alpaca_api_secret,
+                           timeframe=f"{cfg.daytrade_bar_minutes}Min"),
+            fx_rate,
+        )
         signals = strategy.generate_signals(prices)
 
         decisions = []

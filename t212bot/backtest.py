@@ -273,18 +273,21 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
               f"(consistency, not just a single blended average)\n")
 
 
-def print_daytrade_backtest(symbols: list, or_minutes: int = 30, n_windows: int = 2,
+def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secret: str,
+                             or_minutes: int = 30, n_windows: int = 2,
                              fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS) -> None:
-    """Backtests OpeningRangeConfluence on intraday bars. yfinance only retains
-    a limited window of 5-minute history (about 60 days), so this covers a much
-    shorter, more recent span than the swing backtest — treat it as a sanity
-    check on recent behavior, not a long-run edge validation."""
+    """Backtests OpeningRangeConfluence on intraday bars. Deliberately still
+    backtests on 5-minute bars (not the live bot's 1-minute default) -- fewer,
+    steadier bars keep this a quick sanity check rather than a slow pull of
+    tens of thousands of bars per symbol; pass a different symbol/timeframe
+    combination directly to fetch_intraday if you want to backtest 1-minute
+    behavior specifically."""
     print("Day-trade strategy: opening-range breakout + EMA/RSI confluence, 5-min bars.")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
-    print("Note: yfinance retains only ~60 days of 5-minute history, so this window is short "
-          "by nature — a recent-behavior sanity check, not a long-run edge validation.\n")
+    print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
+          "sanity check, not a long-run edge validation.\n")
 
-    price_data = fetch_intraday(symbols, period="60d", interval="5m")
+    price_data = fetch_intraday(symbols, alpaca_api_key, alpaca_api_secret, days=60, timeframe="5Min")
     if not price_data:
         print("No intraday data for any symbol.")
         return
