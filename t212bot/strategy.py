@@ -616,6 +616,106 @@ class BollingerSqueezeBreakout(Strategy):
         return SignalResult(Signal.HOLD)
 
 
+class GapFillReversal(Strategy):
+    """Day-trading strategy: buy a gap-down open that's reversing back up
+    early in the session -- a fifth, structurally distinct signal (see
+    EnsembleVote). Unlike OpeningRangeConfluence (an intraday breakout),
+    MeanReversionPullback (an EMA-anchored pullback), VWAPReclaim (a
+    volume-weighted level), or BollingerSqueezeBreakout (a volatility
+    expansion), this keys off *overnight* information -- how far today's
+    open gapped from yesterday's last close -- rather than anything
+    computed purely from today's intraday bars. Long-only, intraday bars.
+
+    Entry requires all of:
+      - gap down: today's opening print is at least min_gap_pct below
+        yesterday's last close -- a real overnight gap, not noise
+      - early session: still within early_session_bars of today's open --
+        gap dynamics (and whatever edge there is in fading them) decay
+        fast; this isn't meant to fire hours into the session
+      - reversal: the current bar's Close has both reclaimed today's
+        opening print and moved back above the lowest low the session has
+        made *before* this bar -- the gap is actively filling, not still
+        falling. (Excludes the current bar from that low on purpose, same
+        pattern as MeanReversionPullback's breakdown check -- otherwise the
+        comparison is close to tautological, since a bar's Close is always
+        within its own [Low, High].) HOLDs on a session's very first bar,
+        since there's no prior low yet to have reversed off of.
+      - momentum turning, not falling: RSI(14) between rsi_floor and
+        rsi_ceiling -- recovering from oversold, not still making new lows
+        (too low) and not already fully round-tripped (too high, nothing
+        left to fill)
+
+    Exit is a hair trigger, same philosophy as the other strategies here:
+    the current bar's Close falling back to/through the session's prior low
+    (the reversal failed), or RSI hitting rsi_exit_floor/rsi_exit_ceiling,
+    closes the position. EOD flatten is enforced by the bot's day-trading
+    cycle, not this class.
+
+    A BUY's strength averages two 0..1 sub-scores: how large the original
+    gap was (normalized by gap_strength_norm_pct -- a deeper gap scores
+    higher, more room left to fill) and how far RSI sits within the entry
+    band.
+    """
+
+    def __init__(self, min_gap_pct: float = 0.003, early_session_bars: int = 12,
+                 gap_strength_norm_pct: float = 0.01,
+                 rsi_period: int = 14, rsi_floor: float = 35, rsi_ceiling: float = 60,
+                 rsi_exit_floor: float = 20, rsi_exit_ceiling: float = 75):
+        self.min_gap_pct = min_gap_pct
+        self.early_session_bars = early_session_bars
+        self.gap_strength_norm_pct = gap_strength_norm_pct
+        self.rsi_period = rsi_period
+        self.rsi_floor = rsi_floor
+        self.rsi_ceiling = rsi_ceiling
+        self.rsi_exit_floor = rsi_exit_floor
+        self.rsi_exit_ceiling = rsi_exit_ceiling
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        return {sym: self._signal_for(df) for sym, df in prices.items()}
+
+    def _signal_for(self, df: pd.DataFrame) -> SignalResult:
+        if df.empty or len(df) < self.rsi_period + 2:
+            return SignalResult(Signal.HOLD)
+
+        today = df.index[-1].date()
+        today_bars = df[df.index.date == today]
+        prior_bars = df[df.index.date < today]
+        if today_bars.empty or prior_bars.empty:
+            return SignalResult(Signal.HOLD)
+
+        allow_entry = len(today_bars) <= self.early_session_bars
+
+        prior_close = prior_bars["Close"].iloc[-1]
+        today_open = today_bars["Open"].iloc[0]
+        gap_pct = (today_open - prior_close) / prior_close
+
+        last_close = df["Close"].iloc[-1]
+        r = rsi(df["Close"], self.rsi_period)
+        last_rsi = r.iloc[-1]
+
+        prior_today_lows = today_bars["Low"].iloc[:-1]
+        session_low_prior = prior_today_lows.min() if len(prior_today_lows) > 0 else None
+
+        gapped_down = gap_pct <= -self.min_gap_pct
+        reclaimed_open = last_close > today_open
+        off_the_low = session_low_prior is not None and last_close > session_low_prior
+        momentum_ok = self.rsi_floor <= last_rsi <= self.rsi_ceiling
+
+        broke_new_low = session_low_prior is not None and last_close <= session_low_prior
+        momentum_extreme = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
+
+        if allow_entry and gapped_down and reclaimed_open and off_the_low and momentum_ok:
+            gap_score = max(0.0, min(1.0, abs(gap_pct) / self.gap_strength_norm_pct))
+            momentum_score = max(0.0, min(1.0,
+                (last_rsi - self.rsi_floor) / (self.rsi_ceiling - self.rsi_floor)))
+            strength = (gap_score + momentum_score) / 2
+            return SignalResult(Signal.BUY, strength)
+        if broke_new_low or momentum_extreme:
+            return SignalResult(Signal.SELL)
+        return SignalResult(Signal.HOLD)
+
+
 class EnsembleVote(Strategy):
     """Combines multiple day-trade strategies, requiring at least min_votes
     of them to independently signal BUY before this wrapper signals BUY --
