@@ -160,5 +160,11 @@
     "strategy": "daytrade",
     "symbol": "NFLX",
     "pnl_pct": -0.00015149124668241935
+  },
+  {
+    "t": "2026-07-30T19:25:57Z",
+    "strategy": "daytrade",
+    "symbol": "XOM",
+    "pnl_pct": 0.0009142393129060324
   }
 ]

@@ -124,9 +124,9 @@
       "losses": 1,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "loss",
-      "total_pnl_pct": -1.4711527280964324e-05,
-      "wins": 1
+      "streak_type": "win",
+      "total_pnl_pct": 0.000899527785625068,
+      "wins": 2
     }
   }
 }
