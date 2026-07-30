@@ -24,6 +24,14 @@
       "total_pnl_pct": -0.0007817256541559816,
       "wins": 0
     },
+    "CAT": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": -0.002490372781975954,
+      "wins": 0
+    },
     "CRM": {
       "losses": 2,
       "paused_until": null,

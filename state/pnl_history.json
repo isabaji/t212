@@ -136,5 +136,11 @@
     "strategy": "daytrade",
     "symbol": "AMZN",
     "pnl_pct": -0.0002852929485893692
+  },
+  {
+    "t": "2026-07-30T18:02:16Z",
+    "strategy": "daytrade",
+    "symbol": "CAT",
+    "pnl_pct": -0.002490372781975954
   }
 ]
