@@ -147,6 +147,14 @@ class OpeningRangeConfluence(Strategy):
     coarse bar and already faded by the time it's acted on. Suppressed BUYs
     get reason="unconfirmed". 0 (or missing/short confirm_prices) disables
     this -- it's an optional extra check, not a requirement.
+
+    min_ema_spread_pct: hard entry gate (backtest-only experiment, not yet
+    used by the live bot). Unlike ema_strength_norm_pct -- which only scales
+    a BUY's strength score -- this rejects a setup outright (HOLD,
+    reason="weak_trend") if (fast EMA - slow EMA) / slow EMA falls short of
+    this fraction, i.e. the EMAs have barely separated. None disables the
+    gate (default), matching prior behavior where any uptrend, however
+    marginal, was an eligible entry.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
@@ -156,7 +164,8 @@ class OpeningRangeConfluence(Strategy):
                  breakout_strength_norm_pct: float = 0.005,
                  ema_strength_norm_pct: float = 0.01,
                  max_chase_pct: float | None = 0.02,
-                 confirm_bars: int = 3):
+                 confirm_bars: int = 3,
+                 min_ema_spread_pct: float | None = None):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -170,6 +179,7 @@ class OpeningRangeConfluence(Strategy):
         self.ema_strength_norm_pct = ema_strength_norm_pct
         self.max_chase_pct = max_chase_pct
         self.confirm_bars = confirm_bars
+        self.min_ema_spread_pct = min_ema_spread_pct
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
                           confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
@@ -206,6 +216,9 @@ class OpeningRangeConfluence(Strategy):
         momentum_fade = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
 
         if breakout_up and uptrend and bullish_momentum:
+            ema_spread_pct = (last_fast - last_slow) / last_slow
+            if self.min_ema_spread_pct is not None and ema_spread_pct < self.min_ema_spread_pct:
+                return SignalResult(Signal.HOLD, reason="weak_trend")
             breakout_pct = (last_close - or_high) / or_high
             if self.max_chase_pct is not None and breakout_pct > self.max_chase_pct:
                 return SignalResult(Signal.HOLD, reason="chased")
@@ -216,8 +229,7 @@ class OpeningRangeConfluence(Strategy):
             breakout_score = max(0.0, min(1.0, breakout_pct / self.breakout_strength_norm_pct))
             momentum_score = max(0.0, min(1.0,
                 (last_rsi - self.rsi_buy_min) / (self.rsi_buy_max - self.rsi_buy_min)))
-            trend_score = max(0.0, min(1.0,
-                ((last_fast - last_slow) / last_slow) / self.ema_strength_norm_pct))
+            trend_score = max(0.0, min(1.0, ema_spread_pct / self.ema_strength_norm_pct))
             strength = (breakout_score + momentum_score + trend_score) / 3
             return SignalResult(Signal.BUY, strength)
         if breakdown or trend_flip_down or momentum_fade:

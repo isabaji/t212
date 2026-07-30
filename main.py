@@ -57,6 +57,15 @@ def main() -> None:
     parser.add_argument("--take-profit-pct", type=float, default=None,
                          help="backtest --daytrade only: fixed take-profit as a fraction of entry price "
                               "(e.g. 0.006 for 0.6%%), checked against each bar's High (off by default)")
+    parser.add_argument("--rsi-buy-min", type=float, default=None,
+                         help="backtest --daytrade only: lower bound of the RSI buy band "
+                              "(default: strategy default 50)")
+    parser.add_argument("--rsi-buy-max", type=float, default=None,
+                         help="backtest --daytrade only: upper bound of the RSI buy band "
+                              "(default: strategy default 70)")
+    parser.add_argument("--min-ema-spread-pct", type=float, default=None,
+                         help="backtest --daytrade only: hard minimum EMA(9)/EMA(21) spread required to "
+                              "enter, as a fraction of the slow EMA e.g. 0.001 for 0.1%% (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -78,10 +87,15 @@ def main() -> None:
     if args.command == "backtest":
         if args.daytrade:
             confirm_bars = args.confirm_bars if args.confirm_bars is not None else cfg.daytrade_confirm_bars
+            rsi_buy_range = None
+            if args.rsi_buy_min is not None or args.rsi_buy_max is not None:
+                rsi_buy_range = (args.rsi_buy_min if args.rsi_buy_min is not None else 50,
+                                  args.rsi_buy_max if args.rsi_buy_max is not None else 70)
             print_daytrade_backtest(cfg.watchlist, cfg.alpaca_api_key, cfg.alpaca_api_secret,
                                      args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps,
                                      confirm_bars=confirm_bars,
-                                     stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct)
+                                     stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct,
+                                     rsi_buy_range=rsi_buy_range, min_ema_spread_pct=args.min_ema_spread_pct)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
