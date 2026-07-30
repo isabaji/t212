@@ -225,6 +225,13 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
     and stale (pre-market/weekend/lagged) data blocks new entries outright —
     it's still fine for closing an existing position, since that executes at
     the live market price regardless of the reference price we last saw.
+
+    A held position is also force-closed if the latest bar's Low/High
+    touches cfg.daytrade_stop_loss_pct/daytrade_take_profit_pct away from
+    the actual average fill price (from Trading212, not an estimate) —
+    checked every cycle before the strategy's own signal, same as the EOD
+    flatten. This is a polling check against each completed bar's range,
+    not a resting broker order.
     """
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
@@ -303,6 +310,37 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"EOD flatten — closed {qty:g} shares."))
                 continue
+
+            if holding and (cfg.daytrade_stop_loss_pct or cfg.daytrade_take_profit_pct):
+                avg_price = float(positions[t212_ticker]["averagePrice"])
+                stop_price = avg_price * (1 - cfg.daytrade_stop_loss_pct) if cfg.daytrade_stop_loss_pct else None
+                target_price = avg_price * (1 + cfg.daytrade_take_profit_pct) if cfg.daytrade_take_profit_pct else None
+                bar_low, bar_high = float(df["Low"].iloc[-1]), float(df["High"].iloc[-1])
+                hit_stop = stop_price is not None and bar_low <= stop_price
+                hit_target = target_price is not None and bar_high >= target_price
+                # Checked against the just-completed bar's Low/High, same
+                # granularity the backtest validated this against -- not
+                # placed as a resting broker order, so a move that touches
+                # and reverses within one bar is still caught (the bar's
+                # range covers it) but only detected on the next cycle, not
+                # instantly. If both are touched in the same bar, the stop
+                # takes priority (can't know which happened first intrabar).
+                if hit_stop or hit_target:
+                    qty = float(positions[t212_ticker]["quantity"])
+                    reason = "stop-loss" if hit_stop else "take-profit"
+                    if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, f"SELL ({reason})"):
+                        decisions.append(history.decision(sym, "warning", "Skipped",
+                                          f"{reason} order rejected by Trading212 -- position may already be closed."))
+                        continue
+                    pnl_pct = (last_price - avg_price) * qty / account_value
+                    daily_target.record_trade_pct(daily_state, pnl_pct)
+                    portfolio_risk.record_trade_pct(pr_state, pnl_pct)
+                    trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
+                                              cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
+                    pnl_history.record_trade(pnl_hist, "daytrade", sym, pnl_pct)
+                    decisions.append(history.decision(sym, "serious", "Sell",
+                                                       f"Closed {qty:g} shares ({reason} hit)."))
+                    continue
 
             if bar_age_minutes > STALE_BAR_MINUTES:
                 log.info("%s: latest bar is %.0f min old, market likely closed, skipping new entries",

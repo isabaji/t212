@@ -70,6 +70,8 @@ Key settings in `.env`:
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
 | `DAYTRADE_BAR_MINUTES` | `5` | Bar size for the day-trade strategy's intraday data (Alpaca) |
 | `DAYTRADE_CONFIRM_BARS` | `3` | Entries only: require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it |
+| `DAYTRADE_MIN_EMA_SPREAD_PCT` | `0.001` | Entries only: reject a breakout unless EMA(9)/EMA(21) have separated by at least this fraction of the slow EMA — `0` disables it |
+| `DAYTRADE_STOP_LOSS_PCT` / `DAYTRADE_TAKE_PROFIT_PCT` | `0.01` / `0.02` | Day-trade bot only: force-exit a position if the latest bar's Low/High crosses this far from the actual average fill price — `0` disables either side independently |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
@@ -358,10 +360,10 @@ They're independent — enable one, both, or neither. To turn them on:
    - Name: `ALPACA_API_SECRET` — Value: the matching Alpaca API secret
 4. (Optional) **Also under Secrets** (not Variables — see the note below), add
    any of `T212_ENV`, `DRY_RUN`, `DAYTRADE_DRY_RUN`, `WATCHLIST`,
-   `DAYTRADE_WATCHLIST`, `DAYTRADE_BAR_MINUTES`, `MAX_POSITION_PCT`,
-   `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to override the defaults (`demo`,
-   `true`, `true`, 15 large-caps across sectors — see the table above, same
-   list for `WATCHLIST`, `1`, `0.10`, `5`, `0.05`).
+   `DAYTRADE_WATCHLIST`, `DAYTRADE_BAR_MINUTES`, `DAYTRADE_CONFIRM_BARS`,
+   `DAYTRADE_MIN_EMA_SPREAD_PCT`, `DAYTRADE_STOP_LOSS_PCT`,
+   `DAYTRADE_TAKE_PROFIT_PCT`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`,
+   `CASH_BUFFER_PCT` to override the defaults — see the env var table above.
    `DRY_RUN` and `DAYTRADE_DRY_RUN` are separate on purpose, so you can arm one
    mode without arming the other. Leave everything unset to start safely in
    demo/dry-run mode.
@@ -408,10 +410,19 @@ No terminal or local Python install required — GitHub runs it for you.
    **1-minute** closes above the opening-range high, regardless of
    `DAYTRADE_BAR_MINUTES` — catches a breakout that spiked above the range on
    one coarse bar and had already faded by the time the bot checked again.
+   `DAYTRADE_MIN_EMA_SPREAD_PCT` (default `0.001`, 0 disables it) adds a
+   further hard gate: the fast/slow EMA spread must be at least this fraction
+   of the slow EMA, rejecting breakouts riding a barely-there "uptrend" —
+   this is what most improved the backtest's win rate (see below).
 2. **Exit** — a hair trigger by comparison: *any one* of a breakdown below the
    opening-range low, the EMA trend flipping down, or RSI going overbought/
-   oversold closes the position. The confirmation gate above only applies to
-   entries — exits stay immediate on purpose.
+   oversold closes the position. The confirmation gate and EMA-spread gate
+   above only apply to entries — exits stay immediate on purpose. On top of
+   the signal-based exit, `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT`
+   (default `0.01`/`0.02`, 0 disables either side) force-close the position
+   if the latest bar's Low/High crosses that far from the real average fill
+   price — checked every cycle, not a resting broker order (see
+   `run_day_trade_cycle` in `t212bot/bot.py`).
 3. **End-of-day flatten** — regardless of what the strategy signals, any open
    position is force-closed once the exchange-local time is within 15 minutes
    of the close (`t212bot/bot.py: run_day_trade_cycle`). No position is ever
@@ -420,9 +431,24 @@ No terminal or local Python install required — GitHub runs it for you.
    isn't enough session left to manage them.
 4. **Stale-data guard** — if the latest available bar is more than 20 minutes
    old (pre-market, weekend, a holiday, or just data lag), new entries are
-   skipped. Closing an existing position still goes through even on stale
-   data, since a market order fills at the live venue price regardless of the
-   reference price the bot last saw.
+   skipped. Closing an existing position (signal exit, stop-loss/take-profit,
+   or EOD flatten) still goes through even on stale data, since a market
+   order fills at the live venue price regardless of the reference price the
+   bot last saw.
+
+**Backtest evidence behind the defaults above:** across a 60-day walk-forward
+backtest on the 30-symbol watchlist, the un-tuned strategy's win rate (30.5%)
+sat about 3 percentage points below the breakeven rate implied by its own
+reward:risk. Narrowing the RSI buy band didn't help (made things marginally
+worse); the EMA-spread gate did — raising win rate to 33.1% and cutting
+average drawdown by roughly a third. Layering `DAYTRADE_STOP_LOSS_PCT`/
+`DAYTRADE_TAKE_PROFIT_PCT` on top compounds the risk reduction (lowest
+average drawdown and highest profitable-window rate of everything tested)
+without materially changing the return. None of this makes the backtested
+strategy net-profitable on that 60-day sample — these are the least-bad,
+most-de-risked settings found, not a validated edge. See
+`t212bot/backtest.py` and `python main.py backtest --daytrade` to reproduce
+or re-tune.
 
 **Real constraints to know before trusting this with money:**
 

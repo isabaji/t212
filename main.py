@@ -110,7 +110,8 @@ def main() -> None:
     elif args.command == "daytrade":
         run_day_trade_cycle(cfg, OpeningRangeConfluence(or_minutes=args.or_minutes,
                                                          bar_minutes=cfg.daytrade_bar_minutes,
-                                                         confirm_bars=cfg.daytrade_confirm_bars))
+                                                         confirm_bars=cfg.daytrade_confirm_bars,
+                                                         min_ema_spread_pct=cfg.daytrade_min_ema_spread_pct or None))
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)
 

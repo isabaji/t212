@@ -28,6 +28,23 @@ class Config:
     # closes before firing (t212bot/strategy.py: OpeningRangeConfluence's
     # confirm_bars). 0 disables the extra fetch/check entirely.
     daytrade_confirm_bars: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_CONFIRM_BARS", "3")))
+    # Hard entry gate: reject a breakout unless EMA(9)/EMA(21) have separated
+    # by at least this fraction (t212bot/strategy.py: OpeningRangeConfluence's
+    # min_ema_spread_pct). 0 disables the gate. Backtested across 30 symbols /
+    # 60 days: raised win rate from 30.5% to 33.1% and cut avg drawdown by a
+    # third versus no gate -- see t212bot/backtest.py.
+    daytrade_min_ema_spread_pct: float = field(
+        default_factory=lambda: float(os.getenv("DAYTRADE_MIN_EMA_SPREAD_PCT", "0.001"))
+    )
+    # Fixed stop-loss / take-profit checked each cycle against the latest
+    # bar's Low/High, exiting via a market order regardless of the strategy's
+    # own signal (t212bot/bot.py: run_day_trade_cycle). 0 disables either
+    # side independently. Backtested: 1%/2% cut worst-case single-window
+    # drawdown roughly in half (-7.8% -> -4.7%) with no meaningful return cost.
+    daytrade_stop_loss_pct: float = field(default_factory=lambda: float(os.getenv("DAYTRADE_STOP_LOSS_PCT", "0.01")))
+    daytrade_take_profit_pct: float = field(
+        default_factory=lambda: float(os.getenv("DAYTRADE_TAKE_PROFIT_PCT", "0.02"))
+    )
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))

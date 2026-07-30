@@ -58,6 +58,12 @@ jobs:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
           DAYTRADE_BAR_MINUTES: ${{ secrets.DAYTRADE_BAR_MINUTES || '5' }}
+          DAYTRADE_CONFIRM_BARS: ${{ secrets.DAYTRADE_CONFIRM_BARS || '3' }}
+          # Entry filter + fixed stop-loss/take-profit -- backtested across 30
+          # symbols / 60 days, see t212bot/backtest.py and t212bot/strategy.py.
+          DAYTRADE_MIN_EMA_SPREAD_PCT: ${{ secrets.DAYTRADE_MIN_EMA_SPREAD_PCT || '0.001' }}
+          DAYTRADE_STOP_LOSS_PCT: ${{ secrets.DAYTRADE_STOP_LOSS_PCT || '0.01' }}
+          DAYTRADE_TAKE_PROFIT_PCT: ${{ secrets.DAYTRADE_TAKE_PROFIT_PCT || '0.02' }}
           T212_ENV: ${{ secrets.T212_ENV || 'demo' }}
           # Separate from the swing bot's DRY_RUN so you arm each mode independently.
           DRY_RUN: ${{ github.event.inputs.dry_run || secrets.DAYTRADE_DRY_RUN || 'true' }}
