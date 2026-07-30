@@ -19,7 +19,7 @@ import pandas as pd
 
 from .data import fetch_history, fetch_intraday
 from .indicators import atr as compute_atr
-from .strategy import OpeningRangeConfluence, SMACrossover, Signal
+from .strategy import MeanReversionPullback, OpeningRangeConfluence, SMACrossover, Signal
 
 TRADING_DAYS_PER_YEAR = 252
 # Trading212 charges no commission on stock trades; the real cost is the
@@ -332,47 +332,60 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              min_strength: float | None = None,
                              min_volume_ratio: float | None = None,
                              require_retest: bool = False,
-                             retest_tolerance_pct: float = 0.003) -> None:
-    """Backtests OpeningRangeConfluence on intraday bars. Always backtests the
+                             retest_tolerance_pct: float = 0.003,
+                             strategy_name: str = "orb") -> None:
+    """Backtests a day-trade strategy on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
     sanity check rather than a slow pull of tens of thousands of bars per
     symbol.
 
-    confirm_bars > 0 additionally pulls 1-minute bars and exercises the same
-    confirm_bars entry gate the live bot uses (see OpeningRangeConfluence) --
-    the whole point being to compare against a confirm_bars=0 run before
-    trusting the gate live.
+    strategy_name: "orb" (default) is OpeningRangeConfluence -- all the
+    params below except stop_loss_pct/take_profit_pct only apply to it.
+    "mean_reversion" is MeanReversionPullback, tested with its own code
+    defaults for now (no CLI knobs yet); confirm_bars/rsi_buy_range/
+    min_ema_spread_pct/min_strength/min_volume_ratio/require_retest are
+    silently ignored in that mode since none of them apply to it.
 
-    stop_loss_pct / take_profit_pct (optional): fixed-percentage exits checked
-    against each bar's Low/High -- see _build_trades. The live bot doesn't
-    place either order today; this is for evaluating whether it should.
+    confirm_bars > 0 (orb only) additionally pulls 1-minute bars and
+    exercises the same confirm_bars entry gate the live bot uses (see
+    OpeningRangeConfluence) -- the whole point being to compare against a
+    confirm_bars=0 run before trusting the gate live.
+
+    stop_loss_pct / take_profit_pct (optional, either strategy): fixed-
+    percentage exits checked against each bar's Low/High -- see
+    _build_trades. The live bot doesn't place either order today for
+    mean_reversion; for orb, see run_day_trade_cycle.
 
     rsi_buy_range / min_ema_spread_pct / min_strength / min_volume_ratio
-    (optional): entry-side experiments -- see OpeningRangeConfluence. None
-    uses the strategy's own defaults (no gate).
+    (optional, orb only): entry-side experiments -- see
+    OpeningRangeConfluence. None uses the strategy's own defaults (no gate).
 
-    require_retest / retest_tolerance_pct: replaces the entry trigger itself
-    with a pullback-and-hold retest of the opening-range high instead of
-    buying the first breakout bar -- see OpeningRangeConfluence."""
-    header = ["Day-trade strategy: opening-range breakout"
-              + (" + retest" if require_retest else "") + " + EMA/RSI confluence, 5-min bars"]
-    if confirm_bars:
-        header.append(f"{confirm_bars}-bar 1-min confirmation")
+    require_retest / retest_tolerance_pct (orb only): replaces the entry
+    trigger itself with a pullback-and-hold retest of the opening-range high
+    instead of buying the first breakout bar -- see OpeningRangeConfluence."""
+    is_mr = strategy_name == "mean_reversion"
+    if is_mr:
+        header = ["Day-trade strategy: mean-reversion pullback + EMA/RSI confluence, 5-min bars"]
+    else:
+        header = ["Day-trade strategy: opening-range breakout"
+                  + (" + retest" if require_retest else "") + " + EMA/RSI confluence, 5-min bars"]
+        if confirm_bars:
+            header.append(f"{confirm_bars}-bar 1-min confirmation")
+        if rsi_buy_range:
+            header.append(f"RSI buy band {rsi_buy_range[0]:.0f}-{rsi_buy_range[1]:.0f}")
+        if min_ema_spread_pct:
+            header.append(f"min EMA spread {min_ema_spread_pct:.2%}")
+        if min_strength:
+            header.append(f"min strength {min_strength:.2f}")
+        if min_volume_ratio:
+            header.append(f"min volume ratio {min_volume_ratio:.2f}x")
+        if require_retest:
+            header.append(f"retest tolerance {retest_tolerance_pct:.2%}")
     if stop_loss_pct or take_profit_pct:
         sl = f"{stop_loss_pct:.1%} stop-loss" if stop_loss_pct else "no stop-loss"
         tp = f"{take_profit_pct:.1%} take-profit" if take_profit_pct else "no take-profit"
         header.append(f"{sl} / {tp}")
-    if rsi_buy_range:
-        header.append(f"RSI buy band {rsi_buy_range[0]:.0f}-{rsi_buy_range[1]:.0f}")
-    if min_ema_spread_pct:
-        header.append(f"min EMA spread {min_ema_spread_pct:.2%}")
-    if min_strength:
-        header.append(f"min strength {min_strength:.2f}")
-    if min_volume_ratio:
-        header.append(f"min volume ratio {min_volume_ratio:.2f}x")
-    if require_retest:
-        header.append(f"retest tolerance {retest_tolerance_pct:.2%}")
     print(", ".join(header) + ".")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
     print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
@@ -384,19 +397,24 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         return
 
     confirm_data = {}
-    if confirm_bars:
+    if confirm_bars and not is_mr:
         confirm_data = fetch_intraday(list(price_data.keys()), alpaca_api_key, alpaca_api_secret,
                                        days=60, timeframe="1Min")
+
+    def strategy_factory():
+        if is_mr:
+            return MeanReversionPullback()
+        return OpeningRangeConfluence(
+            or_minutes=or_minutes, confirm_bars=confirm_bars,
+            rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,
+            min_strength=min_strength, min_volume_ratio=min_volume_ratio,
+            require_retest=require_retest, retest_tolerance_pct=retest_tolerance_pct)
 
     bars_per_day = 78  # ~6.5h US session / 5-min bars
     for sym, df in price_data.items():
         try:
             windows = walk_forward(
-                lambda: OpeningRangeConfluence(
-                    or_minutes=or_minutes, confirm_bars=confirm_bars,
-                    rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,
-                    min_strength=min_strength, min_volume_ratio=min_volume_ratio,
-                    require_retest=require_retest, retest_tolerance_pct=retest_tolerance_pct),
+                strategy_factory,
                 df, n_windows, fee_bps, slippage_bps, min_bars=bars_per_day,
                 periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day,
                 confirm_df=confirm_data.get(sym),

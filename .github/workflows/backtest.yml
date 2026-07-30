@@ -73,6 +73,13 @@ on:
         description: 'With require_retest: how far below the opening-range high a pullback may go and still count as a valid retest (blank = strategy default 0.003 = 0.3%%)'
         type: string
         default: ''
+      strategy:
+        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout) or mean_reversion (buy pullbacks to the fast EMA instead)'
+        type: choice
+        options:
+          - orb
+          - mean_reversion
+        default: orb
 
 jobs:
   backtest:
@@ -109,5 +116,6 @@ jobs:
           if [ -n "${{ inputs.min_volume_ratio }}" ]; then ARGS="$ARGS --min-volume-ratio ${{ inputs.min_volume_ratio }}"; fi
           if [ "${{ inputs.require_retest }}" = "true" ]; then ARGS="$ARGS --require-retest"; fi
           if [ -n "${{ inputs.retest_tolerance_pct }}" ]; then ARGS="$ARGS --retest-tolerance-pct ${{ inputs.retest_tolerance_pct }}"; fi
+          if [ -n "${{ inputs.strategy }}" ]; then ARGS="$ARGS --strategy ${{ inputs.strategy }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS

@@ -304,3 +304,113 @@ class OpeningRangeConfluence(Strategy):
         if breakdown or trend_flip_down or momentum_fade:
             return SignalResult(Signal.SELL)
         return SignalResult(Signal.HOLD)
+
+
+class MeanReversionPullback(Strategy):
+    """Day-trading strategy: buy pullbacks to the fast EMA within an
+    established uptrend, instead of chasing breakouts (see
+    OpeningRangeConfluence). A genuinely different bet, not a variant of the
+    breakout strategy's entry: that every backtest this session confirmed
+    OpeningRangeConfluence's breakouts have a ~30% win rate ceiling regardless
+    of how the initial-breakout trigger is filtered or replaced with a retest
+    suggests these liquid large-caps may mean-revert intraday more reliably
+    than they trend. Long-only, intended for intraday bars (e.g. 5-minute).
+
+    Entry requires all of:
+      - uptrend: fast EMA above slow EMA (the near-term trend is up)
+      - pullback: the current bar's Low came down to within pullback_band_pct
+        of the fast EMA (a genuine dip toward/through it, not just drifting
+        near it)
+      - bounce: the current bar's Close has reclaimed the fast EMA, i.e. the
+        pullback found support and reversed within the same bar it dipped in
+      - momentum band: RSI(14) between rsi_floor and rsi_ceiling -- cooled
+        off enough to be a real pullback (rules out buying a shallow wiggle
+        or an already-overbought bounce with no room left) but not so
+        depressed it looks like a real breakdown wearing a pullback's face
+
+    max_chase_pct: if price has already run more than this fraction above
+    the fast EMA by the time the signal is evaluated, the BUY is suppressed
+    (HOLD, reason="chased") -- same anti-chase idea as OpeningRangeConfluence,
+    applied to how far the bounce has already gone rather than a breakout.
+
+    A BUY's strength averages three 0..1 sub-scores: how wide the EMA
+    spread is (trend conviction), how deep the pullback was relative to the
+    fast EMA (deeper, within the band, means more room for the bounce to
+    run), and how far RSI sits from rsi_ceiling (lower RSI within the band
+    scores higher -- bought closer to the dip's low, not after it's already
+    recovered most of the way).
+
+    Exit is a hair trigger, same philosophy as OpeningRangeConfluence: any
+    one of the trend flipping down, price closing below the lowest low of
+    the trailing pullback_lookback_bars (the level this bounce is supposed
+    to be defending), or RSI hitting either exit_floor or exit_ceiling
+    closes the position. EOD flatten is enforced by the bot's day-trading
+    cycle (run_day_trade_cycle), not this class.
+    """
+
+    def __init__(self, ema_fast: int = 9, ema_slow: int = 21, rsi_period: int = 14,
+                 pullback_band_pct: float = 0.002,
+                 rsi_floor: float = 35, rsi_ceiling: float = 60,
+                 rsi_exit_floor: float = 25, rsi_exit_ceiling: float = 75,
+                 max_chase_pct: float | None = 0.01,
+                 pullback_lookback_bars: int = 12,
+                 pullback_strength_norm_pct: float = 0.005,
+                 ema_strength_norm_pct: float = 0.01):
+        if ema_fast >= ema_slow:
+            raise ValueError("ema_fast must be shorter than ema_slow")
+        self.ema_fast = ema_fast
+        self.ema_slow = ema_slow
+        self.rsi_period = rsi_period
+        self.pullback_band_pct = pullback_band_pct
+        self.rsi_floor = rsi_floor
+        self.rsi_ceiling = rsi_ceiling
+        self.rsi_exit_floor = rsi_exit_floor
+        self.rsi_exit_ceiling = rsi_exit_ceiling
+        self.max_chase_pct = max_chase_pct
+        self.pullback_lookback_bars = pullback_lookback_bars
+        self.pullback_strength_norm_pct = pullback_strength_norm_pct
+        self.ema_strength_norm_pct = ema_strength_norm_pct
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        return {sym: self._signal_for(df) for sym, df in prices.items()}
+
+    def _signal_for(self, df: pd.DataFrame) -> SignalResult:
+        min_bars = max(self.ema_slow, self.pullback_lookback_bars) + 1
+        if df.empty or len(df) < min_bars:
+            return SignalResult(Signal.HOLD)
+
+        close = df["Close"]
+        fast = ema(close, self.ema_fast)
+        slow = ema(close, self.ema_slow)
+        r = rsi(close, self.rsi_period)
+
+        last_close = close.iloc[-1]
+        last_low = df["Low"].iloc[-1]
+        last_fast, last_slow, last_rsi = fast.iloc[-1], slow.iloc[-1], r.iloc[-1]
+
+        uptrend = last_fast > last_slow
+        dipped_to_fast_ema = last_low <= last_fast * (1 + self.pullback_band_pct)
+        reclaimed = last_close > last_fast
+        momentum_ok = self.rsi_floor <= last_rsi <= self.rsi_ceiling
+
+        recent_low = df["Low"].iloc[-self.pullback_lookback_bars - 1:-1].min()
+        trend_flip_down = last_fast < last_slow
+        breakdown = last_close < recent_low
+        momentum_extreme = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
+
+        if uptrend and dipped_to_fast_ema and reclaimed and momentum_ok:
+            chase_pct = (last_close - last_fast) / last_fast
+            if self.max_chase_pct is not None and chase_pct > self.max_chase_pct:
+                return SignalResult(Signal.HOLD, reason="chased")
+            ema_spread_pct = (last_fast - last_slow) / last_slow
+            trend_score = max(0.0, min(1.0, ema_spread_pct / self.ema_strength_norm_pct))
+            pullback_depth_pct = (last_fast - last_low) / last_fast
+            pullback_score = max(0.0, min(1.0, pullback_depth_pct / self.pullback_strength_norm_pct))
+            momentum_score = max(0.0, min(1.0,
+                (self.rsi_ceiling - last_rsi) / (self.rsi_ceiling - self.rsi_floor)))
+            strength = (trend_score + pullback_score + momentum_score) / 3
+            return SignalResult(Signal.BUY, strength)
+        if trend_flip_down or breakdown or momentum_extreme:
+            return SignalResult(Signal.SELL)
+        return SignalResult(Signal.HOLD)

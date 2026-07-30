@@ -82,6 +82,12 @@ def main() -> None:
                          help="backtest --daytrade only: with --require-retest, how far below the "
                               "opening-range high a pullback may go and still count as a valid retest "
                               "(default 0.003 = 0.3%%)")
+    parser.add_argument("--strategy", choices=["orb", "mean_reversion"], default="orb",
+                         help="backtest --daytrade only: 'orb' (default) is OpeningRangeConfluence -- all "
+                              "the --confirm-bars/--rsi-buy-*/--min-*/--require-retest flags above only "
+                              "apply to it. 'mean_reversion' is MeanReversionPullback (buys pullbacks to "
+                              "the fast EMA within an uptrend instead of chasing breakouts), tested with "
+                              "its own code defaults for now")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -114,7 +120,8 @@ def main() -> None:
                                      rsi_buy_range=rsi_buy_range, min_ema_spread_pct=args.min_ema_spread_pct,
                                      min_strength=args.min_strength, min_volume_ratio=args.min_volume_ratio,
                                      require_retest=args.require_retest,
-                                     retest_tolerance_pct=args.retest_tolerance_pct)
+                                     retest_tolerance_pct=args.retest_tolerance_pct,
+                                     strategy_name=args.strategy)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
