@@ -19,7 +19,14 @@ import pandas as pd
 
 from .data import fetch_history, fetch_intraday
 from .indicators import atr as compute_atr
-from .strategy import MeanReversionPullback, OpeningRangeConfluence, SMACrossover, Signal
+from .strategy import (
+    EnsembleVote,
+    MeanReversionPullback,
+    OpeningRangeConfluence,
+    SMACrossover,
+    Signal,
+    VWAPReclaim,
+)
 
 TRADING_DAYS_PER_YEAR = 252
 # Trading212 charges no commission on stock trades; the real cost is the
@@ -343,19 +350,23 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     strategy_name: "orb" (default) is OpeningRangeConfluence -- all the
     params below except stop_loss_pct/take_profit_pct only apply to it.
     "mean_reversion" is MeanReversionPullback, tested with its own code
-    defaults for now (no CLI knobs yet); confirm_bars/rsi_buy_range/
-    min_ema_spread_pct/min_strength/min_volume_ratio/require_retest are
-    silently ignored in that mode since none of them apply to it.
+    defaults for now (no CLI knobs yet). "ensemble" is EnsembleVote wrapping
+    all three of OpeningRangeConfluence + MeanReversionPullback + VWAPReclaim
+    (each at its own code defaults, orb with confirm_bars=0 since no
+    1-minute data is fetched for this mode) -- requires all three to agree
+    before a BUY fires. confirm_bars/rsi_buy_range/min_ema_spread_pct/
+    min_strength/min_volume_ratio/require_retest are silently ignored
+    outside "orb" mode since none of them apply to the other strategies.
 
     confirm_bars > 0 (orb only) additionally pulls 1-minute bars and
     exercises the same confirm_bars entry gate the live bot uses (see
     OpeningRangeConfluence) -- the whole point being to compare against a
     confirm_bars=0 run before trusting the gate live.
 
-    stop_loss_pct / take_profit_pct (optional, either strategy): fixed-
+    stop_loss_pct / take_profit_pct (optional, any strategy_name): fixed-
     percentage exits checked against each bar's Low/High -- see
-    _build_trades. The live bot doesn't place either order today for
-    mean_reversion; for orb, see run_day_trade_cycle.
+    _build_trades. None of these strategies place either order live today;
+    for orb, see run_day_trade_cycle.
 
     rsi_buy_range / min_ema_spread_pct / min_strength / min_volume_ratio
     (optional, orb only): entry-side experiments -- see
@@ -364,9 +375,11 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     require_retest / retest_tolerance_pct (orb only): replaces the entry
     trigger itself with a pullback-and-hold retest of the opening-range high
     instead of buying the first breakout bar -- see OpeningRangeConfluence."""
-    is_mr = strategy_name == "mean_reversion"
-    if is_mr:
+    if strategy_name == "mean_reversion":
         header = ["Day-trade strategy: mean-reversion pullback + EMA/RSI confluence, 5-min bars"]
+    elif strategy_name == "ensemble":
+        header = ["Day-trade strategy: ensemble vote (opening-range breakout + "
+                   "mean-reversion pullback + VWAP reclaim must all agree), 5-min bars"]
     else:
         header = ["Day-trade strategy: opening-range breakout"
                   + (" + retest" if require_retest else "") + " + EMA/RSI confluence, 5-min bars"]
@@ -397,13 +410,19 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         return
 
     confirm_data = {}
-    if confirm_bars and not is_mr:
+    if confirm_bars and strategy_name == "orb":
         confirm_data = fetch_intraday(list(price_data.keys()), alpaca_api_key, alpaca_api_secret,
                                        days=60, timeframe="1Min")
 
     def strategy_factory():
-        if is_mr:
+        if strategy_name == "mean_reversion":
             return MeanReversionPullback()
+        if strategy_name == "ensemble":
+            return EnsembleVote([
+                OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=0),
+                MeanReversionPullback(),
+                VWAPReclaim(),
+            ])
         return OpeningRangeConfluence(
             or_minutes=or_minutes, confirm_bars=confirm_bars,
             rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,

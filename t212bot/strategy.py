@@ -9,7 +9,7 @@ from enum import Enum
 
 import pandas as pd
 
-from .indicators import ema, rsi
+from .indicators import ema, rsi, vwap
 
 
 class Signal(Enum):
@@ -446,3 +446,112 @@ class MeanReversionPullback(Strategy):
         if trend_flip_down or breakdown or momentum_extreme:
             return SignalResult(Signal.SELL)
         return SignalResult(Signal.HOLD)
+
+
+class VWAPReclaim(Strategy):
+    """Day-trading strategy: buy when price reclaims the session's
+    volume-weighted average price (VWAP) from below, with RSI confirming
+    momentum. A third, structurally distinct signal (see EnsembleVote) --
+    unlike OpeningRangeConfluence (a fixed opening-range level) or
+    MeanReversionPullback (EMA-based pullback depth), VWAP is anchored to
+    cumulative traded volume for the session, resets every day, and reacts
+    to volume directly rather than only price. Long-only, intraday bars.
+
+    Entry requires both:
+      - reclaim: the previous bar closed at or below VWAP and the current
+        bar closed above it -- price just crossed back above the session's
+        volume-weighted "fair value", not merely drifting above a level it
+        was already clear of
+      - momentum band: RSI(14) between rsi_floor and rsi_ceiling -- real
+        confirming momentum, not overbought or still negative
+
+    Exit is a hair trigger: price closing back below VWAP, or RSI hitting
+    rsi_exit_floor/rsi_exit_ceiling, closes the position. EOD flatten is
+    enforced by the bot's day-trading cycle, not this class.
+
+    A BUY's strength averages two 0..1 sub-scores: how far price has
+    reclaimed above VWAP (normalized by vwap_distance_norm_pct) and how far
+    RSI sits above rsi_floor within the entry band.
+    """
+
+    def __init__(self, rsi_period: int = 14, rsi_floor: float = 45, rsi_ceiling: float = 70,
+                 rsi_exit_floor: float = 30, rsi_exit_ceiling: float = 80,
+                 vwap_distance_norm_pct: float = 0.003):
+        self.rsi_period = rsi_period
+        self.rsi_floor = rsi_floor
+        self.rsi_ceiling = rsi_ceiling
+        self.rsi_exit_floor = rsi_exit_floor
+        self.rsi_exit_ceiling = rsi_exit_ceiling
+        self.vwap_distance_norm_pct = vwap_distance_norm_pct
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        return {sym: self._signal_for(df) for sym, df in prices.items()}
+
+    def _signal_for(self, df: pd.DataFrame) -> SignalResult:
+        if df.empty or len(df) < self.rsi_period + 2 or "Volume" not in df.columns:
+            return SignalResult(Signal.HOLD)
+
+        v = vwap(df)
+        r = rsi(df["Close"], self.rsi_period)
+        last_close, prev_close = df["Close"].iloc[-1], df["Close"].iloc[-2]
+        last_vwap, prev_vwap = v.iloc[-1], v.iloc[-2]
+        last_rsi = r.iloc[-1]
+        if pd.isna(prev_vwap) or pd.isna(last_vwap):
+            return SignalResult(Signal.HOLD)
+
+        reclaimed = prev_close <= prev_vwap and last_close > last_vwap
+        momentum_ok = self.rsi_floor <= last_rsi <= self.rsi_ceiling
+        below_vwap = last_close < last_vwap
+        momentum_extreme = last_rsi < self.rsi_exit_floor or last_rsi > self.rsi_exit_ceiling
+
+        if reclaimed and momentum_ok:
+            distance_pct = (last_close - last_vwap) / last_vwap
+            distance_score = max(0.0, min(1.0, distance_pct / self.vwap_distance_norm_pct))
+            momentum_score = max(0.0, min(1.0,
+                (last_rsi - self.rsi_floor) / (self.rsi_ceiling - self.rsi_floor)))
+            strength = (distance_score + momentum_score) / 2
+            return SignalResult(Signal.BUY, strength)
+        if below_vwap or momentum_extreme:
+            return SignalResult(Signal.SELL)
+        return SignalResult(Signal.HOLD)
+
+
+class EnsembleVote(Strategy):
+    """Combines multiple day-trade strategies, requiring ALL of them to
+    independently signal BUY before this wrapper signals BUY -- consensus
+    across structurally different strategies, rather than filtering false
+    positives within one strategy's own signal (everything else this
+    session). Exit stays a hair trigger: if ANY sub-strategy signals SELL,
+    this wrapper signals SELL -- unanimous agreement is required to get in,
+    but any one strategy losing confidence is enough to get out, the same
+    asymmetric philosophy every other strategy here uses.
+
+    strategies: the sub-strategies to combine (>= 2), each evaluated
+    against the same `prices` (and `confirm_prices`, passed through
+    unchanged -- sub-strategies that don't use it just ignore it).
+
+    A BUY's strength is the average of the sub-strategies' individual
+    strengths, so a unanimous-but-marginal signal still sizes smaller than
+    a unanimous-and-strong one.
+    """
+
+    def __init__(self, strategies: list[Strategy]):
+        if len(strategies) < 2:
+            raise ValueError("EnsembleVote needs at least 2 sub-strategies")
+        self.strategies = strategies
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        all_signals = [s.generate_signals(prices, confirm_prices) for s in self.strategies]
+        result = {}
+        for sym in prices:
+            sigs = [sig_map.get(sym, SignalResult(Signal.HOLD)) for sig_map in all_signals]
+            if any(s.signal is Signal.SELL for s in sigs):
+                result[sym] = SignalResult(Signal.SELL)
+            elif all(s.signal is Signal.BUY for s in sigs):
+                strength = sum(s.strength for s in sigs) / len(sigs)
+                result[sym] = SignalResult(Signal.BUY, strength)
+            else:
+                result[sym] = SignalResult(Signal.HOLD)
+        return result

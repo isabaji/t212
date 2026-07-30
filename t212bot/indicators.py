@@ -17,6 +17,19 @@ def rsi(series: pd.Series, period: int = 14) -> pd.Series:
     return (100 - (100 / (1 + rs))).fillna(100)
 
 
+def vwap(df: pd.DataFrame) -> pd.Series:
+    """Session-anchored volume-weighted average price -- resets each
+    calendar day (assumes df's index is tz-aware exchange-local, consistent
+    with the rest of the intraday pipeline; see fetch_intraday). Unlike ema,
+    this incorporates traded volume directly rather than just price."""
+    typical_price = (df["High"] + df["Low"] + df["Close"]) / 3
+    pv = typical_price * df["Volume"]
+    day = df.index.date
+    cum_pv = pv.groupby(day).cumsum()
+    cum_vol = df["Volume"].groupby(day).cumsum()
+    return cum_pv / cum_vol
+
+
 def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Average True Range — a volatility measure in price units (e.g. dollars/share),
     used for volatility-aware position sizing rather than a flat % of account per trade."""

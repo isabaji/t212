@@ -74,11 +74,12 @@ on:
         type: string
         default: ''
       strategy:
-        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout) or mean_reversion (buy pullbacks to the fast EMA instead)'
+        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), or ensemble (requires orb + mean_reversion + VWAP-reclaim to all agree)'
         type: choice
         options:
           - orb
           - mean_reversion
+          - ensemble
         default: orb
 
 jobs:
