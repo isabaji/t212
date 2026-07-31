@@ -13,6 +13,10 @@ on:
         description: 'Backtest the day-trade strategy instead of swing'
         type: boolean
         default: false
+      symbols:
+        description: 'Comma-separated symbol list overriding WATCHLIST for this run only (blank = use the configured watchlist)'
+        type: string
+        default: ''
       fast:
         description: 'Fast SMA window (swing only)'
         type: string
@@ -118,6 +122,7 @@ jobs:
         run: |
           ARGS="backtest --fast ${{ inputs.fast }} --slow ${{ inputs.slow }}"
           if [ "${{ inputs.daytrade }}" = "true" ]; then ARGS="$ARGS --daytrade"; fi
+          if [ -n "${{ inputs.symbols }}" ]; then ARGS="$ARGS --symbols ${{ inputs.symbols }}"; fi
           if [ -n "${{ inputs.windows }}" ]; then ARGS="$ARGS --windows ${{ inputs.windows }}"; fi
           if [ -n "${{ inputs.stop_atr_multiple }}" ]; then ARGS="$ARGS --stop-atr-multiple ${{ inputs.stop_atr_multiple }}"; fi
           if [ -n "${{ inputs.trend_filter }}" ]; then ARGS="$ARGS --trend-filter ${{ inputs.trend_filter }}"; fi

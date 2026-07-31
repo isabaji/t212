@@ -108,6 +108,10 @@ def main() -> None:
                               "does not, even though it's also '2 of 3' (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
+    parser.add_argument("--symbols", default=None,
+                         help="backtest command only: comma-separated symbol list overriding WATCHLIST for "
+                              "this run only (e.g. to test an expanded watchlist before changing the live "
+                              "config) -- default: cfg.watchlist")
     parser.add_argument("--windows", type=int, default=None,
                          help="backtest command only: number of walk-forward windows (default 4 swing / 2 daytrade)")
     parser.add_argument("--fee-bps", type=float, default=DEFAULT_FEE_BPS,
@@ -125,13 +129,15 @@ def main() -> None:
     cfg = Config()
 
     if args.command == "backtest":
+        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()] if args.symbols \
+            else cfg.watchlist
         if args.daytrade:
             confirm_bars = args.confirm_bars if args.confirm_bars is not None else cfg.daytrade_confirm_bars
             rsi_buy_range = None
             if args.rsi_buy_min is not None or args.rsi_buy_max is not None:
                 rsi_buy_range = (args.rsi_buy_min if args.rsi_buy_min is not None else 50,
                                   args.rsi_buy_max if args.rsi_buy_max is not None else 70)
-            print_daytrade_backtest(cfg.watchlist, cfg.alpaca_api_key, cfg.alpaca_api_secret,
+            print_daytrade_backtest(symbols, cfg.alpaca_api_key, cfg.alpaca_api_secret,
                                      args.or_minutes, args.windows or 2, args.fee_bps, args.slippage_bps,
                                      confirm_bars=confirm_bars,
                                      stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct,
@@ -144,7 +150,7 @@ def main() -> None:
                                      ensemble_strategies=args.ensemble_strategies,
                                      ensemble_required=args.ensemble_required)
         else:
-            print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
+            print_backtest(symbols, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
                             stop_atr_multiple=args.stop_atr_multiple, trend_filter=args.trend_filter)
         return
