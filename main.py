@@ -156,28 +156,37 @@ def main() -> None:
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
     elif args.command == "daytrade":
         # The validated 3-way ensemble (see `backtest --daytrade --strategy
-        # ensemble --ensemble-strategies orb,mr,gap --ensemble-min-votes 2`)
-        # is the only live day-trade strategy -- 2 of 3 must agree, built
-        # exactly as backtested: ORB with no confirm-bars gate and no
-        # EMA-spread gate (those are separate orb-only tuning, not part of
-        # what was validated for these pairs). Deliberately one ensemble
-        # rather than two separate bots (e.g. ORB+MR and ORB+Gap run
-        # independently) -- both pairs share the ORB breakout as their
-        # trigger, so two independent bots against the same account/
-        # watchlist could both buy the same symbol in the same cycle, or one
-        # bot's SELL could close a position the other bot thinks it still
-        # owns (position tracking reads real broker state each cycle, not
-        # "which bot bought this"). A single EnsembleVote makes one decision
-        # per symbol per cycle, so that conflict can't happen. The
-        # standalone/pairwise strategies are still available for
+        # ensemble --ensemble-strategies orb,mr,gap --ensemble-min-votes 2
+        # --ensemble-required orb`) is the only live day-trade strategy -- 2
+        # of 3 must agree AND ORB must be one of them, built exactly as
+        # backtested: ORB with no confirm-bars gate and no EMA-spread gate
+        # (those are separate orb-only tuning, not part of what was
+        # validated for these pairs). The ORB-required gate exists because a
+        # 60-day/30-symbol backtest showed MeanReversionPullback+
+        # GapFillReversal agreeing on its own is weak and sparse (~11-18%
+        # win rate) and drags down the blended average -- requiring ORB lets
+        # both good pairings (ORB+MR, ORB+Gap) still fire while blocking
+        # that one. Confirmed across two window counts (6 and 12): gating
+        # raised the blended win rate from ~44-45% to ~47-48% and roughly
+        # doubled-to-tripled avg pnl/trade versus the plain (ungated) vote.
+        # Deliberately one ensemble rather than two separate bots (e.g.
+        # ORB+MR and ORB+Gap run independently) -- both pairs share the ORB
+        # breakout as their trigger, so two independent bots against the
+        # same account/watchlist could both buy the same symbol in the same
+        # cycle, or one bot's SELL could close a position the other bot
+        # thinks it still owns (position tracking reads real broker state
+        # each cycle, not "which bot bought this"). A single EnsembleVote
+        # makes one decision per symbol per cycle, so that conflict can't
+        # happen. The standalone/pairwise strategies are still available for
         # backtesting/comparison via `backtest --daytrade --strategy ...`,
         # just not for live trading.
+        orb = OpeningRangeConfluence(or_minutes=args.or_minutes, bar_minutes=cfg.daytrade_bar_minutes,
+                                     confirm_bars=0)
         strategy = EnsembleVote([
-            OpeningRangeConfluence(or_minutes=args.or_minutes, bar_minutes=cfg.daytrade_bar_minutes,
-                                   confirm_bars=0),
+            orb,
             MeanReversionPullback(),
             GapFillReversal(),
-        ], min_votes=2)
+        ], min_votes=2, required=[orb])
         run_day_trade_cycle(cfg, strategy)
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)

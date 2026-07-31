@@ -28,8 +28,8 @@ class Config:
     # confirmation bars required before entry (t212bot/strategy.py:
     # OpeningRangeConfluence's confirm_bars). The live day-trade bot always
     # runs the 3-way ORB+MeanReversion+GapFillReversal ensemble (2 of 3 must
-    # agree), whose ORB component is built with confirm_bars=0 regardless of
-    # this setting (see main.py).
+    # agree, and ORB must be one of them), whose ORB component is built with
+    # confirm_bars=0 regardless of this setting (see main.py).
     daytrade_confirm_bars: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_CONFIRM_BARS", "3")))
     # Fixed stop-loss / take-profit checked each cycle against the latest
     # bar's Low/High, exiting via a market order regardless of the strategy's

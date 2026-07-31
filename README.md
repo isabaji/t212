@@ -398,7 +398,8 @@ No terminal or local Python install required — GitHub runs it for you.
 `python main.py daytrade` runs an ensemble of three structurally different
 intraday strategies (`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized
 bars (5-minute by default) — **at least 2 of the 3 must independently signal
-BUY** before an order is placed (`EnsembleVote`, `min_votes=2`):
+BUY, and `OpeningRangeConfluence` must always be one of them** (`EnsembleVote`,
+`min_votes=2`, `required=[orb]`):
 
 - **`OpeningRangeConfluence`** — after the first 30 minutes of the session
   (the "opening range"), signals BUY only if *all three* agree: price breaks
@@ -474,19 +475,28 @@ mechanism than every other improvement tried on `orb` alone. Both pairings
 held up when the backtest windowing changed from 6 to 3 windows (win rate
 and reward:risk stayed stable in each case), meaningful corroboration
 neither is a windowing artifact. **MeanReversion+GapFillReversal**, by
-contrast, is a near-dead combination (9-11 trades, ~11-18% win rate across
+contrast, is a near-dead combination (7-11 trades, ~11-18% win rate across
 runs) — the two rarely agree at all, since one wants price dipping within an
-uptrend and the other wants a gap-down actively reversing. The live ensemble
-requires 2 of the 3 to agree specifically so both good pairings (ORB+MR,
-ORB+Gap) can fire while the weak MR+Gap combination stays rare by
-construction, without needing three separate bots. It's still a modest
-backtest sample per pairing (tens, not hundreds, of trades) versus
-standalone `orb` (~700+), so treat this as the most promising candidate
-found on this data, not a proven edge. Reproduce with
-`python main.py backtest --daytrade --strategy ensemble --ensemble-strategies orb,mr,gap --ensemble-min-votes 2`,
-individual pairings with `--ensemble-strategies orb,mr` or `orb,gap`, and the
-standalone strategies for comparison with `--strategy orb`, `mean_reversion`,
-or `gap_fill`.
+uptrend and the other wants a gap-down actively reversing.
+
+A plain 2-of-3 vote can't distinguish "ORB+MR" from "ORB+Gap" from "MR+Gap"
+— it counts all three the same. Since the weak MR+Gap combination is also
+"2 of 3," a plain vote lets it fire and blend its losses into the overall
+average. `EnsembleVote`'s `required` parameter fixes that: requiring ORB to
+be part of any winning combination lets both good pairings fire while
+MR+Gap can never win on its own. Confirmed across two window counts (6 and
+12): gating raised the blended win rate from ~44-45% to ~47-48% and
+roughly doubled-to-tripled the blended avg pnl/trade versus the ungated
+vote, at the cost of only the trades MR+Gap would have contributed (which
+were net-negative anyway). This is what the live bot runs today. It's
+still a modest backtest sample per pairing (tens, not hundreds, of trades)
+versus standalone `orb` (~700+), so treat this as the most promising
+candidate found on this data, not a proven edge. Reproduce with
+`python main.py backtest --daytrade --strategy ensemble --ensemble-strategies orb,mr,gap --ensemble-min-votes 2 --ensemble-required orb`,
+the ungated version by dropping `--ensemble-required`, individual pairings
+with `--ensemble-strategies orb,mr` or `orb,gap`, and the standalone
+strategies for comparison with `--strategy orb`, `mean_reversion`, or
+`gap_fill`.
 
 **Real constraints to know before trusting this with money:**
 
