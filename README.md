@@ -69,7 +69,7 @@ Key settings in `.env`:
 | `DRY_RUN` | `true` | Log intended orders instead of sending them |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
 | `DAYTRADE_BAR_MINUTES` | `5` | Bar size for the day-trade strategy's intraday data (Alpaca) |
-| `DAYTRADE_CONFIRM_BARS` | `3` | Backtest only (`--strategy orb`): require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it. Not used by the live bot, which always runs the ORB+MeanReversion ensemble — see below |
+| `DAYTRADE_CONFIRM_BARS` | `3` | Backtest only (`--strategy orb`): require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it. Not used by the live bot, which always runs the 3-way ensemble — see below |
 | `DAYTRADE_STOP_LOSS_PCT` / `DAYTRADE_TAKE_PROFIT_PCT` | `0.01` / `0.02` | Day-trade bot only: force-exit a position if the latest bar's Low/High crosses this far from the actual average fill price — `0` disables either side independently |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
@@ -393,12 +393,12 @@ No terminal or local Python install required — GitHub runs it for you.
 */5  13-20 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py daytrade  >> daytrade.log 2>&1
 ```
 
-## Day trading: the ORB+MeanReversion ensemble, and its limits
+## Day trading: the 3-way ensemble, and its limits
 
-`python main.py daytrade` runs an ensemble of two structurally different
+`python main.py daytrade` runs an ensemble of three structurally different
 intraday strategies (`t212bot/strategy.py`) on `DAYTRADE_BAR_MINUTES`-sized
-bars (5-minute by default) — **both must independently signal BUY** before an
-order is placed (`EnsembleVote`, unanimous across the two):
+bars (5-minute by default) — **at least 2 of the 3 must independently signal
+BUY** before an order is placed (`EnsembleVote`, `min_votes=2`):
 
 - **`OpeningRangeConfluence`** — after the first 30 minutes of the session
   (the "opening range"), signals BUY only if *all three* agree: price breaks
@@ -409,7 +409,7 @@ order is placed (`EnsembleVote`, unanimous across the two):
   runs this with its confirm-bars and EMA-spread entry gates both disabled —
   those are separate orb-only tuning (still available via
   `DAYTRADE_CONFIRM_BARS` for `backtest --daytrade --strategy orb`), not part
-  of what was validated for this pairing.
+  of what was validated for these pairings.
 - **`MeanReversionPullback`** — a genuinely different bet: buys pullbacks to
   the fast EMA within an established uptrend instead of chasing breakouts,
   gated on a minimum pullback depth, a minimum EMA spread (established
@@ -417,12 +417,29 @@ order is placed (`EnsembleVote`, unanimous across the two):
   re-buying the same flat chop," since a fresh strategy instance is built
   every cycle with no persistent memory). Exits on a trend flip, a breakdown
   below the recent pullback low, or RSI going overbought/oversold.
+- **`GapFillReversal`** — a third distinct bet, keyed off *overnight*
+  information rather than anything computed purely from today's bars: buys a
+  gap-down open that's reversing back up early in the session (today's open
+  at least `min_gap_pct` below yesterday's close, price having reclaimed the
+  open and moved back above the session's prior low, RSI recovering from
+  oversold rather than still falling). Exits on a new session low or RSI
+  going overbought/oversold, same hair-trigger philosophy as the others.
 
-On top of the signal-based exit (either strategy's SELL is enough to close),
+Any one strategy's SELL is enough to close a position — consensus is only
+required to get in, not to get out. On top of that,
 `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT` (default `0.01`/`0.02`, 0
 disables either side) force-close the position if the latest bar's Low/High
 crosses that far from the real average fill price — checked every cycle, not
 a resting broker order (see `run_day_trade_cycle` in `t212bot/bot.py`).
+
+This is deliberately **one ensemble making one decision per symbol per
+cycle**, not multiple bots running in parallel against the same account —
+`OpeningRangeConfluence`'s breakout is the trigger common to two of the three
+pairings below, so two independent bots sharing a watchlist could both buy
+the same symbol in the same cycle, or one bot's SELL could close a position
+the other bot thinks it still owns (position tracking reads real broker
+state each cycle, not "which bot bought this"). A single `EnsembleVote`
+avoids that entire conflict class by construction.
 
 Beyond the strategy signal itself:
 
@@ -444,20 +461,32 @@ Beyond the strategy signal itself:
 filters, retest-confirmation entries) converged to the same ~-0.1% to -0.2%
 average-return ceiling and a ~30% win rate across a 60-day/30-symbol
 walk-forward backtest, regardless of how the entry was filtered — a
-per-filter sweet spot every time, never a breakthrough. `MeanReversionPullback`
-alone didn't break through that ceiling either. Requiring **both to agree**
-did: backtested at the `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT`
-defaults, it hit a ~45% win rate (the best of everything tried) and a
-positive average return — driven by actually winning more often, not a
-better payoff ratio, a different mechanism than every other improvement
-tried. That result held up when the backtest windowing changed from 6 to 3
-windows (win rate and reward:risk stayed stable), meaningful corroboration
-it isn't a windowing artifact. It's still a smaller backtest sample (~65
-trades) than standalone `orb` (~700+), so treat it as the most promising
-candidate found on this data, not a proven edge. Reproduce with
-`python main.py backtest --daytrade --strategy ensemble --ensemble-strategies orb,mr`,
-and the standalone strategy for comparison with
-`python main.py backtest --daytrade --strategy orb`.
+per-filter sweet spot every time, never a breakthrough. Neither
+`MeanReversionPullback` nor `GapFillReversal` broke through that ceiling
+alone either (standalone `GapFillReversal`: ~37% win rate but still a
+slightly negative average return). Pairing `OpeningRangeConfluence` with
+either one did, though: **ORB+MeanReversion** hit a ~44-48% win rate and
+**ORB+GapFillReversal** a ~45-48% win rate, both with a consistently positive
+average return, at the `DAYTRADE_STOP_LOSS_PCT`/`DAYTRADE_TAKE_PROFIT_PCT`
+defaults and across a range of stop-loss/take-profit widths — driven by
+actually winning more often, not a better payoff ratio, a different
+mechanism than every other improvement tried on `orb` alone. Both pairings
+held up when the backtest windowing changed from 6 to 3 windows (win rate
+and reward:risk stayed stable in each case), meaningful corroboration
+neither is a windowing artifact. **MeanReversion+GapFillReversal**, by
+contrast, is a near-dead combination (9-11 trades, ~11-18% win rate across
+runs) — the two rarely agree at all, since one wants price dipping within an
+uptrend and the other wants a gap-down actively reversing. The live ensemble
+requires 2 of the 3 to agree specifically so both good pairings (ORB+MR,
+ORB+Gap) can fire while the weak MR+Gap combination stays rare by
+construction, without needing three separate bots. It's still a modest
+backtest sample per pairing (tens, not hundreds, of trades) versus
+standalone `orb` (~700+), so treat this as the most promising candidate
+found on this data, not a proven edge. Reproduce with
+`python main.py backtest --daytrade --strategy ensemble --ensemble-strategies orb,mr,gap --ensemble-min-votes 2`,
+individual pairings with `--ensemble-strategies orb,mr` or `orb,gap`, and the
+standalone strategies for comparison with `--strategy orb`, `mean_reversion`,
+or `gap_fill`.
 
 **Real constraints to know before trusting this with money:**
 

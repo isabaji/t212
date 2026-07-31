@@ -15,7 +15,7 @@ from t212bot.backtest import DEFAULT_FEE_BPS, DEFAULT_SLIPPAGE_BPS, print_backte
 from t212bot.bot import run_cycle, run_day_trade_cycle
 from t212bot.client import Trading212Client
 from t212bot.config import Config
-from t212bot.strategy import EnsembleVote, MeanReversionPullback, OpeningRangeConfluence, SMACrossover
+from t212bot.strategy import EnsembleVote, GapFillReversal, MeanReversionPullback, OpeningRangeConfluence, SMACrossover
 from t212bot.test_order import place_test_order
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -148,18 +148,29 @@ def main() -> None:
     elif args.command == "run":
         run_cycle(cfg, SMACrossover(args.fast, args.slow))
     elif args.command == "daytrade":
-        # The validated ORB+MeanReversion ensemble (see `backtest --daytrade
-        # --strategy ensemble`) is the only live day-trade strategy -- built
+        # The validated 3-way ensemble (see `backtest --daytrade --strategy
+        # ensemble --ensemble-strategies orb,mr,gap --ensemble-min-votes 2`)
+        # is the only live day-trade strategy -- 2 of 3 must agree, built
         # exactly as backtested: ORB with no confirm-bars gate and no
         # EMA-spread gate (those are separate orb-only tuning, not part of
-        # what was validated for this pair). The standalone ORB-only
-        # strategy is still available for backtesting/comparison via
-        # `backtest --daytrade --strategy orb`, just not for live trading.
+        # what was validated for these pairs). Deliberately one ensemble
+        # rather than two separate bots (e.g. ORB+MR and ORB+Gap run
+        # independently) -- both pairs share the ORB breakout as their
+        # trigger, so two independent bots against the same account/
+        # watchlist could both buy the same symbol in the same cycle, or one
+        # bot's SELL could close a position the other bot thinks it still
+        # owns (position tracking reads real broker state each cycle, not
+        # "which bot bought this"). A single EnsembleVote makes one decision
+        # per symbol per cycle, so that conflict can't happen. The
+        # standalone/pairwise strategies are still available for
+        # backtesting/comparison via `backtest --daytrade --strategy ...`,
+        # just not for live trading.
         strategy = EnsembleVote([
             OpeningRangeConfluence(or_minutes=args.or_minutes, bar_minutes=cfg.daytrade_bar_minutes,
                                    confirm_bars=0),
             MeanReversionPullback(),
-        ])
+            GapFillReversal(),
+        ], min_votes=2)
         run_day_trade_cycle(cfg, strategy)
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)

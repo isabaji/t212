@@ -262,10 +262,11 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                            timeframe=f"{cfg.daytrade_bar_minutes}Min"),
             fx_rate,
         )
-        # The live day-trade strategy is always the validated ORB+MeanReversion
-        # ensemble (see main.py), which builds ORB with confirm_bars=0 itself,
-        # so the 1-minute confirmation series (t212bot/strategy.py:
-        # OpeningRangeConfluence.confirm_bars) is never needed here.
+        # The live day-trade strategy is always the validated 3-way
+        # ORB+MeanReversion+GapFillReversal ensemble (see main.py), which
+        # builds ORB with confirm_bars=0 itself, so the 1-minute confirmation
+        # series (t212bot/strategy.py: OpeningRangeConfluence.confirm_bars)
+        # is never needed here.
         signals = strategy.generate_signals(prices, confirm_prices=None)
 
         decisions = []
