@@ -58,6 +58,11 @@ jobs:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
           DAYTRADE_BAR_MINUTES: ${{ secrets.DAYTRADE_BAR_MINUTES || '5' }}
+          # Minutes after this workflow's cron window opens (13:00 UTC) before
+          # the bot will open new positions -- analysis/signals still run from
+          # the window's start, this only delays entries. 25 = orders start at
+          # 13:25 UTC (2:25pm BST in UK summer time). See t212bot/bot.py.
+          DAYTRADE_ENTRY_DELAY_MINUTES: ${{ secrets.DAYTRADE_ENTRY_DELAY_MINUTES || '25' }}
           # The live day-trade bot always runs the validated ORB+MeanReversion
           # ensemble (see main.py) -- fixed stop-loss/take-profit below, see
           # t212bot/backtest.py and t212bot/strategy.py for how it was tuned.

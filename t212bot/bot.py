@@ -27,6 +27,14 @@ MARKET_CLOSE_TIME = datetime.time(16, 0)   # exchange-local (e.g. US equities, E
 EOD_FLATTEN_MINUTES_BEFORE_CLOSE = 15      # force-close any open position this close to the bell
 NO_NEW_ENTRIES_MINUTES_BEFORE_CLOSE = 30   # don't open a fresh day-trade this close to the bell
 STALE_BAR_MINUTES = 20                     # if the latest bar is older than this, treat as market-closed/no-data
+# UTC wall-clock start of the day-trade cron window (see .github/workflows/
+# trading-bot-daytrade.yml's schedule: '*/5 13-20 * * 1-5') -- deliberately a
+# fixed UTC clock time, not derived from any bar's exchange-local timestamp,
+# since it anchors DAYTRADE_ENTRY_DELAY_MINUTES below to "minutes since the
+# bot started this cycle's window," not to the real NYSE opening bell (which
+# the bot doesn't otherwise track directly -- see STALE_BAR_MINUTES for how
+# it infers whether the market is actually open).
+DAYTRADE_WINDOW_START_UTC = datetime.time(13, 0)
 
 
 def _sector_exposure(positions: dict) -> dict:
@@ -269,6 +277,13 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         # is never needed here.
         signals = strategy.generate_signals(prices, confirm_prices=None)
 
+        # Entry-side-only warm-up gate: analysis/signals above already ran
+        # regardless, this just delays new positions for
+        # daytrade_entry_delay_minutes after the cron window opens -- see
+        # DAYTRADE_WINDOW_START_UTC and Config.daytrade_entry_delay_minutes.
+        too_early_for_entries = _too_early_for_entries(
+            datetime.datetime.now(datetime.timezone.utc), cfg.daytrade_entry_delay_minutes)
+
         decisions = []
         stale_symbols = []
         hold_symbols = []
@@ -277,6 +292,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         blocked_symbols = []
         drawdown_symbols = []
         paused_symbols = []
+        warmup_symbols = []
 
         for sym, df in sorted(prices.items()):
             t212_ticker = to_t212_ticker(sym)
@@ -360,6 +376,10 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
             elif signal is Signal.BUY and not holding:
+                if too_early_for_entries:
+                    log.debug("BUY %s skipped: still within the post-open warm-up window", sym)
+                    warmup_symbols.append(sym)
+                    continue
                 if blocked:
                     log.debug("BUY %s skipped: daily target/loss-limit already reached", sym)
                     blocked_symbols.append(sym)
@@ -422,6 +442,11 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         if stale_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(stale_symbols)} — latest bar too old, market likely closed."))
+        if warmup_symbols:
+            decisions.append(history.decision(None, "warning", "Skipped",
+                              f"{', '.join(warmup_symbols)} — still within the "
+                              f"{cfg.daytrade_entry_delay_minutes}-minute post-open warm-up window, "
+                              "no new entries yet."))
         if hold_symbols:
             decisions.append(history.decision(None, "neutral", "Hold",
                               f"{', '.join(hold_symbols)} — no breakout, no action taken."))
@@ -465,6 +490,19 @@ def _minutes_until_close(bar_timestamp: pd.Timestamp) -> float:
         hour=MARKET_CLOSE_TIME.hour, minute=MARKET_CLOSE_TIME.minute, second=0, microsecond=0
     )
     return (close_dt - bar_timestamp).total_seconds() / 60
+
+
+def _too_early_for_entries(now_utc: datetime.datetime, delay_minutes: int) -> bool:
+    """True if it's still within delay_minutes of the cron window's start
+    (DAYTRADE_WINDOW_START_UTC), i.e. too early to open a new position.
+    delay_minutes <= 0 always returns False (gate disabled)."""
+    if delay_minutes <= 0:
+        return False
+    window_start = now_utc.replace(hour=DAYTRADE_WINDOW_START_UTC.hour,
+                                    minute=DAYTRADE_WINDOW_START_UTC.minute,
+                                    second=0, microsecond=0)
+    entries_open_at = window_start + datetime.timedelta(minutes=delay_minutes)
+    return now_utc < entries_open_at
 
 
 def _execute(client: Trading212Client, dry_run: bool, ticker: str,

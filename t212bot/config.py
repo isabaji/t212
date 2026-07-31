@@ -31,6 +31,17 @@ class Config:
     # agree, and ORB must be one of them), whose ORB component is built with
     # confirm_bars=0 regardless of this setting (see main.py).
     daytrade_confirm_bars: int = field(default_factory=lambda: int(os.getenv("DAYTRADE_CONFIRM_BARS", "3")))
+    # Minutes after the day-trade cron window's start (13:00 UTC -- see
+    # t212bot/bot.py: DAYTRADE_WINDOW_START_UTC) before the bot will open any
+    # new position. The bot still fetches data, evaluates signals, and logs
+    # decisions from the window's start -- this only delays *entries*, not
+    # analysis; exits (signal SELL, stop-loss/take-profit, EOD flatten) are
+    # never delayed by this. 0 disables the gate (entries allowed as soon as
+    # the window starts). Default 25 matches "analyse from 13:00 UTC, only
+    # place orders from 13:25 UTC" (2pm/2:25pm BST during UK summer time).
+    daytrade_entry_delay_minutes: int = field(
+        default_factory=lambda: int(os.getenv("DAYTRADE_ENTRY_DELAY_MINUTES", "25"))
+    )
     # Fixed stop-loss / take-profit checked each cycle against the latest
     # bar's Low/High, exiting via a market order regardless of the strategy's
     # own signal (t212bot/bot.py: run_day_trade_cycle). 0 disables either

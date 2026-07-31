@@ -70,6 +70,7 @@ Key settings in `.env`:
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | — | Day-trade bot only: free Alpaca account, data-only (no funding needed) — get one at [app.alpaca.markets](https://app.alpaca.markets) |
 | `DAYTRADE_BAR_MINUTES` | `5` | Bar size for the day-trade strategy's intraday data (Alpaca) |
 | `DAYTRADE_CONFIRM_BARS` | `3` | Backtest only (`--strategy orb`): require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it. Not used by the live bot, which always runs the 3-way ensemble — see below |
+| `DAYTRADE_ENTRY_DELAY_MINUTES` | `25` | Day-trade bot only: minutes after the cron window opens (13:00 UTC) before the bot will open new positions — analysis/signals still run from the window's start, this only delays entries, never exits — `0` disables it |
 | `DAYTRADE_STOP_LOSS_PCT` / `DAYTRADE_TAKE_PROFIT_PCT` | `0.01` / `0.02` | Day-trade bot only: force-exit a position if the latest bar's Low/High crosses this far from the actual average fill price — `0` disables either side independently |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
@@ -444,13 +445,21 @@ avoids that entire conflict class by construction.
 
 Beyond the strategy signal itself:
 
-3. **End-of-day flatten** — regardless of what the strategy signals, any open
+3. **Post-open warm-up** — the bot fetches data, evaluates signals, and logs
+   decisions from the moment the cron window opens (13:00 UTC), but won't
+   open any *new* position until `DAYTRADE_ENTRY_DELAY_MINUTES` (default 25)
+   has passed since then — i.e. no entries before 13:25 UTC by default. Exits
+   (signal SELL, stop-loss/take-profit, EOD flatten) are never delayed by
+   this, only new entries. Anchored to a fixed UTC clock time tied to the
+   cron window's own start, not to any bar's exchange-local session-open
+   time — see `DAYTRADE_WINDOW_START_UTC` in `t212bot/bot.py`.
+4. **End-of-day flatten** — regardless of what the strategy signals, any open
    position is force-closed once the exchange-local time is within 15 minutes
    of the close (`t212bot/bot.py: run_day_trade_cycle`). No position is ever
    held overnight — that's what makes this day trading rather than swing
    trading. New entries are also refused in the last 30 minutes, since there
    isn't enough session left to manage them.
-4. **Stale-data guard** — if the latest available bar is more than 20 minutes
+5. **Stale-data guard** — if the latest available bar is more than 20 minutes
    old (pre-market, weekend, a holiday, or just data lag), new entries are
    skipped. Closing an existing position (signal exit, stop-loss/take-profit,
    or EOD flatten) still goes through even on stale data, since a market
