@@ -100,6 +100,12 @@ def main() -> None:
                          help="backtest --daytrade --strategy ensemble only: comma-separated subset of "
                               "orb,mr,vwap,bb,gap to include in the vote (default: orb,mr,vwap; try "
                               "'orb,gap' to test the opening-range + gap-fill pair)")
+    parser.add_argument("--ensemble-required", default=None,
+                         help="backtest --daytrade --strategy ensemble only: comma-separated subset of "
+                              "--ensemble-strategies that must ALL vote BUY for any combination to count, "
+                              "on top of --ensemble-min-votes -- e.g. with orb,mr,gap at min-votes 2 and "
+                              "--ensemble-required orb, orb+mr and orb+gap both count but mr+gap alone "
+                              "does not, even though it's also '2 of 3' (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--windows", type=int, default=None,
@@ -135,7 +141,8 @@ def main() -> None:
                                      retest_tolerance_pct=args.retest_tolerance_pct,
                                      strategy_name=args.strategy,
                                      ensemble_min_votes=args.ensemble_min_votes,
-                                     ensemble_strategies=args.ensemble_strategies)
+                                     ensemble_strategies=args.ensemble_strategies,
+                                     ensemble_required=args.ensemble_required)
         else:
             print_backtest(cfg.watchlist, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,

@@ -357,7 +357,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              retest_tolerance_pct: float = 0.003,
                              strategy_name: str = "orb",
                              ensemble_min_votes: int | None = None,
-                             ensemble_strategies: str = "orb,mr,vwap") -> None:
+                             ensemble_strategies: str = "orb,mr,vwap",
+                             ensemble_required: str | None = None) -> None:
     """Backtests a day-trade strategy on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
@@ -389,7 +390,21 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     dragged the average down -- hence testing "orb,mr" in isolation.
     BollingerSqueezeBreakout ("bb") turned out to be a clean negative
     (weak standalone, drags down every pairing, never coincides with "mr"
-    at all); "gap" is a newer candidate, not yet validated either way.
+    at all); "gap" ("orb,gap") turned out to be a second strong pairing,
+    reproducing ~45-48% win rate across an SL/TP sweep and a window-count
+    check -- see t212bot/strategy.py's GapFillReversal docstring.
+
+    ensemble_required (ensemble only): comma-separated subset of
+    ensemble_strategies that must ALL vote BUY for any combination to count,
+    on top of ensemble_min_votes -- e.g. with ensemble_strategies="orb,mr,gap",
+    ensemble_min_votes=2, ensemble_required="orb" accepts orb+mr or orb+gap
+    but rejects mr+gap even though it's also "2 of 3" (see
+    t212bot/strategy.py: EnsembleVote.required_indices). Added because a
+    60-day/30-symbol backtest of the plain 2-of-3 vote showed
+    MeanReversionPullback+GapFillReversal agreeing on its own is weak and
+    sparse (~11-18% win rate), dragging down the blended average across all
+    three combinations. None (default) disables the gate, matching prior
+    behavior.
 
     confirm_bars > 0 (orb only) additionally pulls 1-minute bars and
     exercises the same confirm_bars entry gate the live bot uses (see
@@ -421,6 +436,10 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         selected = [s.strip() for s in ensemble_strategies.split(",") if s.strip()]
         votes_desc = "all must agree" if not ensemble_min_votes or ensemble_min_votes >= len(selected) \
             else f"{ensemble_min_votes} of {len(selected)} must agree"
+        required_keys = [s.strip() for s in (ensemble_required or "").split(",") if s.strip()]
+        if required_keys:
+            required_names = " + ".join(ensemble_names.get(s, s) for s in required_keys)
+            votes_desc += f", {required_names} required"
         names = " + ".join(ensemble_names.get(s, s) for s in selected)
         header = [f"Day-trade strategy: ensemble vote ({names}, {votes_desc}), 5-min bars"]
     else:
@@ -473,7 +492,10 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                 "gap": lambda: GapFillReversal(),
             }
             selected = [s.strip() for s in ensemble_strategies.split(",") if s.strip()]
-            return EnsembleVote([ensemble_factories[s]() for s in selected], min_votes=ensemble_min_votes)
+            instances = {key: ensemble_factories[key]() for key in selected}
+            required_keys = [s.strip() for s in (ensemble_required or "").split(",") if s.strip()]
+            return EnsembleVote(list(instances.values()), min_votes=ensemble_min_votes,
+                                 required=[instances[key] for key in required_keys])
         return OpeningRangeConfluence(
             or_minutes=or_minutes, confirm_bars=confirm_bars,
             rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,

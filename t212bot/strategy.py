@@ -737,6 +737,19 @@ class EnsembleVote(Strategy):
     (e.g. 2 of 3) is meaningfully looser without dropping the cross-strategy
     consensus idea entirely.
 
+    required: sub-strategies that must vote BUY for *any* combination to
+    count, on top of min_votes -- e.g. with 3 strategies, min_votes=2 and
+    required=[orb] accepts orb+mr or orb+gap but rejects mr+gap even though
+    it's also "2 of 3", because a plain min_votes threshold treats every
+    combination as equally valid and can't express "but not that one pair."
+    Added specifically because a 60-day/30-symbol backtest showed
+    MeanReversionPullback+GapFillReversal agreeing on its own is a weak,
+    sparse combination (~11-18% win rate) dragging down the blended
+    ensemble average, while the other two pairs (both including
+    OpeningRangeConfluence) were consistently the strong ones. Must be a
+    subset of `strategies` (checked by identity -- pass the same instances).
+    None (default) disables the gate, matching prior behavior.
+
     A BUY's strength averages the strengths of only the strategies that
     voted BUY (not all of them), so a marginal-but-sufficient consensus
     still sizes smaller than a strong one. A BUY's reason is set to the
@@ -746,11 +759,13 @@ class EnsembleVote(Strategy):
     _build_trades' entry_reason.
     """
 
-    def __init__(self, strategies: list[Strategy], min_votes: int | None = None):
+    def __init__(self, strategies: list[Strategy], min_votes: int | None = None,
+                 required: list[Strategy] | None = None):
         if len(strategies) < 2:
             raise ValueError("EnsembleVote needs at least 2 sub-strategies")
         self.strategies = strategies
         self.min_votes = min_votes if min_votes is not None else len(strategies)
+        self.required_indices = [i for i, s in enumerate(strategies) if s in (required or [])]
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
                           confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
@@ -762,7 +777,8 @@ class EnsembleVote(Strategy):
                 result[sym] = SignalResult(Signal.SELL)
                 continue
             buy_indices = [i for i, s in enumerate(sigs) if s.signal is Signal.BUY]
-            if len(buy_indices) >= self.min_votes:
+            required_met = all(i in buy_indices for i in self.required_indices)
+            if required_met and len(buy_indices) >= self.min_votes:
                 strength = sum(sigs[i].strength for i in buy_indices) / len(buy_indices)
                 voters = "+".join(type(self.strategies[i]).__name__ for i in buy_indices)
                 result[sym] = SignalResult(Signal.BUY, strength, reason=voters)
