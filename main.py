@@ -181,6 +181,13 @@ def main() -> None:
         # that one. Confirmed across two window counts (6 and 12): gating
         # raised the blended win rate from ~44-45% to ~47-48% and roughly
         # doubled-to-tripled avg pnl/trade versus the plain (ungated) vote.
+        # ORB's min_volume_ratio=1.2 (breakout bar must have >=1.2x its
+        # trailing 20-bar average volume) was added on top after a
+        # 60-day/30-symbol sweep at 1.1/1.2/1.5 showed a consistent
+        # trades-down/quality-up trend versus no gate: 74 trades/47.3% WR/
+        # +0.141%/trade -> 19/47.4%/+0.415% at 1.1 -> 19/52.6%/+0.476% at
+        # 1.2 -> 14/50.0%/+0.541% at 1.5. 1.2 picked as the best balance of
+        # the win-rate/pnl gains without cutting frequency as hard as 1.5.
         # Deliberately one ensemble rather than two separate bots (e.g.
         # ORB+MR and ORB+Gap run independently) -- both pairs share the ORB
         # breakout as their trigger, so two independent bots against the
@@ -193,7 +200,7 @@ def main() -> None:
         # backtesting/comparison via `backtest --daytrade --strategy ...`,
         # just not for live trading.
         orb = OpeningRangeConfluence(or_minutes=args.or_minutes, bar_minutes=cfg.daytrade_bar_minutes,
-                                     confirm_bars=0)
+                                     confirm_bars=0, min_volume_ratio=1.2)
         strategy = EnsembleVote([
             orb,
             MeanReversionPullback(),
