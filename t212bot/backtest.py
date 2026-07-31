@@ -387,12 +387,16 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     BollingerSqueezeBreakout, and "gap_fill" is GapFillReversal, all tested
     with their own code defaults for now (no CLI knobs yet). "ensemble" is
     EnsembleVote wrapping the strategies named in ensemble_strategies (each
-    at its own code defaults, orb with confirm_bars=0 since no 1-minute data
-    is fetched for this mode) -- requires ensemble_min_votes of them to
-    agree before a BUY fires (None = unanimous, all of them). confirm_bars/
-    rsi_buy_range/min_ema_spread_pct/min_strength/min_volume_ratio/
-    require_retest are silently ignored outside "orb" mode since none of
-    them apply to the other strategies.
+    at its own code defaults except orb, which gets confirm_bars=0 since no
+    1-minute data is fetched for this mode, plus whichever of
+    min_ema_spread_pct/min_strength/min_volume_ratio/require_retest/
+    retest_tolerance_pct/trend_filter_days are set -- same entry-side gates
+    as standalone "orb", just applied to the ORB component inside the vote)
+    -- requires ensemble_min_votes of them to agree before a BUY fires
+    (None = unanimous, all of them). confirm_bars/rsi_buy_range are the only
+    two of this group still ignored outside "orb" mode (confirm_bars needs
+    1-minute data this mode doesn't fetch; rsi_buy_range isn't meaningful
+    for the other strategies' own entry logic).
 
     ensemble_strategies (ensemble only): comma-separated subset of
     "orb,mr,vwap,bb,gap" (OpeningRangeConfluence, MeanReversionPullback,
@@ -465,7 +469,17 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             required_names = " + ".join(ensemble_names.get(s, s) for s in required_keys)
             votes_desc += f", {required_names} required"
         names = " + ".join(ensemble_names.get(s, s) for s in selected)
-        header = [f"Day-trade strategy: ensemble vote ({names}, {votes_desc}), 5-min bars"]
+        header = [f"Day-trade strategy: ensemble vote ({names}, {votes_desc})"
+                  + (" + retest" if require_retest and "orb" in selected else "") + ", 5-min bars"]
+        if "orb" in selected:
+            if min_ema_spread_pct:
+                header.append(f"orb min EMA spread {min_ema_spread_pct:.2%}")
+            if min_strength:
+                header.append(f"orb min strength {min_strength:.2f}")
+            if min_volume_ratio:
+                header.append(f"orb min volume ratio {min_volume_ratio:.2f}x")
+            if require_retest:
+                header.append(f"orb retest tolerance {retest_tolerance_pct:.2%}")
     else:
         header = ["Day-trade strategy: opening-range breakout"
                   + (" + retest" if require_retest else "") + " + EMA/RSI confluence, 5-min bars"]
@@ -515,8 +529,11 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             return GapFillReversal()
         if strategy_name == "ensemble":
             ensemble_factories = {
-                "orb": lambda: OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=0,
-                                                       trend_filter_days=trend_filter_days),
+                "orb": lambda: OpeningRangeConfluence(
+                    or_minutes=or_minutes, confirm_bars=0, trend_filter_days=trend_filter_days,
+                    min_ema_spread_pct=min_ema_spread_pct, min_strength=min_strength,
+                    min_volume_ratio=min_volume_ratio, require_retest=require_retest,
+                    retest_tolerance_pct=retest_tolerance_pct),
                 "mr": lambda: MeanReversionPullback(),
                 "vwap": lambda: VWAPReclaim(),
                 "bb": lambda: BollingerSqueezeBreakout(),
