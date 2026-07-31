@@ -153,11 +153,11 @@
       "wins": 0
     },
     "WMT": {
-      "losses": 1,
+      "losses": 2,
       "paused_until": null,
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": -6.324271924653896e-05,
+      "total_pnl_pct": -0.00041149492277202024,
       "wins": 0
     },
     "XOM": {
