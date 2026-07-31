@@ -250,5 +250,11 @@
     "strategy": "daytrade",
     "symbol": "WMT",
     "pnl_pct": -0.00034825220352548126
+  },
+  {
+    "t": "2026-07-31T19:46:56Z",
+    "strategy": "daytrade",
+    "symbol": "AMZN",
+    "pnl_pct": 0.00039881594360875175
   }
 ]

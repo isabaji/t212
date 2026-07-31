@@ -11,10 +11,10 @@
     "AMZN": {
       "losses": 3,
       "paused_until": null,
-      "streak": 2,
-      "streak_type": "loss",
-      "total_pnl_pct": -0.0010789425186494964,
-      "wins": 1
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": -0.0006801265750407447,
+      "wins": 2
     },
     "AVGO": {
       "losses": 1,
