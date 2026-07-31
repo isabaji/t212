@@ -40,21 +40,30 @@ DEFAULT_SLIPPAGE_BPS = 5.0
 
 
 def _signal_series(strategy, df: pd.DataFrame, min_bars: int,
-                    confirm_df: pd.DataFrame | None = None) -> pd.Series:
+                    confirm_df: pd.DataFrame | None = None,
+                    daily_df: pd.DataFrame | None = None) -> pd.Series:
     """confirm_df (optional): a finer-grained bar series for the same symbol,
     sliced up to each step's current timestamp (no lookahead) and passed as
     the strategy's confirm_prices -- see OpeningRangeConfluence.confirm_bars.
+
+    daily_df (optional): a daily-bar series for the same symbol, passed
+    through unsliced as the strategy's daily_prices -- see
+    OpeningRangeConfluence.trend_filter_days. No lookahead risk despite not
+    slicing per step: the strategy itself only ever looks at days strictly
+    before df.iloc[:i]'s own last date, which is already correctly "today"
+    for this walk-forward step.
 
     Returns the full SignalResult per step (not just .signal), so callers
     can inspect .reason -- e.g. EnsembleVote tags a BUY's reason with which
     sub-strategies agreed, letting _build_trades attach that to the trade."""
     signals = []
+    daily_prices = {"X": daily_df} if daily_df is not None else None
     for i in range(min_bars, len(df) + 1):
         prices = {"X": df.iloc[:i]}
         confirm_prices = None
         if confirm_df is not None:
             confirm_prices = {"X": confirm_df[confirm_df.index <= df.index[i - 1]]}
-        signals.append(strategy.generate_signals(prices, confirm_prices)["X"])
+        signals.append(strategy.generate_signals(prices, confirm_prices, daily_prices)["X"])
     return pd.Series(signals, index=df.index[min_bars - 1:])
 
 
@@ -180,7 +189,7 @@ def _equity_curve(dates, df: pd.DataFrame, trades: list) -> pd.Series:
 def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
              slippage_bps: float = DEFAULT_SLIPPAGE_BPS, min_bars: int = 60,
              stop_atr_multiple: float | None = None, atr_period: int = 14,
-             confirm_df: pd.DataFrame | None = None,
+             confirm_df: pd.DataFrame | None = None, daily_df: pd.DataFrame | None = None,
              stop_loss_pct: float | None = None, take_profit_pct: float | None = None):
     """Long-only, single position at a time, all-in/all-out, cost-aware.
 
@@ -190,7 +199,7 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
     """
     if len(df) <= min_bars:
         return pd.Series([1.0], index=df.index[-1:]), []
-    signals = _signal_series(strategy, df, min_bars, confirm_df)
+    signals = _signal_series(strategy, df, min_bars, confirm_df, daily_df)
     atr_series = compute_atr(df, period=atr_period) if stop_atr_multiple else None
     trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series,
                             stop_loss_pct, take_profit_pct)
@@ -255,7 +264,7 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                   fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
                   min_bars: int = 60, periods_per_year: int = TRADING_DAYS_PER_YEAR,
                   stop_atr_multiple: float | None = None, atr_period: int = 14,
-                  confirm_df: pd.DataFrame | None = None,
+                  confirm_df: pd.DataFrame | None = None, daily_df: pd.DataFrame | None = None,
                   stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> list:
     """Split df into n_windows sequential, non-overlapping chunks and backtest
     each independently with a fresh strategy instance.
@@ -267,6 +276,11 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
 
     confirm_df (optional): sliced to each window's date range and passed
     through to simulate() -- see _signal_series.
+
+    daily_df (optional): passed through to every window's simulate() call
+    unsliced (no per-window trimming needed) -- see _signal_series, whose
+    per-step no-lookahead check makes that safe regardless of which window
+    is currently being backtested.
     """
     n = len(df)
     if n_windows < 1:
@@ -289,6 +303,7 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                                             & (confirm_df.index <= window_df.index[-1])]
         equity, trades = simulate(strategy_factory(), window_df, fee_bps, slippage_bps, min_bars,
                                    stop_atr_multiple, atr_period, confirm_df=window_confirm_df,
+                                   daily_df=daily_df,
                                    stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
         metrics = compute_metrics(equity, trades, periods_per_year)
         metrics["window"] = i + 1
@@ -358,7 +373,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              strategy_name: str = "orb",
                              ensemble_min_votes: int | None = None,
                              ensemble_strategies: str = "orb,mr,vwap",
-                             ensemble_required: str | None = None) -> None:
+                             ensemble_required: str | None = None,
+                             trend_filter_days: int | None = None) -> None:
     """Backtests a day-trade strategy on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
@@ -422,7 +438,15 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
 
     require_retest / retest_tolerance_pct (orb only): replaces the entry
     trigger itself with a pullback-and-hold retest of the opening-range high
-    instead of buying the first breakout bar -- see OpeningRangeConfluence."""
+    instead of buying the first breakout bar -- see OpeningRangeConfluence.
+
+    trend_filter_days (orb and ensemble): hard entry gate requiring the
+    prior daily close to be above its own trailing trend_filter_days-day
+    SMA -- see OpeningRangeConfluence.trend_filter_days. Applies whenever
+    OpeningRangeConfluence is in play, standalone ("orb") or as the ORB
+    component inside "ensemble". When set, this pulls one extra daily-bar
+    series per symbol from yfinance (like the swing backtest) alongside the
+    usual Alpaca intraday pull. None (default) disables the gate."""
     if strategy_name == "mean_reversion":
         header = ["Day-trade strategy: mean-reversion pullback + EMA/RSI confluence, 5-min bars"]
     elif strategy_name == "bollinger":
@@ -457,6 +481,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             header.append(f"min volume ratio {min_volume_ratio:.2f}x")
         if require_retest:
             header.append(f"retest tolerance {retest_tolerance_pct:.2%}")
+    if trend_filter_days and strategy_name in ("orb", "ensemble"):
+        header.append(f"{trend_filter_days}-day daily trend filter")
     if stop_loss_pct or take_profit_pct:
         sl = f"{stop_loss_pct:.1%} stop-loss" if stop_loss_pct else "no stop-loss"
         tp = f"{take_profit_pct:.1%} take-profit" if take_profit_pct else "no take-profit"
@@ -476,6 +502,10 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         confirm_data = fetch_intraday(list(price_data.keys()), alpaca_api_key, alpaca_api_secret,
                                        days=60, timeframe="1Min")
 
+    daily_data = {}
+    if trend_filter_days and strategy_name in ("orb", "ensemble"):
+        daily_data = fetch_history(list(price_data.keys()), period="6mo")
+
     def strategy_factory():
         if strategy_name == "mean_reversion":
             return MeanReversionPullback()
@@ -485,7 +515,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             return GapFillReversal()
         if strategy_name == "ensemble":
             ensemble_factories = {
-                "orb": lambda: OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=0),
+                "orb": lambda: OpeningRangeConfluence(or_minutes=or_minutes, confirm_bars=0,
+                                                       trend_filter_days=trend_filter_days),
                 "mr": lambda: MeanReversionPullback(),
                 "vwap": lambda: VWAPReclaim(),
                 "bb": lambda: BollingerSqueezeBreakout(),
@@ -500,7 +531,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             or_minutes=or_minutes, confirm_bars=confirm_bars,
             rsi_buy_range=rsi_buy_range or (50, 70), min_ema_spread_pct=min_ema_spread_pct,
             min_strength=min_strength, min_volume_ratio=min_volume_ratio,
-            require_retest=require_retest, retest_tolerance_pct=retest_tolerance_pct)
+            require_retest=require_retest, retest_tolerance_pct=retest_tolerance_pct,
+            trend_filter_days=trend_filter_days)
 
     vote_breakdown = {}  # entry_reason -> {"trades": int, "wins": int, "pnl_sum": float}
 
@@ -511,7 +543,7 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                 strategy_factory,
                 df, n_windows, fee_bps, slippage_bps, min_bars=bars_per_day,
                 periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day,
-                confirm_df=confirm_data.get(sym),
+                confirm_df=confirm_data.get(sym), daily_df=daily_data.get(sym),
                 stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
         except ValueError as exc:
             print(f"{sym}: {exc}")

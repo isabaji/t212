@@ -99,6 +99,10 @@ on:
         description: 'With strategy=ensemble: comma-separated subset of ensemble_strategies that must ALL vote BUY for any combination to count, on top of ensemble_min_votes -- e.g. orb,mr,gap at min-votes 2 with ensemble_required=orb accepts orb+mr/orb+gap but rejects mr+gap alone (blank = off)'
         type: string
         default: ''
+      trend_filter_days:
+        description: 'orb/ensemble only: hard entry gate requiring the prior daily close above its own trailing N-day SMA (pulls an extra yfinance daily-bar series per symbol; blank = off)'
+        type: string
+        default: ''
 
 jobs:
   backtest:
@@ -140,5 +144,6 @@ jobs:
           if [ -n "${{ inputs.ensemble_min_votes }}" ]; then ARGS="$ARGS --ensemble-min-votes ${{ inputs.ensemble_min_votes }}"; fi
           if [ -n "${{ inputs.ensemble_strategies }}" ]; then ARGS="$ARGS --ensemble-strategies ${{ inputs.ensemble_strategies }}"; fi
           if [ -n "${{ inputs.ensemble_required }}" ]; then ARGS="$ARGS --ensemble-required ${{ inputs.ensemble_required }}"; fi
+          if [ -n "${{ inputs.trend_filter_days }}" ]; then ARGS="$ARGS --trend-filter-days ${{ inputs.trend_filter_days }}"; fi
           echo "Running: python main.py $ARGS"
           python main.py $ARGS

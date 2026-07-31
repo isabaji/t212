@@ -106,6 +106,11 @@ def main() -> None:
                               "on top of --ensemble-min-votes -- e.g. with orb,mr,gap at min-votes 2 and "
                               "--ensemble-required orb, orb+mr and orb+gap both count but mr+gap alone "
                               "does not, even though it's also '2 of 3' (off by default)")
+    parser.add_argument("--trend-filter-days", type=int, default=None,
+                         help="backtest --daytrade only, orb/ensemble: hard entry gate requiring the "
+                              "prior daily close to be above its own trailing N-day SMA -- pulls one "
+                              "extra yfinance daily-bar series per symbol alongside the usual Alpaca "
+                              "intraday pull (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
     parser.add_argument("--symbols", default=None,
@@ -148,7 +153,8 @@ def main() -> None:
                                      strategy_name=args.strategy,
                                      ensemble_min_votes=args.ensemble_min_votes,
                                      ensemble_strategies=args.ensemble_strategies,
-                                     ensemble_required=args.ensemble_required)
+                                     ensemble_required=args.ensemble_required,
+                                     trend_filter_days=args.trend_filter_days)
         else:
             print_backtest(symbols, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,

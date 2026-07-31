@@ -39,7 +39,8 @@ class SignalResult:
 class Strategy(ABC):
     @abstractmethod
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         """Map each symbol to a SignalResult, given its OHLCV history.
 
         confirm_prices (optional): a second, typically finer-grained bar
@@ -48,6 +49,15 @@ class Strategy(ABC):
         breakout to hold across several 1-minute closes rather than firing
         on a single coarser bar's close alone. Ignored by strategies that
         don't use it (e.g. SMACrossover).
+
+        daily_prices (optional): a per-symbol series of *daily* bars (not
+        the intraday bars `prices` is built from), for strategies that want
+        a longer-horizon trend read than intraday indicators can see -- e.g.
+        OpeningRangeConfluence's trend_filter_days. The caller does not need
+        to pre-trim this to "no lookahead"; a strategy using it is
+        responsible for excluding any day not strictly before the current
+        intraday bar's date itself (see OpeningRangeConfluence._signal_for).
+        Ignored by strategies that don't use it.
         """
 
 
@@ -86,7 +96,8 @@ class SMACrossover(Strategy):
         self.max_chase_pct = max_chase_pct
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         signals: dict[str, SignalResult] = {}
         for sym, df in prices.items():
             close = df["Close"]
@@ -184,6 +195,21 @@ class OpeningRangeConfluence(Strategy):
     bars. All the other gates above (confirm_bars, min_ema_spread_pct, etc.)
     still apply on top once this trigger fires. False when require_retest is
     False (default) -- unrelated to and does not change existing behavior.
+
+    trend_filter_days: hard entry gate (backtest-only experiment) on a
+    longer horizon than anything else here -- everything above reads only
+    the intraday bars in `prices` (hours, not weeks). This instead requires
+    the prior *daily* close (from generate_signals' daily_prices, not
+    `prices`) to be above its own trailing trend_filter_days-day SMA,
+    i.e. the symbol is in a genuine multi-week uptrend, not just showing an
+    intraday breakout inside a longer downtrend or chop. Rejects outright
+    (HOLD, reason="weak_daily_trend") if not met. Only ever looks at daily
+    bars strictly before the current intraday bar's own calendar date, so
+    it can't see a same-day close that hasn't happened yet even if a caller
+    passes an unfiltered daily series (see _signal_for). None disables the
+    gate; if daily_prices doesn't have this symbol, or there aren't yet
+    trend_filter_days+1 prior days of it, the gate is skipped (fails open),
+    same philosophy as confirm_bars/min_volume_ratio with too-short history.
     """
 
     def __init__(self, or_minutes: int = 30, bar_minutes: int = 5,
@@ -199,7 +225,8 @@ class OpeningRangeConfluence(Strategy):
                  min_volume_ratio: float | None = None,
                  volume_avg_period: int = 20,
                  require_retest: bool = False,
-                 retest_tolerance_pct: float = 0.003):
+                 retest_tolerance_pct: float = 0.003,
+                 trend_filter_days: int | None = None):
         if ema_fast >= ema_slow:
             raise ValueError("ema_fast must be shorter than ema_slow")
         self.or_bars = max(1, or_minutes // bar_minutes)
@@ -219,11 +246,15 @@ class OpeningRangeConfluence(Strategy):
         self.min_strength = min_strength
         self.min_volume_ratio = min_volume_ratio
         self.volume_avg_period = volume_avg_period
+        self.trend_filter_days = trend_filter_days
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         confirm_prices = confirm_prices or {}
-        return {sym: self._signal_for(df, confirm_prices.get(sym)) for sym, df in prices.items()}
+        daily_prices = daily_prices or {}
+        return {sym: self._signal_for(df, confirm_prices.get(sym), daily_prices.get(sym))
+                for sym, df in prices.items()}
 
     def _has_retest_setup(self, today_bars: pd.DataFrame, or_high: float) -> bool:
         """True if, since the opening range, price broke above or_high,
@@ -244,7 +275,8 @@ class OpeningRangeConfluence(Strategy):
         retested = ((since_break["Low"] <= or_high) & (since_break["Low"] >= retest_low_bound)).any()
         return bool(retested) and current["Close"] > or_high
 
-    def _signal_for(self, df: pd.DataFrame, confirm_df: pd.DataFrame | None = None) -> SignalResult:
+    def _signal_for(self, df: pd.DataFrame, confirm_df: pd.DataFrame | None = None,
+                     daily_df: pd.DataFrame | None = None) -> SignalResult:
         if df.empty or len(df) < max(self.ema_slow, self.volume_avg_period) + 1:
             return SignalResult(Signal.HOLD)
 
@@ -280,6 +312,14 @@ class OpeningRangeConfluence(Strategy):
             ema_spread_pct = (last_fast - last_slow) / last_slow
             if self.min_ema_spread_pct is not None and ema_spread_pct < self.min_ema_spread_pct:
                 return SignalResult(Signal.HOLD, reason="weak_trend")
+            if self.trend_filter_days is not None and daily_df is not None:
+                today = df.index[-1].date()
+                prior_daily = daily_df[daily_df.index.date < today]
+                if len(prior_daily) >= self.trend_filter_days:
+                    daily_sma = prior_daily["Close"].rolling(self.trend_filter_days).mean().iloc[-1]
+                    last_daily_close = prior_daily["Close"].iloc[-1]
+                    if pd.notna(daily_sma) and last_daily_close < daily_sma:
+                        return SignalResult(Signal.HOLD, reason="weak_daily_trend")
             if self.min_volume_ratio is not None and "Volume" in df.columns:
                 avg_volume = df["Volume"].rolling(self.volume_avg_period).mean().shift(1).iloc[-1]
                 if pd.notna(avg_volume) and avg_volume > 0:
@@ -396,7 +436,8 @@ class MeanReversionPullback(Strategy):
         self.prior_strength_rsi_min = prior_strength_rsi_min
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
 
     def _signal_for(self, df: pd.DataFrame) -> SignalResult:
@@ -485,7 +526,8 @@ class VWAPReclaim(Strategy):
         self.vwap_distance_norm_pct = vwap_distance_norm_pct
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
 
     def _signal_for(self, df: pd.DataFrame) -> SignalResult:
@@ -569,7 +611,8 @@ class BollingerSqueezeBreakout(Strategy):
         self.rsi_exit_ceiling = rsi_exit_ceiling
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
 
     def _signal_for(self, df: pd.DataFrame) -> SignalResult:
@@ -671,7 +714,8 @@ class GapFillReversal(Strategy):
         self.rsi_exit_ceiling = rsi_exit_ceiling
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         return {sym: self._signal_for(df) for sym, df in prices.items()}
 
     def _signal_for(self, df: pd.DataFrame) -> SignalResult:
@@ -768,8 +812,9 @@ class EnsembleVote(Strategy):
         self.required_indices = [i for i, s in enumerate(strategies) if s in (required or [])]
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
-                          confirm_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
-        all_signals = [s.generate_signals(prices, confirm_prices) for s in self.strategies]
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        all_signals = [s.generate_signals(prices, confirm_prices, daily_prices) for s in self.strategies]
         result = {}
         for sym in prices:
             sigs = [sig_map.get(sym, SignalResult(Signal.HOLD)) for sig_map in all_signals]
