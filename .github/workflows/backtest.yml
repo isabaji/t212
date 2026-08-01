@@ -52,6 +52,10 @@ on:
         description: 'EMA lookback in days (swing_strategy=long_term_trend only, blank = default 200)'
         type: string
         default: ''
+      period:
+        description: 'Swing only: yfinance history period, e.g. 1y/5y/10y/max (blank = default 5y). A high windows count with a long-warmup strategy (e.g. long_term_trend) needs more history so each window has room left after warmup'
+        type: string
+        default: ''
       confirm_bars:
         description: '1-min confirmation bars required before entry (daytrade only, blank = config default, 0 = disabled -- run twice to compare)'
         type: string
@@ -148,6 +152,7 @@ jobs:
           if [ -n "${{ inputs.swing_strategy }}" ]; then ARGS="$ARGS --swing-strategy ${{ inputs.swing_strategy }}"; fi
           if [ -n "${{ inputs.sma_period }}" ]; then ARGS="$ARGS --sma-period ${{ inputs.sma_period }}"; fi
           if [ -n "${{ inputs.ema_period }}" ]; then ARGS="$ARGS --ema-period ${{ inputs.ema_period }}"; fi
+          if [ -n "${{ inputs.period }}" ]; then ARGS="$ARGS --period ${{ inputs.period }}"; fi
           if [ -n "${{ inputs.confirm_bars }}" ]; then ARGS="$ARGS --confirm-bars ${{ inputs.confirm_bars }}"; fi
           if [ -n "${{ inputs.stop_loss_pct }}" ]; then ARGS="$ARGS --stop-loss-pct ${{ inputs.stop_loss_pct }}"; fi
           if [ -n "${{ inputs.take_profit_pct }}" ]; then ARGS="$ARGS --take-profit-pct ${{ inputs.take_profit_pct }}"; fi

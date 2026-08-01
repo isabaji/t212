@@ -126,6 +126,12 @@ def main() -> None:
                               "config) -- default: cfg.watchlist")
     parser.add_argument("--windows", type=int, default=None,
                          help="backtest command only: number of walk-forward windows (default 4 swing / 2 daytrade)")
+    parser.add_argument("--period", default="5y",
+                         help="backtest command only (swing): yfinance history period to pull, e.g. "
+                              "1y/5y/10y/max (default 5y) -- a strategy needing a long warmup "
+                              "(e.g. --swing-strategy long_term_trend's 200-day SMA/EMA) combined with "
+                              "a high --windows count needs more history so each window still has room "
+                              "left over to trade on after warmup")
     parser.add_argument("--fee-bps", type=float, default=DEFAULT_FEE_BPS,
                          help="backtest command only: simulated fee in basis points per side")
     parser.add_argument("--slippage-bps", type=float, default=DEFAULT_SLIPPAGE_BPS,
@@ -177,7 +183,7 @@ def main() -> None:
                                      trend_filter_days=args.trend_filter_days)
         else:
             print_backtest(symbols, args.fast, args.slow, args.windows or 4,
-                            args.fee_bps, args.slippage_bps,
+                            args.fee_bps, args.slippage_bps, period=args.period,
                             stop_atr_multiple=args.stop_atr_multiple, trend_filter=args.trend_filter,
                             strategy_name=args.swing_strategy,
                             sma_period=args.sma_period, ema_period=args.ema_period)
