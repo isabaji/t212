@@ -7,21 +7,40 @@ compute a battery of indicator features using ONLY bars up to that point (plus
 prior days -- no lookahead). Label the day a HIT if price rises >= 1% from the
 decision price to that day's close. Then:
   1. compare feature distributions for hits vs misses, and
-  2. mine simple conjunctive rules (1-3 binary conditions) for the highest
-     hit rate with meaningful support, reporting lift vs the base rate so a
-     "good-looking" precision that just matches chance is visible as lift~1.
+  2. mine simple conjunctive rules (1-3 binary conditions) for high hit rates
+     with meaningful support.
+
+Selection-bias safeguards (a top-k-by-hit-rate table over ~1000 scanned combos
+is an extreme-order-statistic exercise -- raw hit%/lift on the winners is
+guaranteed to look good even under a no-signal null):
+  - rules are ranked by the Wilson 95% LOWER confidence bound of the hit rate,
+    not the raw hit rate, so small-n flukes sink;
+  - a permutation baseline (circular-shift of each symbol's hit sequence, which
+    preserves per-symbol base rates and autocorrelation while breaking any
+    feature->outcome link) reports the max chance hit rate the same scan finds
+    on label-shuffled data -- the bar a real rule must clear;
+  - lift is reported both vs the pooled base rate and vs a composition-adjusted
+    expectation (the support-weighted mean of the per-symbol base rates of the
+    rows the rule selects), because a fixed 1% target is far easier for
+    volatile symbols, so a volatility-selecting condition gets pooled-lift > 1
+    with zero timing information;
+  - each rule reports how many distinct dates it spans and the largest
+    single-date share of its rows, because 30 symbols x 1 market day move
+    together -- support 100 spanning 10 dates is ~10 observations, not 100.
 
 Not part of the package -- run once via a temporary workflow step, then
 deleted (same pattern as the earlier regime-analysis scratch tooling).
 """
 
 import itertools
+import math
 import os
 import sys
 from datetime import time as dtime
 
 sys.path.insert(0, ".")
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from t212bot.config import Config  # noqa: E402
@@ -51,6 +70,11 @@ for sym, df in sorted(price_data.items()):
     # Keep regular-session bars only; otherwise "morning"/opening-range/
     # first-hour-volume would silently absorb thin pre-market prints.
     df = df[(df.index.time >= dtime(9, 30)) & (df.index.time < dtime(16, 0))]
+    # Drop the run day itself: fetch_intraday sets no end time, so a run
+    # during market hours would include a partial session whose "close" is
+    # really just the latest bar -- mislabeling that day's outcome.
+    today_et = pd.Timestamp.now(tz="America/New_York").date()
+    df = df[df.index.date < today_et]
     if df.empty:
         continue
     # Continuous-series indicators, computed once over the full frame. All of
@@ -143,12 +167,24 @@ data = pd.DataFrame(rows)
 n = len(data)
 base_rate = data["hit"].mean() * 100
 base_rate_high = data["hit_high"].mean() * 100
-print(f"{n} usable symbol-days.")
+n_dates = data["date"].nunique()
+print(f"{n} usable symbol-days across {n_dates} distinct trading days "
+      f"({data['symbol'].nunique()} symbols).")
+print(f"NOTE: outcomes are correlated within a market day, so the effective "
+      f"sample size is closer to {n_dates} than {n}.")
 print(f"Base rate: {base_rate:.1f}% of days gain >={TARGET_PCT}% from 10:30 to close "
       f"({base_rate_high:.1f}% touch >={TARGET_PCT}% intraday high after 10:30).")
 print(f"Mean forward close return (all days): {data['fwd_close_ret'].mean():+.3f}%\n")
 
+per_sym_base = data.groupby("symbol")["hit"].mean()
+print("Per-symbol base rates (a fixed 1% target is easier for volatile names "
+      "-- rules that merely select these symbols aren't timing anything):")
+print(per_sym_base.sort_values(ascending=False).map(lambda p: f"{p*100:.0f}%").to_string())
+print()
+
 print("=== Feature means: hit days vs miss days (close target) ===")
+print("(note: hit days over-represent volatile symbols, so these means partly "
+      "reflect symbol composition, not just timing)")
 features = ["gap_pct", "fh_ret", "vwap_dist", "vol_ratio", "rsi14", "ema_spread",
             "prev_day_ret", "prev_close_pos", "ret5d"]
 hits, misses = data[data["hit"]], data[~data["hit"]]
@@ -161,8 +197,7 @@ print(f"\nhit rate when orb_break=True: {orb_hit:.1f}%  vs False: {orb_miss:.1f}
 
 # --- Rule mining: conjunctions of 1-3 binary conditions -------------------
 # Thresholds fixed a priori (not tuned on this data) to limit the garden of
-# forking paths; the count of combinations scanned is printed so the
-# multiple-comparisons risk is explicit, not hidden.
+# forking paths; see the module docstring for the selection-bias safeguards.
 conds = {
     "gap_up": data["gap_pct"] > 0.3,
     "gap_dn": data["gap_pct"] < -0.3,
@@ -185,32 +220,80 @@ conds = {
 }
 conds = {k: v.fillna(False) for k, v in conds.items()}
 
-results = []
+
+def wilson_lb(p: float, m: int, z: float = 1.96) -> float:
+    """Wilson 95% lower confidence bound for a proportion -- penalizes small
+    support so a lucky 45%-of-40 rule ranks below a solid 40%-of-200 one."""
+    if m == 0:
+        return 0.0
+    denom = 1 + z * z / m
+    centre = p + z * z / (2 * m)
+    margin = z * math.sqrt(p * (1 - p) / m + z * z / (4 * m * m))
+    return (centre - margin) / denom
+
+
+y = data["hit"].to_numpy()
+sym_base_arr = data["symbol"].map(per_sym_base).to_numpy()
+date_col = data["date"]
+
 names = list(conds)
+masks = []
 n_scanned = 0
 for r in (1, 2, 3):
     for combo in itertools.combinations(names, r):
         n_scanned += 1
-        mask = conds[combo[0]].copy()
+        mask = conds[combo[0]].to_numpy().copy()
         for c in combo[1:]:
-            mask &= conds[c]
-        support = int(mask.sum())
-        if support < MIN_SUPPORT:
-            continue
-        sub = data[mask]
-        results.append({
-            "rule": "+".join(combo), "n": support,
-            "hit%": sub["hit"].mean() * 100,
-            "lift": (sub["hit"].mean() * 100) / base_rate if base_rate else 0,
-            "avg_fwd%": sub["fwd_close_ret"].mean(),
-            "avg_min%": sub["fwd_min_ret"].mean(),
-        })
+            mask &= conds[c].to_numpy()
+        if int(mask.sum()) >= MIN_SUPPORT:
+            masks.append(("+".join(combo), mask))
+
+# Permutation baseline: circularly shift each SYMBOL's hit sequence (in date
+# order) by a random offset. This keeps every symbol's own base rate and
+# streakiness intact -- so the composition confound is baked into the null --
+# while destroying any genuine feature->outcome timing link. The max hit rate
+# the same scan finds on shifted labels is the chance bar a real rule must beat.
+rng = np.random.default_rng(7)
+sym_indices = {s: data.index[data["symbol"] == s].to_numpy() for s in per_sym_base.index}
+perm_maxes = []
+for _ in range(20):
+    yp = y.copy()
+    for s, idx in sym_indices.items():
+        yp[idx] = np.roll(y[idx], rng.integers(1, max(2, len(idx))))
+    perm_maxes.append(max(yp[m].mean() * 100 for _, m in masks))
+chance_mean, chance_max = np.mean(perm_maxes), np.max(perm_maxes)
+
+results = []
+for name, mask in masks:
+    sub = data[mask]
+    support = len(sub)
+    hit_rate = sub["hit"].mean()
+    exp_rate = sym_base_arr[mask].mean()  # composition-adjusted expectation
+    date_counts = sub["date"].value_counts()
+    results.append({
+        "rule": name, "n": support,
+        "dts": sub["date"].nunique(),
+        "mxd%": date_counts.iloc[0] / support * 100,
+        "hit%": hit_rate * 100,
+        "wLB%": wilson_lb(hit_rate, support) * 100,
+        "exp%": exp_rate * 100,
+        "aLift": hit_rate / exp_rate if exp_rate else 0,
+        "avg%": sub["fwd_close_ret"].mean(),
+        "med%": sub["fwd_close_ret"].median(),
+        "min%": sub["fwd_min_ret"].mean(),
+    })
 res = pd.DataFrame(results)
 print(f"=== Rule mining: {n_scanned} combos scanned, {len(res)} with support >= {MIN_SUPPORT} ===")
-pd.set_option("display.width", 160)
-print(f"\nTop 25 by hit rate (close target, base rate {base_rate:.1f}%):")
-print(res.sort_values("hit%", ascending=False).head(25).to_string(
+print(f"Chance bar (20 label-shift permutations, same scan): max chance hit rate "
+      f"averaged {chance_mean:.1f}%, worst case {chance_max:.1f}%. Treat any rule "
+      f"whose hit% is below this as indistinguishable from noise.")
+print("Columns: n=rows, dts=distinct dates, mxd%=largest single-date share of rows, "
+      "wLB%=Wilson 95% lower bound on hit%, exp%=composition-adjusted expected hit% "
+      "(support-weighted per-symbol base rates), aLift=hit%/exp%.")
+pd.set_option("display.width", 200)
+print(f"\nTop 25 by Wilson lower bound (close target, pooled base rate {base_rate:.1f}%):")
+print(res.sort_values("wLB%", ascending=False).head(25).to_string(
     index=False, float_format=lambda x: f"{x:.2f}"))
-print("\nTop 15 by average forward close return:")
-print(res.sort_values("avg_fwd%", ascending=False).head(15).to_string(
+print("\nTop 15 by MEDIAN forward close return (outlier-resistant):")
+print(res.sort_values("med%", ascending=False).head(15).to_string(
     index=False, float_format=lambda x: f"{x:.2f}"))
