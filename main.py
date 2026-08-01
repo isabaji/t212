@@ -59,11 +59,13 @@ def main() -> None:
                               "breakout before entry (default: DAYTRADE_CONFIRM_BARS config value; pass 0 to "
                               "compare against the gate disabled)")
     parser.add_argument("--stop-loss-pct", type=float, default=None,
-                         help="backtest --daytrade only: fixed stop-loss as a fraction of entry price "
-                              "(e.g. 0.002 for 0.2%%), checked against each bar's Low (off by default)")
+                         help="backtest only (daytrade or swing): fixed stop-loss as a fraction of entry "
+                              "price (e.g. 0.03 for 3%%), checked against each bar's Low, on top of "
+                              "whatever the strategy's own SELL signal would do (off by default)")
     parser.add_argument("--take-profit-pct", type=float, default=None,
-                         help="backtest --daytrade only: fixed take-profit as a fraction of entry price "
-                              "(e.g. 0.006 for 0.6%%), checked against each bar's High (off by default)")
+                         help="backtest only (daytrade or swing): fixed take-profit as a fraction of "
+                              "entry price (e.g. 0.07 for 7%%), checked against each bar's High, on top "
+                              "of whatever the strategy's own SELL signal would do (off by default)")
     parser.add_argument("--rsi-buy-min", type=float, default=None,
                          help="backtest --daytrade only: lower bound of the RSI buy band "
                               "(default: strategy default 50)")
@@ -155,6 +157,13 @@ def main() -> None:
     parser.add_argument("--ema-period", type=int, default=200,
                          help="backtest command only (swing --swing-strategy long_term_trend): EMA "
                               "lookback in days (default 200)")
+    parser.add_argument("--long-term-direction", choices=["above", "below"], default="above",
+                         help="backtest command only (swing --swing-strategy long_term_trend): 'above' "
+                              "(default) buys when price is above both SMA/EMA (trend-following); "
+                              "'below' mirrors it into a dip-buy -- buys when price is below both, sells "
+                              "on recovery above either. 'below' has no trend confirmation backing it, so "
+                              "it's usually paired with --stop-loss-pct/--take-profit-pct rather than "
+                              "relying on the sell signal alone")
     args = parser.parse_args()
 
     cfg = Config()
@@ -186,7 +195,9 @@ def main() -> None:
                             args.fee_bps, args.slippage_bps, period=args.period,
                             stop_atr_multiple=args.stop_atr_multiple, trend_filter=args.trend_filter,
                             strategy_name=args.swing_strategy,
-                            sma_period=args.sma_period, ema_period=args.ema_period)
+                            sma_period=args.sma_period, ema_period=args.ema_period,
+                            long_term_direction=args.long_term_direction,
+                            stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct)
         return
 
     cfg.validate()

@@ -38,11 +38,12 @@ on:
         type: string
         default: ''
       swing_strategy:
-        description: 'Swing strategy to backtest (ignored with daytrade=true): sma_crossover (default, fast/slow crossover) or long_term_trend (buy when price is above both its sma_period/ema_period-day SMA and EMA)'
+        description: 'Swing strategy to backtest (ignored with daytrade=true): sma_crossover (default, fast/slow crossover), long_term_trend (buy when price is above both its SMA/EMA), or long_term_trend_below (mirrored dip-buy: buy when price is below both, pair with stop_loss_pct/take_profit_pct below)'
         type: choice
         options:
           - sma_crossover
           - long_term_trend
+          - long_term_trend_below
         default: sma_crossover
       long_term_period:
         description: 'SMA and EMA lookback in days, applied to both (swing_strategy=long_term_trend only, blank = default 200 for each). CLI has independent --sma-period/--ema-period if you need to split them; this workflow input keeps them in sync to stay under the 25-input limit'
@@ -57,11 +58,11 @@ on:
         type: string
         default: ''
       stop_loss_pct:
-        description: 'Fixed stop-loss as a fraction of entry price, e.g. 0.002 for 0.2%% (daytrade only, blank = off)'
+        description: 'Fixed stop-loss as a fraction of entry price, e.g. 0.03 for 3%% (daytrade or swing, blank = off)'
         type: string
         default: ''
       take_profit_pct:
-        description: 'Fixed take-profit as a fraction of entry price, e.g. 0.006 for 0.6%% (daytrade only, blank = off)'
+        description: 'Fixed take-profit as a fraction of entry price, e.g. 0.07 for 7%% (daytrade or swing, blank = off)'
         type: string
         default: ''
       rsi_buy_min:
@@ -145,7 +146,11 @@ jobs:
           if [ -n "${{ inputs.windows }}" ]; then ARGS="$ARGS --windows ${{ inputs.windows }}"; fi
           if [ -n "${{ inputs.stop_atr_multiple }}" ]; then ARGS="$ARGS --stop-atr-multiple ${{ inputs.stop_atr_multiple }}"; fi
           if [ -n "${{ inputs.trend_filter }}" ]; then ARGS="$ARGS --trend-filter ${{ inputs.trend_filter }}"; fi
-          if [ -n "${{ inputs.swing_strategy }}" ]; then ARGS="$ARGS --swing-strategy ${{ inputs.swing_strategy }}"; fi
+          if [ "${{ inputs.swing_strategy }}" = "long_term_trend_below" ]; then
+            ARGS="$ARGS --swing-strategy long_term_trend --long-term-direction below"
+          elif [ -n "${{ inputs.swing_strategy }}" ]; then
+            ARGS="$ARGS --swing-strategy ${{ inputs.swing_strategy }}"
+          fi
           if [ -n "${{ inputs.long_term_period }}" ]; then ARGS="$ARGS --sma-period ${{ inputs.long_term_period }} --ema-period ${{ inputs.long_term_period }}"; fi
           if [ -n "${{ inputs.period }}" ]; then ARGS="$ARGS --period ${{ inputs.period }}"; fi
           if [ -n "${{ inputs.confirm_bars }}" ]; then ARGS="$ARGS --confirm-bars ${{ inputs.confirm_bars }}"; fi

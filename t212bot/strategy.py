@@ -129,16 +129,29 @@ class SMACrossover(Strategy):
 
 
 class LongTermTrendConfluence(Strategy):
-    """Swing strategy: buy when price is above both its long-horizon SMA and
-    EMA (200-day by default) -- both agree on a long-term uptrend; sell when
-    price drops below either one.
+    """Swing strategy: by default (direction="above"), buy when price is
+    above both its long-horizon SMA and EMA (200-day by default) -- both
+    agree on a long-term uptrend; sell when price drops below either one.
 
-    Event-driven like SMACrossover: BUY fires only on the bar where "above
-    both" first becomes true, not on every bar it stays true (a resting HOLD
-    the rest of the time keeps behavior and logs consistent with the other
-    strategies here; bot.py's own position check already makes re-signaling
-    BUY while holding harmless, so this is about clean logs, not correctness).
-    SELL fires on the bar where "above both" first becomes false.
+    direction="below" mirrors the whole thing into a dip-buy / mean-
+    reversion bet instead: buy when price is below both its SMA and EMA
+    (a break down through its own long-run average), sell when it recovers
+    back above either. Same mechanics, opposite thesis -- "this pullback
+    below the long-run trend is a buyable dip" instead of "this is a
+    confirmed long-run uptrend". Since there's no trend-confirmation logic
+    backing a dip-buy, this direction is usually paired with the backtest
+    engine's own stop_loss_pct/take_profit_pct (see walk_forward/simulate)
+    rather than relying on this strategy's own SELL signal to exit -- the
+    SELL signal alone doesn't know whether the dip is over, just that price
+    has climbed back above one of the two lines.
+
+    Event-driven like SMACrossover: BUY fires only on the bar the entry
+    condition first becomes true, not on every bar it stays true (a resting
+    HOLD the rest of the time keeps behavior and logs consistent with the
+    other strategies here; bot.py's own position check already makes
+    re-signaling BUY while holding harmless, so this is about clean logs,
+    not correctness). SELL fires on the bar the condition first becomes
+    false again.
 
     Combining an SMA and an EMA over the *same* period requires two
     differently-weighted reads of the same window to agree, rather than
@@ -149,22 +162,28 @@ class LongTermTrendConfluence(Strategy):
     the same way OpeningRangeConfluence requires breakout + trend + momentum
     to agree rather than trading on any one alone.
 
-    strength_norm_pct: a BUY's strength is how far price sits above its own
+    strength_norm_pct: a BUY's strength is how far price sits from its own
     long-horizon SMA (the steadier of the two lines) as a fraction of that
-    SMA, scaled so strength_norm_pct of extension maps to full strength
-    (1.0) -- same approach as SMACrossover.
+    SMA -- above it for direction="above", below it for direction="below"
+    -- scaled so strength_norm_pct of that distance maps to full strength
+    (1.0). Same approach as SMACrossover.
 
     max_chase_pct: anti-chase guard, same idea as SMACrossover -- if price
-    has already extended past the SMA by more than this fraction, the BUY is
-    suppressed entirely (HOLD, reason="chased") rather than sized down,
-    since a move this extended above a 200-day average reads more like a
-    blow-off than a fresh, plannable long-term entry. None disables it.
+    has already moved past the SMA by more than this fraction (extended
+    above it, or already deep below it), the BUY is suppressed entirely
+    (HOLD, reason="chased") rather than sized down, since a move this far
+    from a 200-day average reads more like a blow-off (direction="above")
+    or a falling knife (direction="below") than a fresh, plannable entry.
+    None disables it.
     """
 
-    def __init__(self, sma_period: int = 200, ema_period: int = 200,
+    def __init__(self, sma_period: int = 200, ema_period: int = 200, direction: str = "above",
                  strength_norm_pct: float = 0.10, max_chase_pct: float | None = 0.30):
+        if direction not in ("above", "below"):
+            raise ValueError("direction must be 'above' or 'below'")
         self.sma_period = sma_period
         self.ema_period = ema_period
+        self.direction = direction
         self.strength_norm_pct = strength_norm_pct
         self.max_chase_pct = max_chase_pct
 
@@ -173,6 +192,7 @@ class LongTermTrendConfluence(Strategy):
                           daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
         signals: dict[str, SignalResult] = {}
         min_bars = max(self.sma_period, self.ema_period)
+        above = self.direction == "above"
         for sym, df in prices.items():
             close = df["Close"]
             if len(close) < min_bars + 1:
@@ -181,17 +201,22 @@ class LongTermTrendConfluence(Strategy):
             sma_line = close.rolling(self.sma_period).mean()
             ema_line = ema(close, self.ema_period)
 
-            above_both_now = close.iloc[-1] > sma_line.iloc[-1] and close.iloc[-1] > ema_line.iloc[-1]
-            above_both_prev = close.iloc[-2] > sma_line.iloc[-2] and close.iloc[-2] > ema_line.iloc[-2]
+            if above:
+                trigger_now = close.iloc[-1] > sma_line.iloc[-1] and close.iloc[-1] > ema_line.iloc[-1]
+                trigger_prev = close.iloc[-2] > sma_line.iloc[-2] and close.iloc[-2] > ema_line.iloc[-2]
+                distance_pct = (close.iloc[-1] - sma_line.iloc[-1]) / sma_line.iloc[-1]
+            else:
+                trigger_now = close.iloc[-1] < sma_line.iloc[-1] and close.iloc[-1] < ema_line.iloc[-1]
+                trigger_prev = close.iloc[-2] < sma_line.iloc[-2] and close.iloc[-2] < ema_line.iloc[-2]
+                distance_pct = (sma_line.iloc[-1] - close.iloc[-1]) / sma_line.iloc[-1]
 
-            if above_both_now and not above_both_prev:
-                extension_pct = (close.iloc[-1] - sma_line.iloc[-1]) / sma_line.iloc[-1]
-                if self.max_chase_pct is not None and extension_pct > self.max_chase_pct:
+            if trigger_now and not trigger_prev:
+                if self.max_chase_pct is not None and distance_pct > self.max_chase_pct:
                     signals[sym] = SignalResult(Signal.HOLD, reason="chased")
                     continue
-                strength = max(0.0, min(1.0, extension_pct / self.strength_norm_pct))
+                strength = max(0.0, min(1.0, distance_pct / self.strength_norm_pct))
                 signals[sym] = SignalResult(Signal.BUY, strength)
-            elif not above_both_now and above_both_prev:
+            elif not trigger_now and trigger_prev:
                 signals[sym] = SignalResult(Signal.SELL)
             else:
                 signals[sym] = SignalResult(Signal.HOLD)
