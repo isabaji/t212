@@ -38,12 +38,13 @@ on:
         type: string
         default: ''
       swing_strategy:
-        description: 'Swing strategy to backtest (ignored with daytrade=true): sma_crossover (default, fast/slow crossover), long_term_trend (buy when price is above both its SMA/EMA), or long_term_trend_below (mirrored dip-buy: buy when price is below both, pair with stop_loss_pct/take_profit_pct below)'
+        description: 'Swing strategy to backtest (ignored with daytrade=true): sma_crossover (default, fast/slow crossover), long_term_trend (buy when price is above both its SMA/EMA), long_term_trend_below (mirrored dip-buy: buy when price is below both, sell on recovery -- pair with stop_loss_pct/take_profit_pct below), or long_term_trend_below_tpsl_only (same dip-buy but with the recovery sell signal disabled -- only stop_loss_pct/take_profit_pct can close a position)'
         type: choice
         options:
           - sma_crossover
           - long_term_trend
           - long_term_trend_below
+          - long_term_trend_below_tpsl_only
         default: sma_crossover
       long_term_period:
         description: 'SMA and EMA lookback in days, applied to both (swing_strategy=long_term_trend only, blank = default 200 for each). CLI has independent --sma-period/--ema-period if you need to split them; this workflow input keeps them in sync to stay under the 25-input limit'
@@ -148,6 +149,8 @@ jobs:
           if [ -n "${{ inputs.trend_filter }}" ]; then ARGS="$ARGS --trend-filter ${{ inputs.trend_filter }}"; fi
           if [ "${{ inputs.swing_strategy }}" = "long_term_trend_below" ]; then
             ARGS="$ARGS --swing-strategy long_term_trend --long-term-direction below"
+          elif [ "${{ inputs.swing_strategy }}" = "long_term_trend_below_tpsl_only" ]; then
+            ARGS="$ARGS --swing-strategy long_term_trend --long-term-direction below --long-term-no-signal-exit"
           elif [ -n "${{ inputs.swing_strategy }}" ]; then
             ARGS="$ARGS --swing-strategy ${{ inputs.swing_strategy }}"
           fi

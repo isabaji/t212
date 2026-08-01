@@ -164,6 +164,11 @@ def main() -> None:
                               "on recovery above either. 'below' has no trend confirmation backing it, so "
                               "it's usually paired with --stop-loss-pct/--take-profit-pct rather than "
                               "relying on the sell signal alone")
+    parser.add_argument("--long-term-no-signal-exit", action="store_true",
+                         help="backtest command only (swing --swing-strategy long_term_trend): disable "
+                              "the strategy's own reversal-based SELL entirely, leaving --stop-loss-pct/"
+                              "--take-profit-pct as the only way to close a position (off by default, "
+                              "i.e. the signal exit is active unless this flag is passed)")
     args = parser.parse_args()
 
     cfg = Config()
@@ -197,6 +202,7 @@ def main() -> None:
                             strategy_name=args.swing_strategy,
                             sma_period=args.sma_period, ema_period=args.ema_period,
                             long_term_direction=args.long_term_direction,
+                            long_term_signal_exit=not args.long_term_no_signal_exit,
                             stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct)
         return
 

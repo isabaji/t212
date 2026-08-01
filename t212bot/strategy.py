@@ -175,10 +175,24 @@ class LongTermTrendConfluence(Strategy):
     from a 200-day average reads more like a blow-off (direction="above")
     or a falling knife (direction="below") than a fresh, plannable entry.
     None disables it.
+
+    signal_exit: whether the reversal condition (price back on the "wrong"
+    side of either line) fires a SELL at all. True (default) matches the
+    behavior described above. False disables it entirely -- once bought, an
+    open position can only be closed by the backtest engine's own
+    stop_loss_pct/take_profit_pct (or the window simply ending with the
+    position still open). Meant for direction="below": a first look at
+    dip-buying paired with a 3%/7% stop/take-profit showed a high per-trade
+    win rate (~61%) but poor per-window profitability (~39%) -- the
+    suspicion being that the signal-based SELL was closing winners early,
+    before they reached the take-profit target, while losers still ate the
+    full stop. signal_exit=False tests that theory directly by removing the
+    signal exit and letting only the fixed TP/SL decide outcomes.
     """
 
     def __init__(self, sma_period: int = 200, ema_period: int = 200, direction: str = "above",
-                 strength_norm_pct: float = 0.10, max_chase_pct: float | None = 0.30):
+                 strength_norm_pct: float = 0.10, max_chase_pct: float | None = 0.30,
+                 signal_exit: bool = True):
         if direction not in ("above", "below"):
             raise ValueError("direction must be 'above' or 'below'")
         self.sma_period = sma_period
@@ -186,6 +200,7 @@ class LongTermTrendConfluence(Strategy):
         self.direction = direction
         self.strength_norm_pct = strength_norm_pct
         self.max_chase_pct = max_chase_pct
+        self.signal_exit = signal_exit
 
     def generate_signals(self, prices: dict[str, pd.DataFrame],
                           confirm_prices: dict[str, pd.DataFrame] | None = None,
@@ -216,7 +231,7 @@ class LongTermTrendConfluence(Strategy):
                     continue
                 strength = max(0.0, min(1.0, distance_pct / self.strength_norm_pct))
                 signals[sym] = SignalResult(Signal.BUY, strength)
-            elif not trigger_now and trigger_prev:
+            elif not trigger_now and trigger_prev and self.signal_exit:
                 signals[sym] = SignalResult(Signal.SELL)
             else:
                 signals[sym] = SignalResult(Signal.HOLD)

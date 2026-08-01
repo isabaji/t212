@@ -323,6 +323,7 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
                     period: str = "5y", stop_atr_multiple: float | None = None,
                     trend_filter: int | None = None, strategy_name: str = "sma_crossover",
                     sma_period: int = 200, ema_period: int = 200, long_term_direction: str = "above",
+                    long_term_signal_exit: bool = True,
                     stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> None:
     """strategy_name: "sma_crossover" (default) is the existing fast/slow SMA
     crossover -- fast/slow/trend_filter apply to it. "long_term_trend" is
@@ -338,6 +339,11 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
     signal at all, so a short period or a high window count leaves little
     data left over per window to trade on.
 
+    long_term_signal_exit (long_term_trend only): False disables the
+    strategy's own reversal-based SELL entirely, leaving stop_loss_pct/
+    take_profit_pct as the only way to close a position -- see
+    LongTermTrendConfluence.signal_exit. True (default) unchanged.
+
     stop_loss_pct / take_profit_pct (optional, either strategy_name): fixed-
     percentage exits checked against each bar's Low/High, on top of
     whatever the strategy's own SELL signal would do -- see
@@ -345,8 +351,9 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
     order live today."""
     if strategy_name == "long_term_trend":
         thesis = "above both" if long_term_direction == "above" else "below both (dip-buy)"
+        exit_note = "" if long_term_signal_exit else ", signal exit disabled -- TP/SL only"
         print(f"Swing strategy: long-term trend confluence (price {thesis} its "
-              f"{sma_period}-day SMA and {ema_period}-day EMA), {period} daily bars, long-only.")
+              f"{sma_period}-day SMA and {ema_period}-day EMA{exit_note}), {period} daily bars, long-only.")
     else:
         print(f"Swing strategy: SMA({fast}/{slow}) crossover, {period} daily bars, long-only.")
         if trend_filter:
@@ -367,7 +374,8 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
         return
 
     if strategy_name == "long_term_trend":
-        factory = lambda: LongTermTrendConfluence(sma_period, ema_period, direction=long_term_direction)
+        factory = lambda: LongTermTrendConfluence(sma_period, ema_period, direction=long_term_direction,
+                                                   signal_exit=long_term_signal_exit)
         min_bars = max(sma_period, ema_period)
     else:
         factory = lambda: SMACrossover(fast, slow, trend_filter)
