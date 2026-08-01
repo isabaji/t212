@@ -23,6 +23,7 @@ from .strategy import (
     BollingerSqueezeBreakout,
     EnsembleVote,
     GapFillReversal,
+    LongTermTrendConfluence,
     MeanReversionPullback,
     OpeningRangeConfluence,
     SMACrossover,
@@ -320,10 +321,23 @@ def _pct(x) -> str:
 def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int = 4,
                     fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
                     period: str = "5y", stop_atr_multiple: float | None = None,
-                    trend_filter: int | None = None) -> None:
-    print(f"Swing strategy: SMA({fast}/{slow}) crossover, {period} daily bars, long-only.")
-    if trend_filter:
-        print(f"Trend filter: BUY only when price is above its {trend_filter}-day SMA.")
+                    trend_filter: int | None = None, strategy_name: str = "sma_crossover",
+                    sma_period: int = 200, ema_period: int = 200) -> None:
+    """strategy_name: "sma_crossover" (default) is the existing fast/slow SMA
+    crossover -- fast/slow/trend_filter apply to it. "long_term_trend" is
+    LongTermTrendConfluence -- buys when price is above both its
+    sma_period-day SMA and ema_period-day EMA, sells when it drops below
+    either; fast/slow/trend_filter are ignored for it since it has no use
+    for them. period defaults to 5y for both, but long_term_trend needs
+    ~200+ bars of warmup before it can signal at all, so a short period or a
+    high window count leaves little data left over per window to trade on."""
+    if strategy_name == "long_term_trend":
+        print(f"Swing strategy: long-term trend confluence (price above both its "
+              f"{sma_period}-day SMA and {ema_period}-day EMA), {period} daily bars, long-only.")
+    else:
+        print(f"Swing strategy: SMA({fast}/{slow}) crossover, {period} daily bars, long-only.")
+        if trend_filter:
+            print(f"Trend filter: BUY only when price is above its {trend_filter}-day SMA.")
     if stop_atr_multiple:
         print(f"Stop-loss: {stop_atr_multiple}x ATR(14) below entry, checked against each bar's Low.")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side "
@@ -335,10 +349,18 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
         print("No data for any symbol.")
         return
 
+    if strategy_name == "long_term_trend":
+        factory = lambda: LongTermTrendConfluence(sma_period, ema_period)
+        min_bars = max(sma_period, ema_period)
+    else:
+        factory = lambda: SMACrossover(fast, slow, trend_filter)
+        min_bars = 60
+
     for sym, df in price_data.items():
         try:
-            windows = walk_forward(lambda: SMACrossover(fast, slow, trend_filter), df, n_windows,
-                                    fee_bps, slippage_bps, stop_atr_multiple=stop_atr_multiple)
+            windows = walk_forward(factory, df, n_windows,
+                                    fee_bps, slippage_bps, min_bars=min_bars,
+                                    stop_atr_multiple=stop_atr_multiple)
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue

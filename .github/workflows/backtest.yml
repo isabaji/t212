@@ -34,7 +34,22 @@ on:
         type: string
         default: ''
       trend_filter:
-        description: 'Require price above its N-day SMA to buy (swing only, blank = off)'
+        description: 'Require price above its N-day SMA to buy (swing sma_crossover only, blank = off)'
+        type: string
+        default: ''
+      swing_strategy:
+        description: 'Swing strategy to backtest (ignored with daytrade=true): sma_crossover (default, fast/slow crossover) or long_term_trend (buy when price is above both its sma_period/ema_period-day SMA and EMA)'
+        type: choice
+        options:
+          - sma_crossover
+          - long_term_trend
+        default: sma_crossover
+      sma_period:
+        description: 'SMA lookback in days (swing_strategy=long_term_trend only, blank = default 200)'
+        type: string
+        default: ''
+      ema_period:
+        description: 'EMA lookback in days (swing_strategy=long_term_trend only, blank = default 200)'
         type: string
         default: ''
       confirm_bars:
@@ -130,6 +145,9 @@ jobs:
           if [ -n "${{ inputs.windows }}" ]; then ARGS="$ARGS --windows ${{ inputs.windows }}"; fi
           if [ -n "${{ inputs.stop_atr_multiple }}" ]; then ARGS="$ARGS --stop-atr-multiple ${{ inputs.stop_atr_multiple }}"; fi
           if [ -n "${{ inputs.trend_filter }}" ]; then ARGS="$ARGS --trend-filter ${{ inputs.trend_filter }}"; fi
+          if [ -n "${{ inputs.swing_strategy }}" ]; then ARGS="$ARGS --swing-strategy ${{ inputs.swing_strategy }}"; fi
+          if [ -n "${{ inputs.sma_period }}" ]; then ARGS="$ARGS --sma-period ${{ inputs.sma_period }}"; fi
+          if [ -n "${{ inputs.ema_period }}" ]; then ARGS="$ARGS --ema-period ${{ inputs.ema_period }}"; fi
           if [ -n "${{ inputs.confirm_bars }}" ]; then ARGS="$ARGS --confirm-bars ${{ inputs.confirm_bars }}"; fi
           if [ -n "${{ inputs.stop_loss_pct }}" ]; then ARGS="$ARGS --stop-loss-pct ${{ inputs.stop_loss_pct }}"; fi
           if [ -n "${{ inputs.take_profit_pct }}" ]; then ARGS="$ARGS --take-profit-pct ${{ inputs.take_profit_pct }}"; fi

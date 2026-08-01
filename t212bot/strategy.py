@@ -128,6 +128,76 @@ class SMACrossover(Strategy):
         return signals
 
 
+class LongTermTrendConfluence(Strategy):
+    """Swing strategy: buy when price is above both its long-horizon SMA and
+    EMA (200-day by default) -- both agree on a long-term uptrend; sell when
+    price drops below either one.
+
+    Event-driven like SMACrossover: BUY fires only on the bar where "above
+    both" first becomes true, not on every bar it stays true (a resting HOLD
+    the rest of the time keeps behavior and logs consistent with the other
+    strategies here; bot.py's own position check already makes re-signaling
+    BUY while holding harmless, so this is about clean logs, not correctness).
+    SELL fires on the bar where "above both" first becomes false.
+
+    Combining an SMA and an EMA over the *same* period requires two
+    differently-weighted reads of the same window to agree, rather than
+    trusting one long moving average alone -- EMA weights recent closes more
+    heavily, so it can cross a little earlier than the SMA on a genuine
+    shift, but also whipsaw a little more on noise the SMA would smooth
+    through. Requiring both sides of that trade-off to agree is the point,
+    the same way OpeningRangeConfluence requires breakout + trend + momentum
+    to agree rather than trading on any one alone.
+
+    strength_norm_pct: a BUY's strength is how far price sits above its own
+    long-horizon SMA (the steadier of the two lines) as a fraction of that
+    SMA, scaled so strength_norm_pct of extension maps to full strength
+    (1.0) -- same approach as SMACrossover.
+
+    max_chase_pct: anti-chase guard, same idea as SMACrossover -- if price
+    has already extended past the SMA by more than this fraction, the BUY is
+    suppressed entirely (HOLD, reason="chased") rather than sized down,
+    since a move this extended above a 200-day average reads more like a
+    blow-off than a fresh, plannable long-term entry. None disables it.
+    """
+
+    def __init__(self, sma_period: int = 200, ema_period: int = 200,
+                 strength_norm_pct: float = 0.10, max_chase_pct: float | None = 0.30):
+        self.sma_period = sma_period
+        self.ema_period = ema_period
+        self.strength_norm_pct = strength_norm_pct
+        self.max_chase_pct = max_chase_pct
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        signals: dict[str, SignalResult] = {}
+        min_bars = max(self.sma_period, self.ema_period)
+        for sym, df in prices.items():
+            close = df["Close"]
+            if len(close) < min_bars + 1:
+                signals[sym] = SignalResult(Signal.HOLD)
+                continue
+            sma_line = close.rolling(self.sma_period).mean()
+            ema_line = ema(close, self.ema_period)
+
+            above_both_now = close.iloc[-1] > sma_line.iloc[-1] and close.iloc[-1] > ema_line.iloc[-1]
+            above_both_prev = close.iloc[-2] > sma_line.iloc[-2] and close.iloc[-2] > ema_line.iloc[-2]
+
+            if above_both_now and not above_both_prev:
+                extension_pct = (close.iloc[-1] - sma_line.iloc[-1]) / sma_line.iloc[-1]
+                if self.max_chase_pct is not None and extension_pct > self.max_chase_pct:
+                    signals[sym] = SignalResult(Signal.HOLD, reason="chased")
+                    continue
+                strength = max(0.0, min(1.0, extension_pct / self.strength_norm_pct))
+                signals[sym] = SignalResult(Signal.BUY, strength)
+            elif not above_both_now and above_both_prev:
+                signals[sym] = SignalResult(Signal.SELL)
+            else:
+                signals[sym] = SignalResult(Signal.HOLD)
+        return signals
+
+
 class OpeningRangeConfluence(Strategy):
     """Day-trading strategy: opening-range breakout confirmed by EMA trend + RSI momentum.
 

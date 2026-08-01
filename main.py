@@ -15,7 +15,14 @@ from t212bot.backtest import DEFAULT_FEE_BPS, DEFAULT_SLIPPAGE_BPS, print_backte
 from t212bot.bot import run_cycle, run_day_trade_cycle
 from t212bot.client import Trading212Client
 from t212bot.config import Config
-from t212bot.strategy import EnsembleVote, GapFillReversal, MeanReversionPullback, OpeningRangeConfluence, SMACrossover
+from t212bot.strategy import (
+    EnsembleVote,
+    GapFillReversal,
+    LongTermTrendConfluence,
+    MeanReversionPullback,
+    OpeningRangeConfluence,
+    SMACrossover,
+)
 from t212bot.test_order import place_test_order
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -129,6 +136,19 @@ def main() -> None:
     parser.add_argument("--trend-filter", type=int, default=None,
                          help="backtest command only (swing): require price above its own N-day SMA "
                               "to take a BUY signal (off by default)")
+    parser.add_argument("--swing-strategy", choices=["sma_crossover", "long_term_trend"],
+                         default="sma_crossover",
+                         help="backtest command only (swing, ignored with --daytrade): 'sma_crossover' "
+                              "(default) is the existing fast/slow SMA crossover -- --fast/--slow/"
+                              "--trend-filter apply to it. 'long_term_trend' is LongTermTrendConfluence "
+                              "-- buys when price is above both its --sma-period-day SMA and "
+                              "--ema-period-day EMA, sells when it drops below either")
+    parser.add_argument("--sma-period", type=int, default=200,
+                         help="backtest command only (swing --swing-strategy long_term_trend): SMA "
+                              "lookback in days (default 200)")
+    parser.add_argument("--ema-period", type=int, default=200,
+                         help="backtest command only (swing --swing-strategy long_term_trend): EMA "
+                              "lookback in days (default 200)")
     args = parser.parse_args()
 
     cfg = Config()
@@ -158,7 +178,9 @@ def main() -> None:
         else:
             print_backtest(symbols, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps,
-                            stop_atr_multiple=args.stop_atr_multiple, trend_filter=args.trend_filter)
+                            stop_atr_multiple=args.stop_atr_multiple, trend_filter=args.trend_filter,
+                            strategy_name=args.swing_strategy,
+                            sma_period=args.sma_period, ema_period=args.ema_period)
         return
 
     cfg.validate()
