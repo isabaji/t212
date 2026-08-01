@@ -25,6 +25,7 @@ from .strategy import (
     GapFillReversal,
     LongTermTrendConfluence,
     MeanReversionPullback,
+    MorningWashoutRecovery,
     OpeningRangeConfluence,
     SMACrossover,
     Signal,
@@ -433,7 +434,12 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     params below except stop_loss_pct/take_profit_pct only apply to it.
     "mean_reversion" is MeanReversionPullback, "bollinger" is
     BollingerSqueezeBreakout, and "gap_fill" is GapFillReversal, all tested
-    with their own code defaults for now (no CLI knobs yet). "ensemble" is
+    with their own code defaults for now (no CLI knobs yet). "washout" is
+    MorningWashoutRecovery (buys a high-first-hour-volume, RSI<40 morning
+    washout in a multi-day uptrend and holds to the close -- see its
+    docstring for the mining evidence behind it); it needs daily bars for
+    its uptrend condition, so this mode pulls one extra yfinance daily
+    series per symbol like trend_filter_days does. "ensemble" is
     EnsembleVote wrapping the strategies named in ensemble_strategies (each
     at its own code defaults except orb, which gets confirm_bars=0 since no
     1-minute data is fetched for this mode, plus whichever of
@@ -501,6 +507,9 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
     usual Alpaca intraday pull. None (default) disables the gate."""
     if strategy_name == "mean_reversion":
         header = ["Day-trade strategy: mean-reversion pullback + EMA/RSI confluence, 5-min bars"]
+    elif strategy_name == "washout":
+        header = ["Day-trade strategy: morning washout recovery (high first-hour volume + "
+                  "RSI<40 + multi-day uptrend, hold to EOD), 5-min bars"]
     elif strategy_name == "bollinger":
         header = ["Day-trade strategy: Bollinger squeeze breakout + RSI confluence, 5-min bars"]
     elif strategy_name == "gap_fill":
@@ -565,7 +574,9 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                                        days=60, timeframe="1Min")
 
     daily_data = {}
-    if trend_filter_days and strategy_name in ("orb", "ensemble"):
+    if (trend_filter_days and strategy_name in ("orb", "ensemble")) or strategy_name == "washout":
+        # washout needs daily bars unconditionally: its multi-day uptrend
+        # condition is a core part of the mined edge and fails closed.
         daily_data = fetch_history(list(price_data.keys()), period="6mo")
 
     def strategy_factory():
@@ -575,6 +586,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             return BollingerSqueezeBreakout()
         if strategy_name == "gap_fill":
             return GapFillReversal()
+        if strategy_name == "washout":
+            return MorningWashoutRecovery()
         if strategy_name == "ensemble":
             ensemble_factories = {
                 "orb": lambda: OpeningRangeConfluence(

@@ -95,13 +95,14 @@ on:
         type: string
         default: ''
       strategy:
-        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), bollinger (volatility-squeeze breakout above the upper Bollinger Band), gap_fill (gap-down reversal), or ensemble (requires a subset to agree, see ensemble_strategies/ensemble_min_votes)'
+        description: 'Day-trade strategy to backtest (daytrade only): orb (default, opening-range breakout), mean_reversion (buy pullbacks to the fast EMA), bollinger (volatility-squeeze breakout above the upper Bollinger Band), gap_fill (gap-down reversal), washout (morning washout recovery: high first-hour volume + RSI<40 + multi-day uptrend, hold to close), or ensemble (requires a subset to agree, see ensemble_strategies/ensemble_min_votes)'
         type: choice
         options:
           - orb
           - mean_reversion
           - bollinger
           - gap_fill
+          - washout
           - ensemble
         default: orb
       ensemble_min_votes:

@@ -5,6 +5,7 @@ To add your own strategy, subclass Strategy and implement generate_signals().
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import time as dtime
 from enum import Enum
 
 import pandas as pd
@@ -868,6 +869,137 @@ class GapFillReversal(Strategy):
         if broke_new_low or momentum_extreme:
             return SignalResult(Signal.SELL)
         return SignalResult(Signal.HOLD)
+
+
+class MorningWashoutRecovery(Strategy):
+    """Day-trading strategy: buy a high-volume morning washout in a stock
+    whose recent days were trending up, betting on an afternoon recovery.
+
+    Built from evidence, not intuition: a 60-day/30-symbol mining pass
+    (scripts/buildup_analysis.py) asked what symbol-days that gained >=1%
+    from 10:30 ET to the close had in common at 10:30. The momentum-style
+    setups (opening-range break + hot RSI etc.) scored BELOW a permutation
+    chance bar, but one contrarian cluster cleared it: above-average
+    first-hour volume + RSI below 40 + a positive multi-day trend
+    (vol_warm+rsi_cold+mom5: 36.6% hit rate vs 14.9% base, above all 20
+    label-shuffle maxima; composition-adjusted lift 2.47; median forward
+    return +0.53% on an average afternoon of -0.08%; the prev_up variant
+    scored ~equal, and a dozen neighboring rule variants were all elevated,
+    which is what makes the cluster credible rather than one lucky row).
+    Reading: heavy morning selling in an uptrending name is often capitulation
+    that recovers into the close, and the elevated volume is what separates a
+    washout from ordinary drift lower.
+
+    Entry requires all of, on any bar from decision_time to entry_cutoff:
+      - first-hour volume >= vol_ratio_min x the average first-hour volume of
+        the prior days available in `prices` (needs >= min_vol_history prior
+        days; the live cycle fetches 5 days of intraday history, the backtest
+        60, so both provide a baseline)
+      - RSI(rsi_period) on the intraday closes below rsi_max (washed out now)
+      - multi-day uptrend from generate_signals' daily_prices: the prior
+        daily close above the close mom_days trading days before it. Same
+        no-lookahead discipline as OpeningRangeConfluence.trend_filter_days:
+        only daily bars strictly before the current intraday bar's date are
+        used, so an unsliced daily series is safe to pass. Missing/short
+        daily data means NO entry (fails closed) -- unlike the fail-open
+        gates elsewhere, this condition is a core part of the mined edge,
+        not an optional extra filter.
+      - a mostly-complete first hour of bars (>= min_morning_bars starting by
+        09:40), mirroring the mining pass's data-quality guard
+
+    Exit: the mined outcome is "hold to the close", so the only signal-level
+    exit is an EOD flatten (SELL from eod_exit onward, matching the live
+    cycle's flatten-before-close and the backtest's lack of one). No
+    hair-trigger intraday exit on purpose: the mined average worst
+    afternoon drawdown on qualifying days was about -0.7%, and cutting the
+    dip early is exactly what the evidence says not to do. Engine-level
+    stop_loss_pct/take_profit_pct remain available for experiments.
+
+    A BUY's strength averages how far volume overshoots vol_ratio_min
+    (normalized by vol_strength_norm) and how far RSI sits below rsi_max
+    (normalized by rsi_strength_norm).
+    """
+
+    def __init__(self, bar_minutes: int = 5,
+                 decision_time: dtime = dtime(10, 30),
+                 entry_cutoff: dtime = dtime(13, 0),
+                 eod_exit: dtime = dtime(15, 50),
+                 vol_ratio_min: float = 1.2, vol_strength_norm: float = 0.8,
+                 rsi_period: int = 14, rsi_max: float = 40,
+                 rsi_strength_norm: float = 15,
+                 mom_days: int = 5, min_vol_history: int = 1,
+                 min_morning_bars: int = 10):
+        self.bar_minutes = bar_minutes
+        self.decision_time = decision_time
+        self.entry_cutoff = entry_cutoff
+        self.eod_exit = eod_exit
+        self.vol_ratio_min = vol_ratio_min
+        self.vol_strength_norm = vol_strength_norm
+        self.rsi_period = rsi_period
+        self.rsi_max = rsi_max
+        self.rsi_strength_norm = rsi_strength_norm
+        self.mom_days = mom_days
+        self.min_vol_history = min_vol_history
+        self.min_morning_bars = min_morning_bars
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        daily_prices = daily_prices or {}
+        return {sym: self._signal_for(df, daily_prices.get(sym))
+                for sym, df in prices.items()}
+
+    def _signal_for(self, df: pd.DataFrame, daily_df: pd.DataFrame | None = None) -> SignalResult:
+        if df.empty:
+            return SignalResult(Signal.HOLD)
+        # Regular session only -- the IEX feed can include thin pre/post-market
+        # bars, which would pollute the first-hour volume baseline.
+        df = df[(df.index.time >= dtime(9, 30)) & (df.index.time < dtime(16, 0))]
+        if df.empty or len(df) < self.rsi_period + 1:
+            return SignalResult(Signal.HOLD)
+
+        now = df.index[-1]
+        if now.time() >= self.eod_exit:
+            return SignalResult(Signal.SELL)  # EOD flatten; harmless when flat
+        if not (self.decision_time <= now.time() < self.entry_cutoff):
+            return SignalResult(Signal.HOLD)
+
+        today = now.date()
+        today_bars = df[df.index.date == today]
+        morning = today_bars[today_bars.index.time < self.decision_time]
+        if len(morning) < self.min_morning_bars or morning.index[0].time() > dtime(9, 40):
+            return SignalResult(Signal.HOLD)
+
+        # First-hour volume vs the same window on prior days (not a whole-day
+        # average, so the usual U-shaped intraday volume curve doesn't skew it).
+        prior_days = sorted(set(df.index.date) - {today})[-20:]
+        prior_fh = []
+        for d in prior_days:
+            day_bars = df[df.index.date == d]
+            fh = day_bars[day_bars.index.time < self.decision_time]["Volume"].sum()
+            if fh > 0:
+                prior_fh.append(fh)
+        if len(prior_fh) < self.min_vol_history:
+            return SignalResult(Signal.HOLD)
+        vol_ratio = morning["Volume"].sum() / (sum(prior_fh) / len(prior_fh))
+        if vol_ratio < self.vol_ratio_min:
+            return SignalResult(Signal.HOLD)
+
+        last_rsi = rsi(df["Close"], self.rsi_period).iloc[-1]
+        if not last_rsi < self.rsi_max:
+            return SignalResult(Signal.HOLD)
+
+        if daily_df is None:
+            return SignalResult(Signal.HOLD, reason="no_daily_data")
+        prior_daily = daily_df[daily_df.index.date < today]
+        if len(prior_daily) < self.mom_days + 1:
+            return SignalResult(Signal.HOLD, reason="no_daily_data")
+        if not prior_daily["Close"].iloc[-1] > prior_daily["Close"].iloc[-(self.mom_days + 1)]:
+            return SignalResult(Signal.HOLD, reason="no_uptrend")
+
+        vol_score = max(0.0, min(1.0, (vol_ratio - self.vol_ratio_min) / self.vol_strength_norm))
+        depth_score = max(0.0, min(1.0, (self.rsi_max - last_rsi) / self.rsi_strength_norm))
+        return SignalResult(Signal.BUY, max(0.2, (vol_score + depth_score) / 2))
 
 
 class EnsembleVote(Strategy):

@@ -91,7 +91,8 @@ def main() -> None:
                          help="backtest --daytrade only: with --require-retest, how far below the "
                               "opening-range high a pullback may go and still count as a valid retest "
                               "(default 0.003 = 0.3%%)")
-    parser.add_argument("--strategy", choices=["orb", "mean_reversion", "bollinger", "gap_fill", "ensemble"],
+    parser.add_argument("--strategy", choices=["orb", "mean_reversion", "bollinger", "gap_fill",
+                                                "washout", "ensemble"],
                          default="orb",
                          help="backtest --daytrade only: 'orb' (default) is OpeningRangeConfluence -- all "
                               "the --confirm-bars/--rsi-buy-*/--min-*/--require-retest flags above only "
@@ -99,9 +100,13 @@ def main() -> None:
                               "the fast EMA within an uptrend instead of chasing breakouts). 'bollinger' "
                               "is BollingerSqueezeBreakout (buys a volatility-squeeze breakout above the "
                               "upper Bollinger Band). 'gap_fill' is GapFillReversal (buys a gap-down open "
-                              "reversing back up early in the session). 'ensemble' requires a subset of "
-                              "these to agree (see --ensemble-strategies/--ensemble-min-votes) before "
-                              "buying. Non-orb strategies use their own code defaults for now")
+                              "reversing back up early in the session). 'washout' is "
+                              "MorningWashoutRecovery (buys a high-first-hour-volume RSI<40 morning "
+                              "washout in a multi-day uptrend, holds to the close; pulls an extra "
+                              "yfinance daily series per symbol for its uptrend condition). 'ensemble' "
+                              "requires a subset of these to agree (see --ensemble-strategies/"
+                              "--ensemble-min-votes) before buying. Non-orb strategies use their own "
+                              "code defaults for now")
     parser.add_argument("--ensemble-min-votes", type=int, default=None,
                          help="backtest --daytrade --strategy ensemble only: how many of the selected "
                               "sub-strategies must agree (default: unanimous, all of them)")
