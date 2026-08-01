@@ -127,6 +127,14 @@ def main() -> None:
                               "intraday pull (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
+    parser.add_argument("--days", type=int, default=60,
+                         help="backtest --daytrade only: calendar days of intraday history to fetch "
+                              "(default 60)")
+    parser.add_argument("--exclude-recent-days", type=int, default=0,
+                         help="backtest --daytrade only: trim the most recent N calendar days from the "
+                              "fetched data before windowing -- with --days > N this backtests only an "
+                              "older period, for out-of-sample checks of parameters tuned/mined on the "
+                              "trailing window (default 0 = off)")
     parser.add_argument("--symbols", default=None,
                          help="backtest command only: comma-separated symbol list overriding WATCHLIST for "
                               "this run only (e.g. to test an expanded watchlist before changing the live "
@@ -199,7 +207,8 @@ def main() -> None:
                                      ensemble_min_votes=args.ensemble_min_votes,
                                      ensemble_strategies=args.ensemble_strategies,
                                      ensemble_required=args.ensemble_required,
-                                     trend_filter_days=args.trend_filter_days)
+                                     trend_filter_days=args.trend_filter_days,
+                                     days=args.days, exclude_recent_days=args.exclude_recent_days)
         else:
             print_backtest(symbols, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps, period=args.period,

@@ -423,12 +423,23 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              ensemble_min_votes: int | None = None,
                              ensemble_strategies: str = "orb,mr,vwap",
                              ensemble_required: str | None = None,
-                             trend_filter_days: int | None = None) -> None:
+                             trend_filter_days: int | None = None,
+                             days: int = 60, exclude_recent_days: int = 0) -> None:
     """Backtests a day-trade strategy on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
     sanity check rather than a slow pull of tens of thousands of bars per
     symbol.
+
+    days / exclude_recent_days: how many calendar days of intraday history to
+    fetch (default 60, the long-standing window), and how many of the most
+    recent calendar days to TRIM from the fetched data before windowing.
+    Together they let a run target an older period entirely -- e.g. days=90,
+    exclude_recent_days=60 backtests only the ~month that ended 60 days ago.
+    Exists for out-of-sample checks of parameters tuned (or, for washout,
+    mined) on the trailing 60 days: the period before that window never
+    touched the tuning, so it's the nearest thing to unseen data available
+    without waiting for new days to accumulate.
 
     strategy_name: "orb" (default) is OpeningRangeConfluence -- all the
     params below except stop_loss_pct/take_profit_pct only apply to it.
@@ -560,18 +571,32 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         header.append(f"{sl} / {tp}")
     print(", ".join(header) + ".")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
-    print("Note: this pulls 60 days of 5-minute history from Alpaca -- a recent-behavior "
-          "sanity check, not a long-run edge validation.\n")
+    print(f"Note: this pulls {days} days of 5-minute history from Alpaca -- a recent-behavior "
+          "sanity check, not a long-run edge validation.")
+    if exclude_recent_days:
+        print(f"Trimming the most recent {exclude_recent_days} calendar days: backtesting "
+              f"only the older remainder (out-of-sample vs anything tuned on the "
+              f"trailing {exclude_recent_days} days).")
+    print()
 
-    price_data = fetch_intraday(symbols, alpaca_api_key, alpaca_api_secret, days=60, timeframe="5Min")
+    price_data = fetch_intraday(symbols, alpaca_api_key, alpaca_api_secret, days=days, timeframe="5Min")
     if not price_data:
         print("No intraday data for any symbol.")
         return
+    if exclude_recent_days:
+        cutoff = pd.Timestamp.now(tz="America/New_York") - pd.Timedelta(days=exclude_recent_days)
+        price_data = {sym: df[df.index < cutoff] for sym, df in price_data.items()}
+        price_data = {sym: df for sym, df in price_data.items() if not df.empty}
+        if not price_data:
+            print("No intraday data left after trimming.")
+            return
 
     confirm_data = {}
     if confirm_bars and strategy_name == "orb":
         confirm_data = fetch_intraday(list(price_data.keys()), alpaca_api_key, alpaca_api_secret,
-                                       days=60, timeframe="1Min")
+                                       days=days, timeframe="1Min")
+        if exclude_recent_days:
+            confirm_data = {sym: df[df.index < cutoff] for sym, df in confirm_data.items()}
 
     daily_data = {}
     if (trend_filter_days and strategy_name in ("orb", "ensemble")) or strategy_name == "washout":
