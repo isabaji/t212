@@ -49,11 +49,11 @@
       "wins": 0
     },
     "CRM": {
-      "losses": 4,
+      "losses": 5,
       "paused_until": "2026-08-08",
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": -0.0008617402975186798,
+      "total_pnl_pct": -0.0014289145134555605,
       "wins": 1
     },
     "CVX": {

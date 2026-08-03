@@ -274,5 +274,11 @@
     "strategy": "daytrade",
     "symbol": "CRM",
     "pnl_pct": -5.057351609084483e-05
+  },
+  {
+    "t": "2026-08-03T14:26:02Z",
+    "strategy": "daytrade",
+    "symbol": "CRM",
+    "pnl_pct": -0.0005671742159368806
   }
 ]
