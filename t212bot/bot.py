@@ -11,7 +11,7 @@ import logging
 
 import pandas as pd
 
-from . import daily_target, history, pnl_history, portfolio_risk, trade_stats
+from . import daily_target, history, pnl_history, portfolio_risk, position_ownership, trade_stats
 from .client import Trading212Client, Trading212Error
 from .config import Config
 from .data import fetch_fx_rate, fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
@@ -107,6 +107,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
         tstats = trade_stats.load()
         pnl_hist = pnl_history.load()
+        pos_owner = position_ownership.load()
 
         prices = _convert_prices_fx(fetch_history(sorted(set(cfg.watchlist) | held_symbols)), fx_rate)
         signals = strategy.generate_signals(prices)
@@ -123,7 +124,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
             t212_ticker = to_t212_ticker(sym)
             last_price = float(prices[sym]["Close"].iloc[-1])
 
-            if signal is Signal.SELL and t212_ticker in positions:
+            if (signal is Signal.SELL and t212_ticker in positions
+                    and position_ownership.owned_by(pos_owner, t212_ticker, "swing")):
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL"):
@@ -136,6 +138,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 trade_stats.record_trade(tstats, "swing", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 pnl_history.record_trade(pnl_hist, "swing", sym, pnl_pct)
+                position_ownership.clear_owner(pos_owner, t212_ticker)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -178,6 +181,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                 free_cash -= qty * last_price
                 positions[t212_ticker] = {"quantity": qty}
                 sector_exposure[sector] = sector_value_held + qty * last_price
+                position_ownership.set_owner(pos_owner, t212_ticker, "swing")
                 decisions.append(history.decision(sym, "good", "Buy",
                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
                                   f"signal strength {sig.strength:.0%}."))
@@ -215,6 +219,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         portfolio_risk.save(pr_state)
         trade_stats.save(tstats)
         pnl_history.save(pnl_hist)
+        position_ownership.save(pos_owner)
 
         history.append("swing", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},
@@ -240,6 +245,14 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
     checked every cycle before the strategy's own signal, same as the EOD
     flatten. This is a polling check against each completed bar's range,
     not a resting broker order.
+
+    All three of the above (EOD flatten, stop/take-profit, signal SELL)
+    only apply to positions this cycle itself opened — see
+    position_ownership.py. The swing bot trades the same Trading212 account
+    and (by default) the same watchlist; without this check, this cycle's
+    much faster exits would whipsaw a swing position out within minutes of
+    the swing bot opening it, on a signal that has nothing to do with why
+    swing bought it.
     """
     try:
         client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
@@ -263,6 +276,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
         tstats = trade_stats.load()
         pnl_hist = pnl_history.load()
+        pos_owner = position_ownership.load()
 
         watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
         prices = _convert_prices_fx(
@@ -301,8 +315,9 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             minutes_to_close = _minutes_until_close(last_bar_time)
             bar_age_minutes = (pd.Timestamp.now(tz=df.index.tz) - last_bar_time).total_seconds() / 60
             holding = t212_ticker in positions
+            daytrade_owned = holding and position_ownership.owned_by(pos_owner, t212_ticker, "daytrade")
 
-            if holding and minutes_to_close <= EOD_FLATTEN_MINUTES_BEFORE_CLOSE:
+            if daytrade_owned and minutes_to_close <= EOD_FLATTEN_MINUTES_BEFORE_CLOSE:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL (EOD flatten)"):
@@ -315,11 +330,12 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 pnl_history.record_trade(pnl_hist, "daytrade", sym, pnl_pct)
+                position_ownership.clear_owner(pos_owner, t212_ticker)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"EOD flatten — closed {qty:g} shares."))
                 continue
 
-            if holding and (cfg.daytrade_stop_loss_pct or cfg.daytrade_take_profit_pct):
+            if daytrade_owned and (cfg.daytrade_stop_loss_pct or cfg.daytrade_take_profit_pct):
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 stop_price = avg_price * (1 - cfg.daytrade_stop_loss_pct) if cfg.daytrade_stop_loss_pct else None
                 target_price = avg_price * (1 + cfg.daytrade_take_profit_pct) if cfg.daytrade_take_profit_pct else None
@@ -346,6 +362,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                     trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                               cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                     pnl_history.record_trade(pnl_hist, "daytrade", sym, pnl_pct)
+                    position_ownership.clear_owner(pos_owner, t212_ticker)
                     decisions.append(history.decision(sym, "serious", "Sell",
                                                        f"Closed {qty:g} shares ({reason} hit)."))
                     continue
@@ -359,7 +376,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
             sig = signals.get(sym, SignalResult(Signal.HOLD))
             signal = sig.signal
 
-            if signal is Signal.SELL and holding:
+            if signal is Signal.SELL and daytrade_owned:
                 qty = float(positions[t212_ticker]["quantity"])
                 avg_price = float(positions[t212_ticker]["averagePrice"])
                 if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, "SELL"):
@@ -372,6 +389,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 trade_stats.record_trade(tstats, "daytrade", sym, pnl_pct,
                                           cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
                 pnl_history.record_trade(pnl_hist, "daytrade", sym, pnl_pct)
+                position_ownership.clear_owner(pos_owner, t212_ticker)
                 decisions.append(history.decision(sym, "serious", "Sell",
                                                    f"Closed {qty:g} shares (~{qty * last_price:,.2f})."))
 
@@ -423,6 +441,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                 free_cash -= qty * last_price
                 positions[t212_ticker] = {"quantity": qty}
                 sector_exposure[sector] = sector_value_held + qty * last_price
+                position_ownership.set_owner(pos_owner, t212_ticker, "daytrade")
                 decisions.append(history.decision(sym, "good", "Buy",
                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
                                   f"signal strength {sig.strength:.0%}."))
@@ -476,6 +495,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         portfolio_risk.save(pr_state)
         trade_stats.save(tstats)
         pnl_history.save(pnl_hist)
+        position_ownership.save(pos_owner)
 
         history.append("daytrade", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},
