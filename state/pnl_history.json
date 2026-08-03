@@ -304,5 +304,11 @@
     "strategy": "daytrade",
     "symbol": "CRM",
     "pnl_pct": 0.00022041762248738758
+  },
+  {
+    "t": "2026-08-03T19:46:04Z",
+    "strategy": "daytrade",
+    "symbol": "MSFT",
+    "pnl_pct": 0.0012601669261690248
   }
 ]

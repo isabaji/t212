@@ -100,9 +100,9 @@
       "losses": 1,
       "paused_until": null,
       "streak": 1,
-      "streak_type": "loss",
-      "total_pnl_pct": -0.0012264039981668478,
-      "wins": 0
+      "streak_type": "win",
+      "total_pnl_pct": 3.3762928002176954e-05,
+      "wins": 1
     },
     "NFLX": {
       "losses": 1,
