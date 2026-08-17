@@ -161,11 +161,11 @@
       "wins": 0
     },
     "XOM": {
-      "losses": 2,
+      "losses": 3,
       "paused_until": null,
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": 0.0008620218361556313,
+      "total_pnl_pct": 0.0008599746866184898,
       "wins": 2
     }
   }
