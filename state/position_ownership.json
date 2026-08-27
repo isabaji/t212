@@ -6,5 +6,6 @@
   "DIS_US_EQ": "swing",
   "NFLX_US_EQ": "swing",
   "NVDA_US_EQ": "swing",
-  "PFE_US_EQ": "swing"
+  "PFE_US_EQ": "swing",
+  "TSLA_US_EQ": "daytrade"
 }
