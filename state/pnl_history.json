@@ -316,5 +316,11 @@
     "strategy": "daytrade",
     "symbol": "XOM",
     "pnl_pct": -2.047149537141508e-06
+  },
+  {
+    "t": "2026-08-27T19:46:29Z",
+    "strategy": "daytrade",
+    "symbol": "TSLA",
+    "pnl_pct": 0.0001226967118883874
   }
 ]

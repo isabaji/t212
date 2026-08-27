@@ -136,6 +136,14 @@
       "total_pnl_pct": 3.649888370549872e-05,
       "wins": 1
     },
+    "TSLA": {
+      "losses": 0,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "win",
+      "total_pnl_pct": 0.0001226967118883874,
+      "wins": 1
+    },
     "UNH": {
       "losses": 1,
       "paused_until": null,
