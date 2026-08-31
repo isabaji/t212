@@ -1,11 +1,11 @@
 {
   "daytrade": {
     "ABBV": {
-      "losses": 1,
+      "losses": 2,
       "paused_until": null,
-      "streak": 1,
+      "streak": 2,
       "streak_type": "loss",
-      "total_pnl_pct": -0.0005560279804869657,
+      "total_pnl_pct": -0.0008695299634105294,
       "wins": 0
     },
     "AMZN": {

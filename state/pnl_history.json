@@ -322,5 +322,11 @@
     "strategy": "daytrade",
     "symbol": "TSLA",
     "pnl_pct": 0.0001226967118883874
+  },
+  {
+    "t": "2026-08-31T17:35:43Z",
+    "strategy": "daytrade",
+    "symbol": "ABBV",
+    "pnl_pct": -0.0003135019829235637
   }
 ]
