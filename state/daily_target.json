@@ -1,6 +1,6 @@
 {
   "date": "2026-09-29",
-  "cumulative_pct": 0.0,
+  "cumulative_pct": NaN,
   "target_hit": false,
   "loss_limit_hit": false
 }

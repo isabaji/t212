@@ -176,5 +176,15 @@
       "total_pnl_pct": 0.0008599746866184898,
       "wins": 2
     }
+  },
+  "swing": {
+    "PG": {
+      "losses": 1,
+      "paused_until": null,
+      "streak": 1,
+      "streak_type": "loss",
+      "total_pnl_pct": NaN,
+      "wins": 0
+    }
   }
 }

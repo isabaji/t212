@@ -328,5 +328,11 @@
     "strategy": "daytrade",
     "symbol": "ABBV",
     "pnl_pct": -0.0003135019829235637
+  },
+  {
+    "t": "2026-09-29T00:19:46Z",
+    "strategy": "swing",
+    "symbol": "PG",
+    "pnl_pct": NaN
   }
 ]
