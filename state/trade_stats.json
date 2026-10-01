@@ -58,9 +58,9 @@
     },
     "CVX": {
       "losses": 5,
-      "paused_until": "2026-08-05",
-      "streak": 3,
-      "streak_type": "loss",
+      "paused_until": null,
+      "streak": 0,
+      "streak_type": null,
       "total_pnl_pct": -0.0017409376627341051,
       "wins": 2
     },
