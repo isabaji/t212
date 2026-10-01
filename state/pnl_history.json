@@ -334,5 +334,11 @@
     "strategy": "swing",
     "symbol": "PG",
     "pnl_pct": NaN
+  },
+  {
+    "t": "2026-10-01T17:02:06Z",
+    "strategy": "daytrade",
+    "symbol": "CVX",
+    "pnl_pct": 5.104808824084999e-05
   }
 ]
