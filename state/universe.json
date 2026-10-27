@@ -1,0 +1,594 @@
+{
+  "AAP": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Advance Auto Parts",
+    "reason": "ok"
+  },
+  "AMZN": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Amazon",
+    "reason": "watchlist"
+  },
+  "AVGO": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Broadcom",
+    "reason": "watchlist"
+  },
+  "BA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Boeing",
+    "reason": "watchlist"
+  },
+  "BBW": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Build-A-Bear Workshop",
+    "reason": "market cap below minimum"
+  },
+  "BFST": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Business First Bancshares",
+    "reason": "market cap below minimum"
+  },
+  "BRUN": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Boost Run",
+    "reason": "market cap below minimum"
+  },
+  "CDNS": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Cadence Design Systems",
+    "reason": "ok"
+  },
+  "CHHE": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "China Health Industries",
+    "reason": "market cap below minimum"
+  },
+  "CINF": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Cincinnati Financial",
+    "reason": "ok"
+  },
+  "CNC": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Centene",
+    "reason": "ok"
+  },
+  "CPSS": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Consumer Portfolio Services",
+    "reason": "market cap below minimum"
+  },
+  "CRCL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Circle Internet Group",
+    "reason": "ok"
+  },
+  "CRMT": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "America's Car-Mart",
+    "reason": "market cap below minimum"
+  },
+  "CVLT": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Commvault Systems",
+    "reason": "ok"
+  },
+  "DAIO": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Data I/O",
+    "reason": "market cap below minimum"
+  },
+  "DMAA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Drugs Made In America Acquisition",
+    "reason": "market cap below minimum"
+  },
+  "EGOXF": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Next.e.GO",
+    "reason": "market cap below minimum"
+  },
+  "EXE": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Expand Energy",
+    "reason": "ok"
+  },
+  "FCX": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Freeport-McMoRan",
+    "reason": "ok"
+  },
+  "GANX": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Gain Therapeutics",
+    "reason": "market cap below minimum"
+  },
+  "GLW": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Corning",
+    "reason": "ok"
+  },
+  "GM": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "General Motors",
+    "reason": "ok"
+  },
+  "GPI": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Group 1 Automotive",
+    "reason": "ok"
+  },
+  "HCA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "HCA Healthcare",
+    "reason": "ok"
+  },
+  "HERE": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Here Group",
+    "reason": "market cap below minimum"
+  },
+  "HRI": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Herc",
+    "reason": "ok"
+  },
+  "HSBC": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "HSBC",
+    "reason": "ok"
+  },
+  "HTCO": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "High-Trend International Group",
+    "reason": "market cap below minimum"
+  },
+  "INTC": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Intel",
+    "reason": "ok"
+  },
+  "IQV": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "IQVIA",
+    "reason": "ok"
+  },
+  "ITIC": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Investors Title",
+    "reason": "market cap below minimum"
+  },
+  "IVR": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Invesco Mortgage Capital",
+    "reason": "market cap below minimum"
+  },
+  "JBI": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Janus International",
+    "reason": "market cap below minimum"
+  },
+  "JBLU": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "JetBlue Airways",
+    "reason": "market cap below minimum"
+  },
+  "JTKWY": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Just Eat Takeaway.com",
+    "reason": "no market-cap/volume data"
+  },
+  "KO": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Coca-Cola",
+    "reason": "watchlist"
+  },
+  "LPBB": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Launch Two Acquisition Corp",
+    "reason": "market cap below minimum"
+  },
+  "META": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Meta Platforms",
+    "reason": "watchlist"
+  },
+  "MITQ": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Moving Image Technologies",
+    "reason": "market cap below minimum"
+  },
+  "MSFT": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Microsoft",
+    "reason": "watchlist"
+  },
+  "NVDA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Nvidia",
+    "reason": "watchlist"
+  },
+  "NVS": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Novartis",
+    "reason": "ok"
+  },
+  "NWSA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "News Corp",
+    "reason": "ok"
+  },
+  "OTEX": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Open Text",
+    "reason": "ok"
+  },
+  "OTLK": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Outlook Therapeutics",
+    "reason": "market cap below minimum"
+  },
+  "PBAM": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Private Bancorp of America",
+    "reason": "market cap below minimum"
+  },
+  "PDM": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Piedmont Realty Trust",
+    "reason": "market cap below minimum"
+  },
+  "PFE": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Pfizer",
+    "reason": "watchlist"
+  },
+  "PII": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Polaris",
+    "reason": "ok"
+  },
+  "PNR": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Pentair",
+    "reason": "ok"
+  },
+  "PYPL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "PayPal",
+    "reason": "ok"
+  },
+  "RCL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Royal Caribbean Cruises",
+    "reason": "ok"
+  },
+  "RYES": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Rise Gold",
+    "reason": "market cap below minimum"
+  },
+  "SAFT": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Safety Insurance",
+    "reason": "market cap below minimum"
+  },
+  "SHW": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Sherwin-Williams",
+    "reason": "ok"
+  },
+  "SMPL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Simply Good Foods",
+    "reason": "market cap below minimum"
+  },
+  "SOFI": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "SoFi Technologies",
+    "reason": "ok"
+  },
+  "SVCC": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Stellar V Capital",
+    "reason": "market cap below minimum"
+  },
+  "SYBT": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Stock Yards Bancorp",
+    "reason": "average dollar volume below minimum"
+  },
+  "TCCO": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Technical Communications",
+    "reason": "market cap below minimum"
+  },
+  "TDCB": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Third Century Bancorp",
+    "reason": "market cap below minimum"
+  },
+  "TETC": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Tech and Energy Transition",
+    "reason": "lookup failed: KeyError"
+  },
+  "TNL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Travel + Leisure",
+    "reason": "ok"
+  },
+  "TSLA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Tesla",
+    "reason": "watchlist"
+  },
+  "TUEMQ": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Tuesday Morning",
+    "reason": "market cap below minimum"
+  },
+  "UA": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Under Armour (Class C)",
+    "reason": "market cap below minimum"
+  },
+  "UPS": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "United Parcel Service",
+    "reason": "ok"
+  },
+  "VALU": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Value Line",
+    "reason": "market cap below minimum"
+  },
+  "VZ": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Verizon Communications",
+    "reason": "ok"
+  },
+  "WELL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Welltower",
+    "reason": "ok"
+  },
+  "WINSF": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": false,
+    "name": "Wins Finance",
+    "reason": "market cap below minimum"
+  },
+  "XYL": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Xylem",
+    "reason": "ok"
+  },
+  "YMM": {
+    "checked": "2026-10-27",
+    "first_seen": "2026-10-27",
+    "last_seen": "2026-10-27",
+    "liquid": true,
+    "name": "Full Truck Alliance",
+    "reason": "ok"
+  }
+}
