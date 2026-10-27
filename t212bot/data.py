@@ -39,6 +39,12 @@ def fetch_history(symbols: list[str], period: str = "1y", interval: str = "1d") 
     out: dict[str, pd.DataFrame] = {}
     for sym in symbols:
         df = yf.Ticker(sym).history(period=period, interval=interval, auto_adjust=True)
+        if not df.empty and "Close" in df.columns:
+            # yfinance occasionally returns a trailing row with a NaN close
+            # (a half-formed current bar). Left in, that NaN becomes the
+            # "last price" and poisons P&L arithmetic downstream -- which is
+            # how a NaN once got into the committed risk state.
+            df = df.dropna(subset=["Close"])
         if df.empty:
             log.warning("No data for %s, skipping", sym)
             continue

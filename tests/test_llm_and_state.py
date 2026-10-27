@@ -107,3 +107,37 @@ def test_report_reads_everything(monkeypatch):
     assert "MSFT (2026-10-29)" in text
     assert "1 cycles, 0 errors, 1 buys" in text and "skipped: earnings report within 2 day(s)" in text
     assert "$" not in text
+
+
+def test_report_excludes_non_finite_pnl_and_expired_pauses():
+    today = date(2026, 10, 27)
+    pnl = [{"t": "2026-10-20T10:00:00Z", "strategy": "swing", "symbol": "XOM", "pnl_pct": float("nan")},
+           {"t": "2026-10-21T10:00:00Z", "strategy": "swing", "symbol": "KO", "pnl_pct": 0.01}]
+    pnl_history.save(pnl)
+    from t212bot import trade_stats
+    trade_stats.save({"daytrade": {"CRM": {"wins": 0, "losses": 3, "total_pnl_pct": -0.01, "streak": 3,
+                                           "streak_type": "loss", "paused_until": "2026-08-08"},
+                                   "BA": {"wins": 0, "losses": 3, "total_pnl_pct": -0.01, "streak": 3,
+                                          "streak_type": "loss", "paused_until": "2026-11-01"}}})
+    text = report.build_report(30, today=today)
+    assert "+nan%" not in text and "nan%" not in text
+    assert "1 ledger entry with a non-finite P&L excluded" in text
+    assert "**swing**: 1 closed, win rate 100%" in text
+    assert "BA (daytrade) until 2026-11-01" in text and "CRM" not in text.split("Losing-streak pauses")[1].split("\n")[0]
+
+
+def test_fetch_history_drops_nan_close(monkeypatch):
+    from t212bot import data
+    import pandas as pd
+
+    class T:
+        def __init__(self, sym):
+            pass
+
+        def history(self, **kw):
+            idx = pd.date_range("2026-10-01", periods=3, freq="B", tz="America/New_York")
+            return pd.DataFrame({"Open": [1, 2, 3], "High": [1, 2, 3], "Low": [1, 2, 3],
+                                 "Close": [1.0, 2.0, float("nan")], "Volume": [1, 1, 1]}, index=idx)
+    monkeypatch.setattr(data.yf, "Ticker", T)
+    out = data.fetch_history(["AAPL"])
+    assert len(out["AAPL"]) == 2 and float(out["AAPL"]["Close"].iloc[-1]) == 2.0

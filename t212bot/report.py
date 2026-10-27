@@ -13,6 +13,7 @@ growing.
 from __future__ import annotations
 
 import json
+import math
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 
@@ -41,8 +42,12 @@ def build_report(days: int = 7, today: date | None = None, history_path=None) ->
     lines = [f"# Bot report — {days} days to {today.isoformat()}", ""]
 
     # --- trades --------------------------------------------------------
-    pnl = pnl_history.load()
+    pnl_all = pnl_history.load()
+    pnl = [t for t in pnl_all if isinstance(t.get("pnl_pct"), (int, float)) and math.isfinite(t["pnl_pct"])]
     lines += [f"## Trades (last {days} days)", ""]
+    if len(pnl) != len(pnl_all):
+        lines.append(f"- note: {len(pnl_all) - len(pnl)} ledger entr{'y' if len(pnl_all) - len(pnl) == 1 else 'ies'} "
+                     "with a non-finite P&L excluded (a NaN price got into the bookkeeping at some point)")
     for bot in BOTS:
         recent = [t for t in pnl if t.get("strategy") == bot and t.get("t", "")[:10] >= since_iso]
         alltime = [t for t in pnl if t.get("strategy") == bot]
@@ -57,7 +62,10 @@ def build_report(days: int = 7, today: date | None = None, history_path=None) ->
     lines.append("")
 
     tstats = trade_stats.load()
-    paused = [(r["strategy"], r["symbol"], r["paused_until"]) for r in trade_stats.summary(tstats) if r["paused_until"]]
+    # trade_stats clears an expired pause lazily (on the next is_paused call
+    # for that symbol), so compare against today rather than trusting the field.
+    paused = [(r["strategy"], r["symbol"], r["paused_until"]) for r in trade_stats.summary(tstats)
+              if r["paused_until"] and r["paused_until"] > today.isoformat()]
     dt = daily_target.load()
     pr = portfolio_risk.load()
     lines += ["## Risk state", ""]
