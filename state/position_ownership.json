@@ -3,13 +3,12 @@
   "AMZN_US_EQ": "swing",
   "AVGO_US_EQ": "swing",
   "BA_US_EQ": "swing",
-  "CINF_US_EQ": "news",
-  "CNC_US_EQ": "news",
+  "CHKK_US_EQ": "news",
   "CRM_US_EQ": "swing",
-  "CVLT_US_EQ": "news",
   "DIS_US_EQ": "swing",
   "NFLX_US_EQ": "swing",
   "NVDA_US_EQ": "swing",
   "PFE_US_EQ": "swing",
-  "TSLA_US_EQ": "swing"
+  "TSLA_US_EQ": "swing",
+  "WYN_US_EQ": "news"
 }

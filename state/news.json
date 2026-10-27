@@ -1,13 +1,10 @@
 {
   "closed": {},
   "positions": {
-    "CINF_US_EQ": {
+    "CHKK_US_EQ": {
       "entered": "2026-10-27"
     },
-    "CNC_US_EQ": {
-      "entered": "2026-10-27"
-    },
-    "CVLT_US_EQ": {
+    "WYN_US_EQ": {
       "entered": "2026-10-27"
     }
   },
@@ -21,27 +18,45 @@
       },
       "AMZN": {
         "n": 3,
-        "pos": 1.0,
-        "score": 0.5589,
-        "total": 10
+        "pos": 0.667,
+        "score": 0.0097,
+        "total": 7
       },
       "AVGO": {
-        "n": 7,
-        "pos": 0.857,
-        "score": 0.3869,
-        "total": 15
+        "n": 8,
+        "pos": 0.75,
+        "score": 0.3283,
+        "total": 13
       },
       "BA": {
-        "n": 17,
-        "pos": 0.235,
-        "score": -0.2418,
-        "total": 24
+        "n": 12,
+        "pos": 0.333,
+        "score": -0.2763,
+        "total": 19
+      },
+      "BANC": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.422,
+        "total": 4
+      },
+      "CAKE": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.6356,
+        "total": 7
       },
       "CDNS": {
         "n": 10,
         "pos": 1.0,
-        "score": 0.4717,
+        "score": 0.4724,
         "total": 17
+      },
+      "CHE": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5196,
+        "total": 5
       },
       "CINF": {
         "n": 6,
@@ -55,11 +70,29 @@
         "score": 0.4991,
         "total": 16
       },
+      "CNS": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 6
+      },
       "CRCL": {
         "n": 3,
         "pos": 0.333,
         "score": -0.2435,
         "total": 7
+      },
+      "CRWV": {
+        "n": 8,
+        "pos": 0.75,
+        "score": 0.1695,
+        "total": 13
+      },
+      "CSGP": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.4002,
+        "total": 8
       },
       "CVLT": {
         "n": 3,
@@ -67,17 +100,35 @@
         "score": 0.4648,
         "total": 10
       },
-      "EXE": {
+      "CZR": {
         "n": 2,
-        "pos": 1.0,
-        "score": 0.4089,
+        "pos": 0.0,
+        "score": -0.51,
         "total": 6
+      },
+      "EXE": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5785,
+        "total": 10
       },
       "FCX": {
         "n": 5,
         "pos": 1.0,
         "score": 0.578,
         "total": 10
+      },
+      "FFBC": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5234,
+        "total": 5
+      },
+      "GIL": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 4
       },
       "GLW": {
         "n": 7,
@@ -86,22 +137,40 @@
         "total": 14
       },
       "GM": {
-        "n": 4,
+        "n": 3,
         "pos": 1.0,
-        "score": 0.4243,
-        "total": 11
+        "score": 0.4635,
+        "total": 10
+      },
+      "GOOGL": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.1355,
+        "total": 10
       },
       "GPI": {
-        "n": 5,
-        "pos": 0.4,
-        "score": -0.2597,
-        "total": 7
+        "n": 6,
+        "pos": 0.5,
+        "score": 0.0817,
+        "total": 9
+      },
+      "GS": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.1519,
+        "total": 11
       },
       "HCA": {
         "n": 5,
         "pos": 1.0,
         "score": 0.6725,
         "total": 16
+      },
+      "HOOD": {
+        "n": 14,
+        "pos": 0.286,
+        "score": -0.1415,
+        "total": 21
       },
       "HRI": {
         "n": 5,
@@ -110,10 +179,10 @@
         "total": 10
       },
       "HSBC": {
-        "n": 13,
-        "pos": 0.538,
-        "score": 0.0164,
-        "total": 21
+        "n": 12,
+        "pos": 0.5,
+        "score": 0.0214,
+        "total": 20
       },
       "INTC": {
         "n": 4,
@@ -128,16 +197,22 @@
         "total": 10
       },
       "KO": {
-        "n": 16,
+        "n": 15,
+        "pos": 0.933,
+        "score": 0.564,
+        "total": 24
+      },
+      "LPLA": {
+        "n": 2,
         "pos": 1.0,
-        "score": 0.5713,
-        "total": 21
+        "score": 0.5882,
+        "total": 6
       },
       "META": {
-        "n": 6,
-        "pos": 0.833,
-        "score": 0.2675,
-        "total": 12
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.0704,
+        "total": 7
       },
       "MSFT": {
         "n": 5,
@@ -146,23 +221,22 @@
         "total": 13
       },
       "NVDA": {
-        "n": 12,
-        "pos": 0.833,
-        "score": 0.1586,
-        "src": "peers:AVGO+MSFT",
-        "total": 5
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.1232,
+        "total": 10
       },
       "NVS": {
         "n": 8,
-        "pos": 0.875,
-        "score": 0.5397,
-        "total": 15
+        "pos": 0.75,
+        "score": 0.3376,
+        "total": 14
       },
       "NWSA": {
         "n": 9,
-        "pos": 0.778,
-        "score": 0.4888,
-        "total": 21
+        "pos": 0.889,
+        "score": 0.5243,
+        "total": 18
       },
       "OTEX": {
         "n": 1,
@@ -180,7 +254,7 @@
         "n": 6,
         "pos": 1.0,
         "score": 0.76,
-        "total": 14
+        "total": 16
       },
       "PNR": {
         "n": 2,
@@ -190,9 +264,9 @@
       },
       "PYPL": {
         "n": 12,
-        "pos": 0.833,
-        "score": 0.3186,
-        "total": 17
+        "pos": 0.75,
+        "score": 0.2432,
+        "total": 16
       },
       "RCL": {
         "n": 4,
@@ -200,29 +274,59 @@
         "score": 0.7449,
         "total": 8
       },
+      "RNR": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.3165,
+        "total": 6
+      },
+      "ROG": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.2247,
+        "total": 6
+      },
+      "RUSHA": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.4656,
+        "total": 4
+      },
+      "SBCF": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.5923,
+        "total": 4
+      },
       "SHW": {
         "n": 4,
         "pos": 0.75,
         "score": 0.2525,
         "total": 12
       },
+      "SLDE": {
+        "n": 10,
+        "pos": 0.4,
+        "score": -0.1296,
+        "total": 10
+      },
       "SOFI": {
-        "n": 13,
+        "n": 12,
         "pos": 1.0,
-        "score": 0.6079,
-        "total": 24
+        "score": 0.6553,
+        "total": 22
       },
       "TNL": {
-        "n": 5,
+        "n": 4,
         "pos": 1.0,
-        "score": 0.5702,
-        "total": 11
+        "score": 0.6207,
+        "total": 10
       },
       "TSLA": {
-        "n": 5,
-        "pos": 0.8,
-        "score": 0.349,
-        "total": 13
+        "n": 7,
+        "pos": 0.714,
+        "score": 0.2472,
+        "total": 14
       },
       "UPS": {
         "n": 7,
@@ -230,11 +334,17 @@
         "score": 0.6151,
         "total": 14
       },
-      "VZ": {
-        "n": 7,
-        "pos": 0.714,
-        "score": 0.3349,
+      "V": {
+        "n": 9,
+        "pos": 0.778,
+        "score": 0.3938,
         "total": 15
+      },
+      "VZ": {
+        "n": 9,
+        "pos": 0.667,
+        "score": 0.3351,
+        "total": 13
       },
       "WELL": {
         "n": 9,
@@ -243,16 +353,16 @@
         "total": 16
       },
       "XYL": {
-        "n": 5,
-        "pos": 0.0,
-        "score": -0.6594,
-        "total": 12
+        "n": 6,
+        "pos": 0.167,
+        "score": -0.47,
+        "total": 14
       },
       "YMM": {
-        "n": 12,
-        "pos": 0.917,
-        "score": 0.6885,
-        "total": 12
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.7449,
+        "total": 10
       }
     }
   }
