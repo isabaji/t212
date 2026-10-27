@@ -311,3 +311,36 @@ def test_news_cycle_discover_drops_untradable(wired, monkeypatch):
     assert rec["error"] is None
     arch = json.loads(news.STATE_PATH.read_text())["scores"][today_et().isoformat()]
     assert "LLY" not in arch and "AAPL" in arch                             # untradable dropped; watchlist kept ("both")
+
+
+def test_news_opening_delay_helper():
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    def at(h, m):
+        return datetime(2026, 10, 27, h, m, tzinfo=et).astimezone(timezone.utc)
+    assert bot._news_too_early(at(9, 31), 30)
+    assert bot._news_too_early(at(9, 59), 30)
+    assert not bot._news_too_early(at(10, 0), 30)
+    assert not bot._news_too_early(at(9, 0), 30)       # pre-market: the no-bar gate handles it
+    assert not bot._news_too_early(at(9, 31), 0)
+
+
+def test_news_cycle_opening_delay_blocks_entries(wired, monkeypatch):
+    monkeypatch.setenv("NEWS_ENTRY_DELAY_MINUTES", "30")
+    monkeypatch.setattr(bot, "_news_too_early", lambda now, delay: delay > 0)
+    cfg = Config()
+    bot.run_news_cycle(cfg, news_strategy(cfg))
+    rec = last_record()
+    assert not decisions_of(rec, "Buy")
+    assert any("minutes of the open" in d["detail"] and "AAPL" in d["detail"] for d in rec["decisions"]), rec["decisions"]
+
+
+def test_news_cycle_entry_cap(wired, monkeypatch):
+    monkeypatch.setenv("NEWS_PEER_DISCOUNT", "0.6")             # AAPL + NVDA/AVGO would all buy
+    monkeypatch.setenv("NEWS_MAX_ENTRIES_PER_CYCLE", "1")
+    cfg = Config()
+    bot.run_news_cycle(cfg, news_strategy(cfg))
+    rec = last_record()
+    assert len(decisions_of(rec, "Buy")) == 1
+    assert any("this cycle" in d["detail"] and "NEWS_MAX_ENTRIES_PER_CYCLE" in d["detail"] for d in rec["decisions"])

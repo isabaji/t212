@@ -737,11 +737,13 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                              "+".join(studies[sym].event_types) or "uncategorised", kind, summary)
 
         decisions = []
-        buckets = {key: [] for key in ("no_bar", "hold", "negative", "chased", "unconfirmed", "stale_news",
+        buckets = {key: [] for key in ("no_bar", "opening", "hold", "negative", "chased", "unconfirmed", "stale_news",
                                        "downtrend", "blocked", "drawdown", "paused", "reentry",
-                                       "history_adverse", "illiquid")}
+                                       "history_adverse", "illiquid", "cycle_cap")}
         regime_symbols = []
         earnings_symbols = []
+        too_early = _news_too_early(now_utc, cfg.news_entry_delay_minutes)
+        entries_this_cycle = 0
 
         for sym, df in sorted(prices.items()):
             t212_ticker = to_t212_ticker(sym)
@@ -813,6 +815,12 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                     log.info("BUY %s skipped: latest daily bar is %s, no bar for today yet", sym, bar_date)
                     buckets["no_bar"].append(sym)
                     continue
+                if too_early:
+                    buckets["opening"].append(sym)
+                    continue
+                if cfg.news_max_entries_per_cycle and entries_this_cycle >= cfg.news_max_entries_per_cycle:
+                    buckets["cycle_cap"].append(sym)
+                    continue
                 if blocked:
                     buckets["blocked"].append(sym)
                     continue
@@ -872,6 +880,7 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                 sector_exposure[sector] = sector_value_held + qty * last_price
                 position_ownership.set_owner(pos_owner, t212_ticker, "news")
                 news_state["positions"][t212_ticker] = {"entered": today}
+                entries_this_cycle += 1
                 decisions.append(history.decision(sym, "good", "Buy",
                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
                                   f"signal strength {sig.strength:.0%}, {sig.reason}.{headline_note}{history_note}"))
@@ -892,6 +901,10 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
 
         summaries = {
             "no_bar": ("warning", "Skipped", "no daily bar for today yet (market closed or holiday), no new entries."),
+            "opening": ("warning", "Skipped", f"within {cfg.news_entry_delay_minutes} minutes of the open -- today's move "
+                                             "isn't meaningful yet, no new entries."),
+            "cycle_cap": ("warning", "Skipped", f"already opened {cfg.news_max_entries_per_cycle} position(s) this cycle "
+                                               "(NEWS_MAX_ENTRIES_PER_CYCLE), the rest wait for the next one."),
             "hold": ("neutral", "Hold", "no clear news signal, no action taken."),
             "negative": ("neutral", "Hold", "clearly negative news but no news-bot position to sell (long-only), no action."),
             "chased": ("warning", "Skipped", "positive news but today's move already past the chase limit, skipped."),
@@ -936,6 +949,21 @@ def _minutes_until_close(bar_timestamp: pd.Timestamp) -> float:
         hour=MARKET_CLOSE_TIME.hour, minute=MARKET_CLOSE_TIME.minute, second=0, microsecond=0
     )
     return (close_dt - bar_timestamp).total_seconds() / 60
+
+
+MARKET_OPEN_ET = datetime.time(9, 30)
+
+
+def _news_too_early(now_utc: datetime.datetime, delay_minutes: int) -> bool:
+    """True until delay_minutes after the 09:30 New York open (so it tracks
+    DST, unlike the day-trade bot's fixed-UTC cron-window anchor). Outside
+    market hours it's simply 'not too early' -- the no-bar-today gate
+    handles closed markets. delay_minutes <= 0 disables."""
+    if delay_minutes <= 0:
+        return False
+    now_et = now_utc.astimezone(ZoneInfo("America/New_York"))
+    open_et = now_et.replace(hour=MARKET_OPEN_ET.hour, minute=MARKET_OPEN_ET.minute, second=0, microsecond=0)
+    return open_et <= now_et < open_et + datetime.timedelta(minutes=delay_minutes)
 
 
 def _too_early_for_entries(now_utc: datetime.datetime, delay_minutes: int) -> bool:

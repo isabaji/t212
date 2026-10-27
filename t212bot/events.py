@@ -240,6 +240,7 @@ def upcoming_reports(state: dict, today: date, within_days: int = 7) -> list[tup
 # ---------------------------------------------------------------------------
 _cik_cache: dict[str, int] | None = None
 SEC_TICKERS_CACHE_PATH = Path(__file__).resolve().parent.parent / "logs" / "sec_tickers.json"
+_sec_unavailable = False   # set after one failed fetch so a run warns once, not once per symbol
 
 
 def load_sec_entries(session: requests.Session | None = None, max_age_days: int = 7) -> list[dict]:
@@ -247,6 +248,9 @@ def load_sec_entries(session: requests.Session | None = None, max_age_days: int 
     in file order (roughly largest companies first), cached locally. Used
     for CIK lookup here and for name->ticker resolution in discovery.py.
     Returns [] (with a warning) if it can't be fetched."""
+    global _sec_unavailable
+    if _sec_unavailable:
+        return []
     if SEC_TICKERS_CACHE_PATH.exists():
         try:
             cached = json.loads(SEC_TICKERS_CACHE_PATH.read_text())
@@ -261,7 +265,9 @@ def load_sec_entries(session: requests.Session | None = None, max_age_days: int 
             raise RuntimeError(f"HTTP {resp.status_code}")
         raw = resp.json()
     except (requests.RequestException, RuntimeError, ValueError) as exc:
-        log.warning("SEC ticker list unavailable (%s)", exc)
+        log.warning("SEC ticker list unavailable (%s) -- EDGAR history and SEC company names skipped this run; "
+                    "the SEC requires a contact e-mail in SEC_USER_AGENT", exc)
+        _sec_unavailable = True
         return []
     entries = [{"ticker": str(v.get("ticker", "")).upper(), "title": str(v.get("title", "")),
                 "cik": int(v.get("cik_str", 0))}
@@ -531,7 +537,7 @@ def run_event_study(symbol: str, headlines: list[Headline], prices_long: pd.Data
     close = prices_long["Close"].astype(float)
     today_move = float(close.iloc[-1] / close.iloc[-2] - 1) if len(close) >= 2 else None
     edgar = None
-    if use_edgar and any(t in HEADLINE_TO_EDGAR for t in types):
+    if use_edgar and any(t in HEADLINE_TO_EDGAR for t in types) and load_sec_entries(session):
         try:
             edgar = fetch_edgar_events(symbol, session)
         except (requests.RequestException, RuntimeError, ValueError) as exc:

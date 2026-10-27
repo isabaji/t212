@@ -76,6 +76,14 @@ class Config:
     # in), and only buy above the trend_filter-day SMA. 0 disables either.
     news_max_chase_pct: float = field(default_factory=lambda: float(os.getenv("NEWS_MAX_CHASE_PCT", "0.05")))
     news_trend_filter_days: int = field(default_factory=lambda: int(os.getenv("NEWS_TREND_FILTER_DAYS", "20")))
+    # No new news-bot entries until this many minutes after the 09:30 ET
+    # open: the "up on the day" confirmation is noise in the first minutes
+    # (a smoke run at 09:31 ET fired five entries on one-minute moves).
+    # Exits are never delayed. 0 disables.
+    news_entry_delay_minutes: int = field(default_factory=lambda: int(os.getenv("NEWS_ENTRY_DELAY_MINUTES", "30")))
+    # Most new positions the news bot opens in one cycle -- a busy earnings
+    # morning shouldn't fill every slot at once. 0 disables the cap.
+    news_max_entries_per_cycle: int = field(default_factory=lambda: int(os.getenv("NEWS_MAX_ENTRIES_PER_CYCLE", "3")))
     # Sector read-through (t212bot/news.py: peer_scores): a symbol with too
     # few headlines of its own borrows its sector peers' consensus times
     # this discount. 0 disables.

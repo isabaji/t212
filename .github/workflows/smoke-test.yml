@@ -27,6 +27,8 @@ jobs:
       DAYTRADE_ENTRY_DELAY_MINUTES: '0'
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 't212bot/1.0 (https://github.com/isabaji/t212)' }}
       NEWS_UNIVERSE: ${{ secrets.NEWS_UNIVERSE || 'discover' }}
+      NEWS_ENTRY_DELAY_MINUTES: ${{ secrets.NEWS_ENTRY_DELAY_MINUTES || '30' }}
+      NEWS_MAX_ENTRIES_PER_CYCLE: ${{ secrets.NEWS_MAX_ENTRIES_PER_CYCLE || '3' }}
       NEWS_MIN_MENTIONS: ${{ secrets.NEWS_MIN_MENTIONS || '2' }}
       NEWS_MAX_CANDIDATES: ${{ secrets.NEWS_MAX_CANDIDATES || '40' }}
       NEWS_SEC_TOP_N: ${{ secrets.NEWS_SEC_TOP_N || '1500' }}

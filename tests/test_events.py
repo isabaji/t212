@@ -158,3 +158,13 @@ def test_edgar_events_and_cache(monkeypatch):
     assert ev == [("2026-05-01", ["earnings"]), ("2026-02-01", ["exec_change"])]
     assert events.fetch_edgar_events("AAPL", None) == ev        # cached: no session needed
     assert events.lookup_cik("ZZZZ", FakeSession()) is None
+
+
+def test_sec_failure_is_remembered_for_the_run(monkeypatch, caplog):
+    class Dead:
+        def get(self, url, **kw):
+            raise events.requests.ConnectionError("403")
+    with caplog.at_level("WARNING"):
+        assert events.load_sec_entries(Dead()) == []
+        assert events.load_sec_entries(Dead()) == []
+    assert caplog.text.count("SEC ticker list unavailable") == 1

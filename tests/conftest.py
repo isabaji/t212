@@ -39,7 +39,8 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(history, "HISTORY_PATH", tmp_path / "history.jsonl")
     monkeypatch.setattr(news, "_POLITE_DELAY_SECONDS", 0)
     for var in ("ANTHROPIC_API_KEY", "EVENT_STUDY_GATE", "NEWS_PEER_DISCOUNT", "NEWS_SCORER",
-                "REGIME_FILTER_ENABLED", "EARNINGS_BLACKOUT_DAYS", "WATCHLIST", "NEWS_UNIVERSE", "NEWS_FEEDS"):
+                "REGIME_FILTER_ENABLED", "EARNINGS_BLACKOUT_DAYS", "WATCHLIST", "NEWS_UNIVERSE", "NEWS_FEEDS",
+                "NEWS_ENTRY_DELAY_MINUTES", "NEWS_MAX_ENTRIES_PER_CYCLE"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("T212_API_KEY", "test-key")
     monkeypatch.setenv("T212_API_SECRET", "test-secret")
@@ -47,6 +48,9 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setenv("T212_ENV", "demo")
     # Cycle tests default to the fixed watchlist; discovery has its own tests.
     monkeypatch.setenv("NEWS_UNIVERSE", "watchlist")
+    # Tests run at any wall-clock time; the opening delay is tested on its own.
+    monkeypatch.setenv("NEWS_ENTRY_DELAY_MINUTES", "0")
+    monkeypatch.setattr(events, "_sec_unavailable", False)
     yield tmp_path
 
 

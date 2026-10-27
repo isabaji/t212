@@ -84,6 +84,7 @@ Key settings in `.env`:
 | `NEWS_FEEDS` | built-in list | News bot only: feeds to scan — `name=url;…` replaces, `+name=url;-name` extends/removes |
 | `NEWS_MIN_MENTIONS` / `NEWS_MAX_CANDIDATES` / `NEWS_SEC_TOP_N` | `2` / `40` / `1500` | News bot only: candidate selection — headlines naming a company, cap per cycle, depth of the SEC name list |
 | `NEWS_MIN_MARKET_CAP` / `NEWS_MIN_DOLLAR_VOLUME` | `2e9` / `2e7` | News bot only: liquidity gate for discovered names before any buy (watchlist exempt) |
+| `NEWS_ENTRY_DELAY_MINUTES` / `NEWS_MAX_ENTRIES_PER_CYCLE` | `30` / `3` | News bot only: no new entries in the first N minutes after the 09:30 ET open; at most N new positions per cycle — `0` disables either |
 | `NEWS_RELEVANCE_FILTER` / `NEWS_COMPANY_NAMES` | `true` / — | News bot only: drop headlines that don't name the company; extra aliases as `AMD=Advanced Micro Devices\|AMD;TSM=TSMC` |
 | `NEWS_PEER_DISCOUNT` | `0.5` | News bot only: sector read-through weight for symbols without enough headlines of their own — `0` disables |
 | `NEWS_SCORER` / `NEWS_LLM_MODEL` / `ANTHROPIC_API_KEY` | `lexicon` / `claude-opus-5-5` / — | News bot only: `llm` scores headlines with Claude instead of the lexicon (falls back to the lexicon on any failure) |

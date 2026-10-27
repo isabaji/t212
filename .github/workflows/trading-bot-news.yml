@@ -85,6 +85,8 @@ jobs:
           # (t212bot/news.py, t212bot/news_llm.py, t212bot/events.py).
           NEWS_PEER_DISCOUNT: ${{ secrets.NEWS_PEER_DISCOUNT || '0.5' }}
           NEWS_UNIVERSE: ${{ secrets.NEWS_UNIVERSE || 'discover' }}
+          NEWS_ENTRY_DELAY_MINUTES: ${{ secrets.NEWS_ENTRY_DELAY_MINUTES || '30' }}
+          NEWS_MAX_ENTRIES_PER_CYCLE: ${{ secrets.NEWS_MAX_ENTRIES_PER_CYCLE || '3' }}
           NEWS_MIN_MENTIONS: ${{ secrets.NEWS_MIN_MENTIONS || '2' }}
           NEWS_MAX_CANDIDATES: ${{ secrets.NEWS_MAX_CANDIDATES || '40' }}
           NEWS_SEC_TOP_N: ${{ secrets.NEWS_SEC_TOP_N || '1500' }}
