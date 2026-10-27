@@ -32,9 +32,11 @@ class FakeT212:
 
     def instruments(self):
         rows = [{"ticker": f"{s}_US_EQ", "shortName": s, "name": s.title(), "type": "STOCK", "currencyCode": "USD"}
-                for s in ("AAPL", "MSFT", "NVDA", "AVGO", "GOOGL", "LLY", "PLTR")]
+                for s in ("AAPL", "MSFT", "NVDA", "AVGO", "GOOGL", "PLTR")]
         # Broker ticker that differs from the mechanical SYMBOL_US_EQ (as META did live).
-        rows.append({"ticker": "TINY1_US_EQ", "shortName": "TINY", "name": "Tinyco Holdings", "type": "STOCK",
+        rows.append({"ticker": "LLY1_US_EQ", "shortName": "LLY", "name": "Eli Lilly", "type": "STOCK",
+                     "currencyCode": "USD"})
+        rows.append({"ticker": "TINY_US_EQ", "shortName": "TINY", "name": "Tinyco Holdings", "type": "STOCK",
                      "currencyCode": "USD"})
         return rows
 
@@ -285,14 +287,15 @@ def test_news_cycle_discover_mode(wired, monkeypatch):
     assert rec["error"] is None, rec["error"]
     buys = decisions_of(rec, "Buy")
     assert "LLY" in buys and "TINY" not in buys and "AAPL" not in buys, buys
-    assert any("too small/illiquid" in d["detail"] and "TINY" in d["detail"] for d in rec["decisions"]), rec["decisions"]
     arch = json.loads(news.STATE_PATH.read_text())["scores"][today_et().isoformat()]
-    assert set(arch) >= {"LLY", "TINY"} and "MSFT" not in arch           # watchlist not scanned in discover mode
+    assert "LLY" in arch and "MSFT" not in arch                             # watchlist not scanned in discover mode
+    assert "TINY" not in arch                                                # failed liquidity before the depth pass
     uni = json.loads(discovery.UNIVERSE_PATH.read_text())
     assert uni["LLY"]["liquid"] is True and uni["TINY"]["liquid"] is False
-    assert uni["LLY"]["name"] == "eli lilly" and uni["TINY"]["name"] == "tinyco"
+    assert uni["LLY"]["name"] == "Eli Lilly" and uni["TINY"]["name"] == "Tinyco Holdings"   # broker display names
     from t212bot import data
-    assert data.YAHOO_TO_T212 == {"TINY": "TINY1_US_EQ"}                      # broker ticker mapped, not rejected
+    assert data.YAHOO_TO_T212 == {"LLY": "LLY1_US_EQ"}                        # broker ticker mapped, not rejected
+    assert "LLY1_US_EQ" in json.loads(position_ownership.STATE_PATH.read_text())  # and the order used it
 
 
 def test_news_cycle_discover_drops_untradable(wired, monkeypatch):

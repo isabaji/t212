@@ -636,28 +636,46 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
         # Universe: a fixed watchlist, or whatever is in the news today
         # (t212bot/discovery.py), or both. Held positions always included.
         names = companies.names_for(cfg.news_company_names)
+        universe = discovery.load_universe()
         discovered: dict[str, list] = {}
         discovered_names: dict[str, str] = {}
         if cfg.news_universe in ("discover", "both"):
             market = discovery.fetch_market_headlines(discovery.feed_list(cfg.news_feeds), now=now_utc,
                                                       max_age_hours=cfg.news_max_age_hours)
             instruments = discovery.fetch_instruments(client)
+            inst_entries = discovery.instrument_entries(instruments)
+            display_names = {e["ticker"]: e["title"] for e in inst_entries if e.get("title")}
             resolver = discovery.TickerResolver.build(names, events.load_sec_entries(), cfg.news_sec_top_n,
-                                                      extra_entries=discovery.instrument_entries(instruments))
+                                                      extra_entries=inst_entries)
             names = resolver.names
-            discovered = discovery.discover(market, resolver, cfg.news_min_mentions, cfg.news_max_candidates)
+            # Over-fetch candidates, then fill the slots in rank order with
+            # names that are tradable AND pass the liquidity gate -- press-
+            # release wires surface plenty of micro-caps that would otherwise
+            # take slots (and lookups) from companies the bot could actually buy.
+            ranked = discovery.discover(market, resolver, cfg.news_min_mentions, cfg.news_max_candidates * 2)
             tradable = discovery.tradable_map(instruments)
-            if tradable is not None:
-                untradable = [s for s in discovered if s not in tradable]
-                if untradable:
-                    log.info("Discovery: not tradable on Trading212, dropped: %s", ", ".join(untradable))
-                    discovered = {s: h for s, h in discovered.items() if s not in untradable}
-                for s in discovered:
-                    if tradable[s] != to_t212_ticker(s):
-                        # Broker ticker differs from the mechanical SYMBOL_US_EQ: route orders correctly.
-                        market_data.YAHOO_TO_T212[s] = tradable[s]
-                        log.info("Discovery: %s trades as %s on Trading212", s, tradable[s])
-            discovered_names = {s: (names.get(s) or [s])[0] for s in discovered}
+            untradable = [s for s in ranked if tradable is not None and s not in tradable]
+            if untradable:
+                log.info("Discovery: not tradable on Trading212, dropped: %s", ", ".join(untradable))
+            for s in ranked:
+                if len(discovered) >= cfg.news_max_candidates:
+                    break
+                if s in untradable:
+                    continue
+                discovery.refresh_universe(universe, {s: display_names.get(s) or (names.get(s) or [s])[0]}, today_et,
+                                           cfg.news_min_market_cap, cfg.news_min_dollar_volume,
+                                           exempt=set(cfg.watchlist))
+                if not discovery.is_liquid(universe, s):
+                    continue
+                if tradable is not None and tradable[s] != to_t212_ticker(s):
+                    # Broker ticker differs from the mechanical SYMBOL_US_EQ: route orders correctly.
+                    market_data.YAHOO_TO_T212[s] = tradable[s]
+                    log.info("Discovery: %s trades as %s on Trading212", s, tradable[s])
+                discovered[s] = ranked[s]
+            rejected = [s for s in ranked if s not in discovered and s not in untradable]
+            log.info("Discovery: %d eligible candidates (%s)%s", len(discovered), ", ".join(list(discovered)[:20]),
+                     f"; {len(rejected)} failed the liquidity gate" if rejected else "")
+            discovered_names = {s: display_names.get(s) or (names.get(s) or [s])[0] for s in discovered}
         base_symbols = set(cfg.watchlist) if cfg.news_universe in ("watchlist", "both") else set()
         watch_symbols = sorted(base_symbols | held_symbols | set(discovered))
         prices = _convert_prices_fx(fetch_history(watch_symbols, period="6mo"), fx_rate)
@@ -666,7 +684,6 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
         for sym, extra in discovered.items():
             have = {news._normalize_title(h.title) for h in headlines.get(sym, [])}
             headlines.setdefault(sym, []).extend(h for h in extra if news._normalize_title(h.title) not in have)
-        universe = discovery.load_universe()
         discovery.refresh_universe(universe, {s: discovered_names.get(s, s) for s in watch_symbols}, today_et,
                                    cfg.news_min_market_cap, cfg.news_min_dollar_volume, exempt=set(cfg.watchlist))
         scorer = news_llm.make_scorer(cfg.news_scorer, cfg.news_llm_model)
