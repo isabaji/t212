@@ -140,13 +140,33 @@ def test_liquidity_and_universe(monkeypatch):
     assert discovery.load_universe() == st
 
 
-def test_tradable_tickers_fails_open():
+INSTRUMENTS = [
+    {"ticker": "AAPL_US_EQ", "shortName": "AAPL", "name": "Apple", "type": "STOCK", "currencyCode": "USD"},
+    {"ticker": "META1_US_EQ", "shortName": "META", "name": "Meta Platforms", "type": "STOCK", "currencyCode": "USD"},
+    {"ticker": "ZETA_US_EQ", "shortName": "ZETA", "name": "Zeta Global Holdings", "type": "STOCK", "currencyCode": "USD"},
+    {"ticker": "VODl_EQ", "shortName": "VOD", "name": "Vodafone", "type": "STOCK", "currencyCode": "GBX"},
+    {"ticker": "SPY_US_EQ", "shortName": "SPY", "name": "SPDR S&P 500", "type": "ETF", "currencyCode": "USD"},
+    {"nope": 1},
+]
+
+
+def test_instrument_entries_and_tradable_map():
+    entries = discovery.instrument_entries(INSTRUMENTS)
+    assert [e["ticker"] for e in entries] == ["AAPL", "META", "ZETA"]          # US stocks only, no ETFs/LSE
+    assert discovery.tradable_map(INSTRUMENTS) == {"AAPL": "AAPL_US_EQ", "META": "META1_US_EQ", "ZETA": "ZETA_US_EQ"}
+    assert discovery.tradable_map(None) is None
+    r = discovery.TickerResolver.build(companies.names_for(), None, extra_entries=entries)
+    assert r.index["zeta global"] == "ZETA" and r.index["zeta"] == "ZETA"     # broker list is a name source
+    assert r.resolve("Zeta Global jumps on AI marketing deal") == {"ZETA": "name"}
+
+
+def test_fetch_instruments_fails_open():
     class C:
         def instruments(self):
-            return [{"ticker": "AAPL_US_EQ"}, {"ticker": "NVDA_US_EQ"}, {"nope": 1}]
-    assert discovery.tradable_tickers(C()) == {"AAPL_US_EQ", "NVDA_US_EQ"}
+            return INSTRUMENTS
+    assert discovery.fetch_instruments(C()) == INSTRUMENTS
 
     class Broken:
         def instruments(self):
             raise RuntimeError("429")
-    assert discovery.tradable_tickers(Broken()) is None
+    assert discovery.fetch_instruments(Broken()) is None

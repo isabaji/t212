@@ -31,7 +31,12 @@ class FakeT212:
         return list(self.positions)
 
     def instruments(self):
-        return [{"ticker": f"{s}_US_EQ"} for s in ("AAPL", "MSFT", "NVDA", "AVGO", "GOOGL", "LLY", "PLTR", "TINY")]
+        rows = [{"ticker": f"{s}_US_EQ", "shortName": s, "name": s.title(), "type": "STOCK", "currencyCode": "USD"}
+                for s in ("AAPL", "MSFT", "NVDA", "AVGO", "GOOGL", "LLY", "PLTR")]
+        # Broker ticker that differs from the mechanical SYMBOL_US_EQ (as META did live).
+        rows.append({"ticker": "TINY1_US_EQ", "shortName": "TINY", "name": "Tinyco Holdings", "type": "STOCK",
+                     "currencyCode": "USD"})
+        return rows
 
     def place_market_order(self, *a):
         raise AssertionError("dry run must never place an order")
@@ -286,12 +291,15 @@ def test_news_cycle_discover_mode(wired, monkeypatch):
     uni = json.loads(discovery.UNIVERSE_PATH.read_text())
     assert uni["LLY"]["liquid"] is True and uni["TINY"]["liquid"] is False
     assert uni["LLY"]["name"] == "eli lilly" and uni["TINY"]["name"] == "tinyco"
+    from t212bot import data
+    assert data.YAHOO_TO_T212 == {"TINY": "TINY1_US_EQ"}                      # broker ticker mapped, not rejected
 
 
 def test_news_cycle_discover_drops_untradable(wired, monkeypatch):
     monkeypatch.setenv("NEWS_UNIVERSE", "both")
-    monkeypatch.setattr(FakeT212, "instruments", lambda self: [{"ticker": "AAPL_US_EQ"}, {"ticker": "MSFT_US_EQ"},
-                                                               {"ticker": "NVDA_US_EQ"}, {"ticker": "AVGO_US_EQ"}])
+    monkeypatch.setattr(FakeT212, "instruments", lambda self: [
+        {"ticker": f"{s}_US_EQ", "shortName": s, "name": s, "type": "STOCK", "currencyCode": "USD"}
+        for s in ("AAPL", "MSFT", "NVDA", "AVGO")])
     wired["market"] = [news.Headline("", t, NOW - timedelta(hours=1)) for t in (
         "Eli Lilly raises guidance", "Eli Lilly beats estimates")]
     cfg = Config()

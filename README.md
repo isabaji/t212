@@ -621,23 +621,30 @@ By default (`NEWS_UNIVERSE=discover`) the news bot doesn't start from the
 watchlist at all. Each cycle it:
 
 1. **Scans many general feeds** (`t212bot/discovery.py`): CNBC, MarketWatch,
-   Yahoo Finance, Seeking Alpha, Investing.com, Nasdaq, the PR Newswire and
-   GlobeNewswire press-release wires, Google News business — plus targeted
-   Google News searches for the event phrases the strategy trades ("raises
-   guidance", "misses estimates", "FDA approval", "downgraded to sell", …).
-   All free RSS; a dead feed is logged and skipped; `NEWS_FEEDS` replaces or
-   extends the list.
+   Yahoo Finance (index headlines), Seeking Alpha, Investing.com, the PR
+   Newswire press-release wire, Google News business — plus targeted Google
+   News searches for the event phrases the strategy trades ("raises
+   guidance", "misses estimates", "FDA approval", "downgraded to sell", …)
+   and for `NASDAQ:` / `NYSE:`, which sweeps up press releases from every
+   wire Google indexes. All free RSS; a dead feed is logged and skipped;
+   `NEWS_FEEDS` replaces or extends the list. (The first live scan: 23 of 27
+   feeds answered, ~400 unique headlines in 48 h.)
 2. **Resolves every headline to the companies it names**: explicit tickers
-   first (`(NYSE: XYZ)`, `$XYZ` — press releases always carry them), then
-   company names from the SEC's public ticker list (top `NEWS_SEC_TOP_N` by
-   size) and the curated aliases. Matching is deliberately conservative:
+   first (`(NYSE: XYZ)`, `$XYZ` — press releases always carry them), bare
+   upper-case tickers of 3+ letters (never on all-caps headlines, never
+   everyday acronyms like CEO/FDA/ETF), then company names from **Trading212's
+   own instrument list** (the tradable universe by definition), the SEC's
+   public ticker list (top `NEWS_SEC_TOP_N` by size — needs `SEC_USER_AGENT`
+   with a contact e-mail or the SEC answers 403) and the curated aliases.
+   Matching is deliberately conservative:
    generic single words ("Target", "Gap", "General") never match, short
    first-token shortcuts aren't used, and a shared alias goes to the larger
    company. Missing a mention costs a trade; a false match costs a wrong one.
 3. **Picks candidates**: names in at least `NEWS_MIN_MENTIONS` distinct
    headlines (an explicit ticker qualifies alone), ranked by mentions, at most
    `NEWS_MAX_CANDIDATES`. Candidates must be **tradable on Trading212**
-   (checked against the account's instrument list) and, before any buy, pass
+   (checked against the account's instrument list, which also supplies the
+   broker's ticker when it isn't the mechanical `SYMBOL_US_EQ`) and, before any buy, pass
    a **liquidity gate** (market cap ≥ `NEWS_MIN_MARKET_CAP`, average dollar
    volume ≥ `NEWS_MIN_DOLLAR_VOLUME`, via yfinance, cached a week in
    `state/universe.json` as yes/no). Watchlist names are exempt from the gate.

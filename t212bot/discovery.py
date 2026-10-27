@@ -63,13 +63,11 @@ DEFAULT_FEEDS: dict[str, str] = {
     "cnbc-finance": "https://www.cnbc.com/id/10000664/device/rss/rss.html",
     "marketwatch-top": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
     "marketwatch-realtime": "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines",
-    "yahoo-finance": "https://finance.yahoo.com/news/rssindex",
+    # Yahoo's per-symbol headline endpoint (the one the per-ticker pass uses) on the big indices.
+    "yahoo-indices": "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EDJI,%5EIXIC&region=US&lang=en-US",
     "seekingalpha-news": "https://seekingalpha.com/market_currents.xml",
     "investing-stocks": "https://www.investing.com/rss/news_25.rss",
-    "nasdaq-markets": "https://www.nasdaq.com/feed/rssoutbound?category=Markets",
-    "nasdaq-earnings": "https://www.nasdaq.com/feed/rssoutbound?category=Earnings",
     "prnewswire-financial": "https://www.prnewswire.com/rss/financial-services-latest-news/financial-services-latest-news-list.rss",
-    "globenewswire-public": "https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies",
     "gnews-business": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
 }
 # Targeted Google News searches -- exactly the event types NewsSentiment
@@ -78,6 +76,9 @@ GNEWS_EVENT_QUERIES = [
     "raises guidance", "cuts guidance", "raises outlook", "lowers outlook", "beats estimates",
     "misses estimates", "FDA approval", "downgraded to sell", "upgraded to buy", "agrees to acquire",
     "CEO steps down", "record quarter", "profit warning", "wins contract",
+    # Press releases always print the exchange and ticker -- these two
+    # searches sweep them up across every wire service Google indexes.
+    "NASDAQ:", "NYSE:",
 ]
 GNEWS_SEARCH_URL = "https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en"
 _FEED_DELAY_SECONDS = 0.2
@@ -252,14 +253,16 @@ class TickerResolver:
 
     @classmethod
     def build(cls, company_names: dict[str, list[str]], sec_entries: list[dict] | None = None,
-              max_sec_entries: int = 1500) -> "TickerResolver":
+              max_sec_entries: int = 1500, extra_entries: list[dict] | None = None) -> "TickerResolver":
         """company_names (companies.py + NEWS_COMPANY_NAMES) take priority;
-        then SEC titles in file order (largest companies first) for the
-        broad universe, with the conservative alias rules in the module
-        docstring."""
+        then SEC titles in file order (largest companies first); then
+        extra_entries -- the broker's own instrument list (see
+        instrument_entries), which is the tradable universe by definition
+        and the only name source when the SEC list is unavailable. All with
+        the conservative alias rules in the module docstring."""
         aliases: dict[str, list[str]] = {t: list(n) for t, n in company_names.items()}
         claimed: set[str] = {_normalize_title(n) for ns in aliases.values() for n in ns}
-        for entry in (sec_entries or [])[:max_sec_entries]:
+        for entry in list((sec_entries or [])[:max_sec_entries]) + list(extra_entries or []):
             ticker = str(entry.get("ticker", "")).upper()
             title = str(entry.get("title", ""))
             if not ticker or not title:
@@ -407,12 +410,44 @@ def is_liquid(state: dict, symbol: str) -> bool:
     return bool((state.get(symbol) or {}).get("liquid"))
 
 
-def tradable_tickers(client) -> set[str] | None:
-    """Trading212 tickers the account can trade, or None if the lookup
-    failed (callers then skip the check; an untradable order is rejected
-    by the broker anyway and handled as a skipped symbol)."""
+def fetch_instruments(client) -> list | None:
+    """Trading212's instrument list, or None if the lookup failed (callers
+    then skip the tradability check; an untradable order is rejected by the
+    broker anyway and handled as a skipped symbol)."""
     try:
-        return {i["ticker"] for i in client.instruments() if isinstance(i, dict) and i.get("ticker")}
+        raw = client.instruments()
+        return raw if isinstance(raw, list) else None
     except Exception as exc:  # noqa: BLE001
         log.warning("Could not fetch Trading212 instrument list (%s); skipping tradability check", exc)
         return None
+
+
+def instrument_entries(instruments: list | None) -> list[dict]:
+    """USD stocks from the broker's instrument list as resolver entries:
+    [{"ticker": shortName, "title": name, "t212": broker ticker}, ...]."""
+    out: list[dict] = []
+    for i in instruments or []:
+        if not isinstance(i, dict):
+            continue
+        t212 = str(i.get("ticker") or "")
+        short = str(i.get("shortName") or "").upper().strip()
+        name = str(i.get("name") or "").strip()
+        if not t212 or not short or not t212.endswith("_US_EQ"):
+            continue
+        if i.get("type") not in (None, "STOCK") or i.get("currencyCode") not in (None, "USD"):
+            continue
+        out.append({"ticker": short, "title": name, "t212": t212})
+    return out
+
+
+def tradable_map(instruments: list | None) -> dict[str, str] | None:
+    """{symbol: broker ticker} for tradable USD stocks, None if the list
+    wasn't available. The broker ticker isn't always SYMBOL_US_EQ (the
+    first live run found META under a different one), so callers use this
+    to *map* discovered symbols, not just to accept/reject them."""
+    if instruments is None:
+        return None
+    out: dict[str, str] = {}
+    for e in instrument_entries(instruments):
+        out.setdefault(e["ticker"], e["t212"])
+    return out

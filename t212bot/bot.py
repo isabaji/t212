@@ -17,6 +17,7 @@ from . import position_ownership, trade_stats
 from . import regime as market_regime
 from .client import Trading212Client, Trading212Error
 from .config import Config
+from . import data as market_data
 from .data import fetch_fx_rate, fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
 from .indicators import atr as compute_atr
 from .risk import RiskManager
@@ -640,15 +641,22 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
         if cfg.news_universe in ("discover", "both"):
             market = discovery.fetch_market_headlines(discovery.feed_list(cfg.news_feeds), now=now_utc,
                                                       max_age_hours=cfg.news_max_age_hours)
-            resolver = discovery.TickerResolver.build(names, events.load_sec_entries(), cfg.news_sec_top_n)
+            instruments = discovery.fetch_instruments(client)
+            resolver = discovery.TickerResolver.build(names, events.load_sec_entries(), cfg.news_sec_top_n,
+                                                      extra_entries=discovery.instrument_entries(instruments))
             names = resolver.names
             discovered = discovery.discover(market, resolver, cfg.news_min_mentions, cfg.news_max_candidates)
-            tradable = discovery.tradable_tickers(client)
+            tradable = discovery.tradable_map(instruments)
             if tradable is not None:
-                untradable = [s for s in discovered if to_t212_ticker(s) not in tradable]
+                untradable = [s for s in discovered if s not in tradable]
                 if untradable:
                     log.info("Discovery: not tradable on Trading212, dropped: %s", ", ".join(untradable))
                     discovered = {s: h for s, h in discovered.items() if s not in untradable}
+                for s in discovered:
+                    if tradable[s] != to_t212_ticker(s):
+                        # Broker ticker differs from the mechanical SYMBOL_US_EQ: route orders correctly.
+                        market_data.YAHOO_TO_T212[s] = tradable[s]
+                        log.info("Discovery: %s trades as %s on Trading212", s, tradable[s])
             discovered_names = {s: (names.get(s) or [s])[0] for s in discovered}
         base_symbols = set(cfg.watchlist) if cfg.news_universe in ("watchlist", "both") else set()
         watch_symbols = sorted(base_symbols | held_symbols | set(discovered))

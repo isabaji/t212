@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from t212bot import daily_target, discovery, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
+from t212bot import daily_target, data, discovery, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
 
 NOW = datetime(2026, 10, 27, 15, 0, tzinfo=timezone.utc)
 ET = ZoneInfo("America/New_York")
@@ -34,6 +34,7 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(events, "_cik_cache", None)
     monkeypatch.setattr(events, "SEC_TICKERS_CACHE_PATH", tmp_path / "sec_tickers.json")
     monkeypatch.setattr(discovery, "UNIVERSE_PATH", tmp_path / "universe.json")
+    monkeypatch.setattr(data, "YAHOO_TO_T212", {})
     monkeypatch.setattr(news_llm, "CACHE_PATH", tmp_path / "llm_cache.json")
     monkeypatch.setattr(history, "HISTORY_PATH", tmp_path / "history.jsonl")
     monkeypatch.setattr(news, "_POLITE_DELAY_SECONDS", 0)
