@@ -17,7 +17,7 @@ windows rather than hidden inside a single blended average.
 
 import pandas as pd
 
-from . import news
+from . import news, regime
 from .data import fetch_history, fetch_intraday
 from .indicators import atr as compute_atr
 from .strategy import (
@@ -74,7 +74,7 @@ def _signal_series(strategy, df: pd.DataFrame, min_bars: int,
 def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, slippage_bps: float,
                    stop_atr_multiple: float | None = None, atr_series: pd.Series | None = None,
                    stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
-                   max_hold_bars: int | None = None) -> list:
+                   max_hold_bars: int | None = None, regime_mask: pd.Series | None = None) -> list:
     """stop_atr_multiple (optional): force-close a position the first day its bar Low
     touches entry_price - stop_atr_multiple * (ATR at entry), regardless of what the
     strategy's own signal says that day — models a real stop order sitting with the
@@ -95,6 +95,10 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
     target for that bar, so a stop touched on the final day still counts as
     a stop.
 
+    regime_mask (optional): a date-indexed boolean series (see
+    regime.spy_mask); a BUY on a bar whose date maps to False is ignored,
+    exits are unaffected -- exactly the live filter's behaviour.
+
     Each trade records entry_reason -- the entry signal's .reason (e.g. an
     EnsembleVote's voting-strategy breakdown), None for strategies that
     don't set one."""
@@ -103,6 +107,8 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
     position = None
     for date, sig_result in signal_results.items():
         sig = sig_result.signal
+        if sig is Signal.BUY and position is None and not _regime_allows(regime_mask, date):
+            sig = Signal.HOLD
         row = df.loc[date]
         price = float(row["Close"])
         if position is not None:
@@ -187,6 +193,25 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
     return trades
 
 
+def _regime_allows(mask: pd.Series | None, date) -> bool:
+    """Look up the regime mask for a bar's date (intraday bars map to their
+    day; a date missing from the mask takes the last prior value)."""
+    if mask is None or mask.empty:
+        return True
+    d = pd.Timestamp(date)
+    d = (d.tz_localize(None) if d.tzinfo is not None else d).normalize()
+    pos = mask.index.searchsorted(d, side="right") - 1
+    return True if pos < 0 else bool(mask.iloc[pos])
+
+
+def fetch_regime_mask(period: str = "5y", sma_days: int = 50) -> pd.Series | None:
+    spy = fetch_history([regime.SPY_SYMBOL], period=period).get(regime.SPY_SYMBOL)
+    if spy is None:
+        print("WARNING: could not fetch SPY for the regime filter; running without it.")
+        return None
+    return regime.spy_mask(spy, sma_days)
+
+
 def _equity_curve(dates, df: pd.DataFrame, trades: list) -> pd.Series:
     equity, idx = [], []
     cash_equity = 1.0
@@ -216,7 +241,7 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
              stop_atr_multiple: float | None = None, atr_period: int = 14,
              confirm_df: pd.DataFrame | None = None, daily_df: pd.DataFrame | None = None,
              stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
-             max_hold_bars: int | None = None):
+             max_hold_bars: int | None = None, regime_mask: pd.Series | None = None):
     """Long-only, single position at a time, all-in/all-out, cost-aware.
 
     Returns (equity_curve, trades). Not enough data -> a flat 1-bar curve
@@ -228,7 +253,7 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
     signals = _signal_series(strategy, df, min_bars, confirm_df, daily_df)
     atr_series = compute_atr(df, period=atr_period) if stop_atr_multiple else None
     trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series,
-                            stop_loss_pct, take_profit_pct, max_hold_bars)
+                            stop_loss_pct, take_profit_pct, max_hold_bars, regime_mask)
     equity = _equity_curve(signals.index, df, trades)
     return equity, trades
 
@@ -292,7 +317,7 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                   stop_atr_multiple: float | None = None, atr_period: int = 14,
                   confirm_df: pd.DataFrame | None = None, daily_df: pd.DataFrame | None = None,
                   stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
-                  max_hold_bars: int | None = None) -> list:
+                  max_hold_bars: int | None = None, regime_mask: pd.Series | None = None) -> list:
     """Split df into n_windows sequential, non-overlapping chunks and backtest
     each independently with a fresh strategy instance.
 
@@ -332,7 +357,7 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                                    stop_atr_multiple, atr_period, confirm_df=window_confirm_df,
                                    daily_df=daily_df,
                                    stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct,
-                                   max_hold_bars=max_hold_bars)
+                                   max_hold_bars=max_hold_bars, regime_mask=regime_mask)
         metrics = compute_metrics(equity, trades, periods_per_year)
         metrics["window"] = i + 1
         metrics["start"] = window_df.index[0]
@@ -351,7 +376,8 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
                     trend_filter: int | None = None, strategy_name: str = "sma_crossover",
                     sma_period: int = 200, ema_period: int = 200, long_term_direction: str = "above",
                     long_term_signal_exit: bool = True,
-                    stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> None:
+                    stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
+                    regime_filter: bool = False, regime_sma_days: int = 50) -> None:
     """strategy_name: "sma_crossover" (default) is the existing fast/slow SMA
     crossover -- fast/slow/trend_filter apply to it. "long_term_trend" is
     LongTermTrendConfluence -- with long_term_direction="above" (default),
@@ -393,6 +419,10 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
         print(f"Fixed exits: {sl} / {tp}.")
     print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side "
           f"(Trading212 charges no stock commission; this approximates spread/slippage).")
+    regime_mask = None
+    if regime_filter:
+        print(f"Regime filter: BUY only when SPY is above its {regime_sma_days}-day SMA (t212bot/regime.py).")
+        regime_mask = fetch_regime_mask(period, regime_sma_days)
     print(f"Walk-forward: {n_windows} sequential out-of-sample windows per symbol.\n")
 
     price_data = fetch_history(symbols, period=period)
@@ -413,7 +443,8 @@ def print_backtest(symbols: list, fast: int = 20, slow: int = 50, n_windows: int
             windows = walk_forward(factory, df, n_windows,
                                     fee_bps, slippage_bps, min_bars=min_bars,
                                     stop_atr_multiple=stop_atr_multiple,
-                                    stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
+                                    stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct,
+                                    regime_mask=regime_mask)
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue
@@ -450,7 +481,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                              ensemble_strategies: str = "orb,mr,vwap",
                              ensemble_required: str | None = None,
                              trend_filter_days: int | None = None,
-                             days: int = 60, exclude_recent_days: int = 0) -> None:
+                             days: int = 60, exclude_recent_days: int = 0,
+                             regime_filter: bool = False, regime_sma_days: int = 50) -> None:
     """Backtests a day-trade strategy on intraday bars. Always backtests the
     primary signal on 5-minute bars regardless of the live bot's
     DAYTRADE_BAR_MINUTES setting -- fewer, steadier bars keep this a quick
@@ -603,6 +635,11 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
         print(f"Trimming the most recent {exclude_recent_days} calendar days: backtesting "
               f"only the older remainder (out-of-sample vs anything tuned on the "
               f"trailing {exclude_recent_days} days).")
+    regime_mask = None
+    if regime_filter:
+        print(f"Regime filter: BUY only on days SPY closed above its {regime_sma_days}-day SMA "
+              "(t212bot/regime.py).")
+        regime_mask = fetch_regime_mask("1y", regime_sma_days)
     print()
 
     price_data = fetch_intraday(symbols, alpaca_api_key, alpaca_api_secret, days=days, timeframe="5Min")
@@ -673,7 +710,8 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
                 df, n_windows, fee_bps, slippage_bps, min_bars=bars_per_day,
                 periods_per_year=TRADING_DAYS_PER_YEAR * bars_per_day,
                 confirm_df=confirm_data.get(sym), daily_df=daily_data.get(sym),
-                stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
+                stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct,
+                regime_mask=regime_mask)
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue
@@ -713,7 +751,8 @@ def print_news_backtest(symbols: list, n_windows: int = 1,
                         trend_filter_days: int | None = 20, max_chase_pct: float | None = 0.05,
                         stop_loss_pct: float | None = 0.03, take_profit_pct: float | None = 0.06,
                         max_hold_days: int | None = 3, period: str = "2y",
-                        min_archive_days: int = 20) -> None:
+                        min_archive_days: int = 20, regime_filter: bool = False,
+                        regime_sma_days: int = 50) -> None:
     """Replay the archived daily news scores (state/news.json, written by
     `python main.py news` every cycle) against yfinance daily bars, through
     the same walk-forward engine as the swing backtest.
@@ -750,6 +789,10 @@ def print_news_backtest(symbols: list, n_windows: int = 1,
     if len(days) < min_archive_days:
         print(f"WARNING: fewer than {min_archive_days} days archived -- too little to draw any conclusion "
               "from; this run is a plumbing check, not evidence.")
+    regime_mask = None
+    if regime_filter:
+        print(f"Regime filter: BUY only when SPY is above its {regime_sma_days}-day SMA (t212bot/regime.py).")
+        regime_mask = fetch_regime_mask(period, regime_sma_days)
     print(f"Walk-forward: {n_windows} sequential out-of-sample window{'s' if n_windows != 1 else ''} per symbol.\n")
 
     archived_symbols = sorted({s for by_sym in hist.values() for s in by_sym})
@@ -774,7 +817,7 @@ def print_news_backtest(symbols: list, n_windows: int = 1,
         try:
             windows = walk_forward(factory, df, n_windows, fee_bps, slippage_bps, min_bars=min_bars,
                                     stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct,
-                                    max_hold_bars=max_hold_days)
+                                    max_hold_bars=max_hold_days, regime_mask=regime_mask)
         except ValueError as exc:
             print(f"{sym}: {exc}")
             continue

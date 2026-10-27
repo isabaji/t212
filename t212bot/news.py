@@ -87,6 +87,10 @@ class NewsScore:
     pos_frac: float = 0.0
     top_headline: str | None = None
     top_score: float = 0.0
+    # "own" (this symbol's own headlines), "peers:NVDA+AVGO" (sector
+    # read-through, see peer_scores), and which scorer produced it.
+    source: str = "own"
+    scorer: str = "lexicon"
 
 
 # ---------------------------------------------------------------------------
@@ -324,16 +328,25 @@ def fetch_headlines(symbols: list[str], max_age_hours: float = 48.0,
 # Aggregation
 # ---------------------------------------------------------------------------
 def aggregate(symbol: str, headlines: list[Headline], now: datetime | None = None,
-              half_life_hours: float = 12.0) -> NewsScore:
+              half_life_hours: float = 12.0, scores_by_title: dict[str, float] | None = None,
+              scorer: str = "lexicon") -> NewsScore:
     """Recency-weighted mean of the scored headlines (weight halves every
     half_life_hours), so this morning's guidance cut outweighs yesterday's
-    analyst note even though both are inside the window."""
+    analyst note even though both are inside the window.
+
+    scores_by_title: optional {normalised title: score} from another scorer
+    (t212bot/news_llm.py); a headline missing from it falls back to the
+    lexicon."""
     now = now or datetime.now(timezone.utc)
     weighted_sum = weight_sum = 0.0
     n_scored = n_pos = 0
     top: tuple[float, str] | None = None
     for h in headlines:
-        s = score_headline(h.title)
+        s = None
+        if scores_by_title is not None:
+            s = scores_by_title.get(_normalize_title(h.title))
+        if s is None:
+            s = score_headline(h.title)
         if s == 0.0:
             continue
         age_h = max(0.0, (now - h.published).total_seconds() / 3600) if h.published else 0.0
@@ -347,12 +360,64 @@ def aggregate(symbol: str, headlines: list[Headline], now: datetime | None = Non
     score = weighted_sum / weight_sum if weight_sum > 0 else 0.0
     return NewsScore(symbol=symbol, score=score, n_scored=n_scored, n_total=len(headlines),
                      pos_frac=(n_pos / n_scored) if n_scored else 0.0,
-                     top_headline=top[1] if top else None, top_score=top[0] if top else 0.0)
+                     top_headline=top[1] if top else None, top_score=top[0] if top else 0.0,
+                     scorer=scorer)
 
 
 def aggregate_all(headlines: dict[str, list[Headline]], now: datetime | None = None,
-                  half_life_hours: float = 12.0) -> dict[str, NewsScore]:
-    return {sym: aggregate(sym, items, now, half_life_hours) for sym, items in headlines.items()}
+                  half_life_hours: float = 12.0, scorer=None) -> dict[str, NewsScore]:
+    """scorer: optional callable(list[str]) -> {normalised title: score}
+    (see news_llm.make_scorer); None means the lexicon."""
+    scores_by_title = None
+    name = "lexicon"
+    if scorer is not None:
+        titles = [h.title for items in headlines.values() for h in items]
+        scores_by_title = scorer(titles)
+        name = "llm"
+    return {sym: aggregate(sym, items, now, half_life_hours, scores_by_title, name)
+            for sym, items in headlines.items()}
+
+
+def peer_scores(scores: dict[str, NewsScore], sector_of, min_headlines: int = 3,
+                discount: float = 0.5, min_peers: int = 2) -> dict[str, NewsScore]:
+    """Sector read-through: a symbol without enough headlines of its own
+    borrows its sector peers' consensus, discounted.
+
+    Only fills gaps -- a symbol with min_headlines scored headlines of its
+    own keeps its own score untouched. Requires at least min_peers peers in
+    the same sector that each clear min_headlines themselves, averages
+    their scores weighted by headline count, and multiplies by `discount`
+    (0.5 by default: good news on NVDA is weaker evidence for AVGO than
+    for NVDA). The result carries the peers' combined headline count so the
+    strategy's min_headlines gate passes, and source="peers:..." so the
+    decision log and the archive say where it came from. discount <= 0
+    disables (returns scores unchanged)."""
+    if discount <= 0:
+        return scores
+    by_sector: dict[str, list[NewsScore]] = {}
+    for ns in scores.values():
+        if ns.n_scored >= min_headlines and ns.source == "own":
+            by_sector.setdefault(sector_of(ns.symbol), []).append(ns)
+    out = dict(scores)
+    for sym, ns in scores.items():
+        if ns.n_scored >= min_headlines:
+            continue
+        sector = sector_of(sym)
+        if sector == "Other":
+            continue
+        peers = [p for p in by_sector.get(sector, []) if p.symbol != sym]
+        if len(peers) < min_peers:
+            continue
+        weight = sum(p.n_scored for p in peers)
+        score = sum(p.score * p.n_scored for p in peers) / weight * discount
+        pos = sum(p.pos_frac * p.n_scored for p in peers) / weight
+        strongest = max(peers, key=lambda p: abs(p.score))
+        out[sym] = NewsScore(symbol=sym, score=score, n_scored=weight, n_total=ns.n_total,
+                             pos_frac=pos, top_headline=f"[{strongest.symbol}] {strongest.top_headline}",
+                             top_score=strongest.top_score,
+                             source="peers:" + "+".join(sorted(p.symbol for p in peers)),
+                             scorer=strongest.scorer)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -390,8 +455,13 @@ def record_scores(state: dict, day: str, scores: dict[str, NewsScore]) -> None:
     backtest can tell "no news" from "no data"."""
     entry = state.setdefault("scores", {}).setdefault(day, {})
     for sym, ns in scores.items():
-        entry[sym] = {"score": round(ns.score, 4), "n": ns.n_scored,
-                      "total": ns.n_total, "pos": round(ns.pos_frac, 3)}
+        rec = {"score": round(ns.score, 4), "n": ns.n_scored,
+               "total": ns.n_total, "pos": round(ns.pos_frac, 3)}
+        if ns.source != "own":
+            rec["src"] = ns.source
+        if ns.scorer != "lexicon":
+            rec["scorer"] = ns.scorer
+        entry[sym] = rec
     for old in sorted(state["scores"])[:-ARCHIVE_DAYS]:
         del state["scores"][old]
 
@@ -402,7 +472,8 @@ def score_history(state: dict) -> dict[str, dict[str, NewsScore]]:
     for day, by_sym in state.get("scores", {}).items():
         out[day] = {
             sym: NewsScore(symbol=sym, score=float(v.get("score", 0.0)), n_scored=int(v.get("n", 0)),
-                           n_total=int(v.get("total", 0)), pos_frac=float(v.get("pos", 0.0)))
+                           n_total=int(v.get("total", 0)), pos_frac=float(v.get("pos", 0.0)),
+                           source=v.get("src", "own"), scorer=v.get("scorer", "lexicon"))
             for sym, v in by_sym.items()
         }
     return out

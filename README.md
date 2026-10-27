@@ -80,6 +80,12 @@ Key settings in `.env`:
 | `NEWS_MAX_HOLD_DAYS` | `3` | News bot only: force-exit a news position after this many calendar days |
 | `NEWS_STOP_LOSS_PCT` / `NEWS_TAKE_PROFIT_PCT` | `0.03` / `0.06` | News bot only: force-exit if the day's Low/High crosses this far from the real average fill — `0` disables either side |
 | `NEWS_MAX_CHASE_PCT` / `NEWS_TREND_FILTER_DAYS` | `0.05` / `20` | News bot only: skip a buy if today's move is already past the chase limit, or price is below its N-day SMA — `0` disables either |
+| `NEWS_PEER_DISCOUNT` | `0.5` | News bot only: sector read-through weight for symbols without enough headlines of their own — `0` disables |
+| `NEWS_SCORER` / `NEWS_LLM_MODEL` / `ANTHROPIC_API_KEY` | `lexicon` / `claude-opus-5-5` / — | News bot only: `llm` scores headlines with Claude instead of the lexicon (falls back to the lexicon on any failure) |
+| `EVENT_STUDY_ENABLED` / `EVENT_STUDY_GATE` | `true` / `false` | News bot only: log how similar news moved the stock before; with the gate on, an adverse history skips the buy |
+| `EVENT_STUDY_MIN_SAMPLES` / `EVENT_STUDY_HORIZON_DAYS` / `EVENT_STUDY_USE_EDGAR` / `SEC_USER_AGENT` | `5` / `5` / `true` / repo URL | Event-study details — see "News trading" below |
+| `EARNINGS_BLACKOUT_DAYS` | `2` | All bots: no new position in a symbol reporting within this many days — `0` disables |
+| `REGIME_FILTER_ENABLED` / `REGIME_SMA_DAYS` / `REGIME_VIX_SCALE_ABOVE` / `REGIME_VIX_BLOCK_ABOVE` | `true` / `50` / `25` / `35` | All bots: no new entries with SPY below its SMA or VIX above the block level; sizes halved above the scale level |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
@@ -340,6 +346,9 @@ python main.py backtest --news        # replay archived news scores vs prices (s
 python main.py run                    # run one swing-trading cycle (dry-run by default)
 python main.py daytrade               # run one day-trading cycle (dry-run by default)
 python main.py news                   # run one news-driven cycle (dry-run by default)
+python main.py news-history --symbol AAPL   # how did similar news move this stock before?
+python main.py report --days 7        # markdown summary of what the bots have been doing
+python main.py backtest --regime-filter     # any backtest mode: apply the SPY-above-SMA regime mask
 ```
 
 When you're happy with dry-run output, set `DRY_RUN=false` (still on `demo`) and
@@ -592,6 +601,58 @@ The lexicon is deliberately crude and deterministic (same headline → same
 score, every time, which a reproducible backtest needs); an LLM scorer could
 replace `score_headline()` later without touching anything downstream.
 
+### "How did similar news move this stock before?" — the event study
+
+Every symbol with a news signal (and every position the news bot holds) also
+gets an **event study** each cycle (`t212bot/events.py`): today's headlines
+are classified into event categories (earnings beat/miss, guidance raise/cut,
+upgrade/downgrade, exec change, M&A, legal, approval/contract, …), and for
+each category every free historical analog source is replayed against the
+stock's own 10-year price history:
+
+| Source | Free archive | Used for |
+|---|---|---|
+| Earnings beats / misses | yfinance earnings history (report dates + EPS surprise %) | earnings and guidance headlines |
+| 8-K filings by item code | SEC EDGAR submissions feed (2.02 results, 5.02 officer change, 2.01 acquisition, 2.05 layoffs, …) — keyless; identifies itself via `SEC_USER_AGENT` | exec changes, M&A, contracts, layoffs; direction-matched to today's move since item codes carry no sign |
+| Price-reaction signature | the price history itself: past days with a same-sign ≥3% move on ≥1.5× volume | the fallback for categories with no archive (analyst actions, lawsuits, product news) |
+| Own score archive | `state/news.json` — past days this symbol's score crossed the buy threshold | thin at first, the most exact "similar news" later |
+
+For each analog it measures forward returns at +1/+3/+5/+10 trading days
+from that day's close, **in excess of SPY** over the same window, and
+reports n / median / hit rate / worst / best. The decision log then carries a
+line like *"earnings beat: 11 prior analogs → median +1.6% vs SPY over 5d,
+73% positive, worst −4.1%"*, and says `insufficient` below
+`EVENT_STUDY_MIN_SAMPLES` analogs rather than guessing. It is informational
+by default; `EVENT_STUDY_GATE=true` makes an `adverse` verdict (median ≤ 0 or
+hit rate < 50% at `EVENT_STUDY_HORIZON_DAYS`) skip the buy. Run it by hand
+for any symbol:
+
+```bash
+python main.py news-history --symbol AAPL
+python main.py news-history --symbol BA --event-types exec_change,legal   # force the categories
+```
+
+### Sector read-through
+
+A symbol without enough headlines of its own borrows its sector peers'
+consensus (`t212bot/sectors.py` groups), weighted by their headline counts and
+multiplied by `NEWS_PEER_DISCOUNT` (0.5): good news on NVDA is weaker
+evidence for AVGO than for NVDA. It needs at least two peers that each clear
+`NEWS_MIN_HEADLINES`, never overrides a symbol's own score, and is tagged in
+the log and the archive (`src: peers:…`) so it can be told apart later. `0`
+disables it.
+
+### Optional LLM scoring
+
+`NEWS_SCORER=llm` with an `ANTHROPIC_API_KEY` swaps the lexicon for Claude
+(`t212bot/news_llm.py`, model `NEWS_LLM_MODEL`, default `claude-opus-5-5`;
+`claude-haiku-5-5` is the cheap option). Same −1..+1 output, so nothing
+downstream changes; each distinct headline is scored once and cached locally,
+the request uses structured JSON output, and any failure (no SDK, auth, rate
+limit, refusal, bad output) falls back to the lexicon for that batch with a
+warning. The archive records which scorer produced each day, since mixing
+them changes what a backtest is measuring.
+
 **It has no backtest evidence yet, and here's why.** Free RSS feeds hold no
 history — only the latest ~20 headlines per ticker — so there was nothing to
 replay when it was written. Instead, every cycle archives that day's
@@ -605,6 +666,39 @@ thresholds if the evidence says to, and only then consider `NEWS_DRY_RUN=false`
 (still on `demo`). Until there are at least ~20 archived days the backtest
 says so and should be read as a plumbing check, not a result. Every default
 in the `NEWS_*` table above is a starting point, not a tuned value.
+
+## Shared guards: earnings calendar and market regime
+
+Two gates sit in front of **every** new entry in all three bots (exits are
+never affected by either):
+
+- **Earnings blackout** (`t212bot/events.py`, `EARNINGS_BLACKOUT_DAYS`, default
+  2): no new position in a symbol that reports within that many days. The
+  next report date per symbol comes from yfinance and is cached in
+  `state/earnings_calendar.json` (dates and surprise percentages only),
+  refreshed once a day. The news bot is exempt on the report day itself — the
+  report *is* its news — but still blocked in the days before it.
+- **Market regime** (`t212bot/regime.py`, `REGIME_*`): no new entries while
+  SPY is below its 50-day SMA or VIX is above 35; sizes halved while VIX is
+  above 25. All three strategies are long-only and none of the earlier
+  backtests separated "the strategy worked" from "the market went up"; this is
+  the simplest honest guard against that. If SPY/VIX can't be fetched the
+  cycle logs a warning and runs as if the regime were benign. The same SPY
+  rule is available historically as `python main.py backtest --regime-filter`
+  (any mode) so the effect can be measured against the unfiltered run rather
+  than assumed — it's off in backtests by default for exactly that comparison.
+
+## Weekly report
+
+`python main.py report --days 7` prints a markdown summary from the state
+files: trades per bot (period and all-time, hit rate, realized % of account),
+open positions by owner, risk-state flags and pauses, news-archive growth and
+the most positive/negative symbols, upcoming earnings, and — when run on the
+machine that runs the bots, where `logs/history.jsonl` lives — cycles, errors,
+buys/sells and the most frequent skip-reasons per bot. `--out reports/latest.md`
+writes it too; `.github/workflows/weekly-report.yml` does that on demand (its
+Sunday schedule ships commented out, like the news bot's). Percentages, counts
+and dates only, so it's safe to commit.
 
 ## Extending
 

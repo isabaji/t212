@@ -17,6 +17,7 @@ runs the same way (the workflow commits state/ back after each cycle).
 
 import json
 import logging
+import math
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -38,7 +39,18 @@ def load() -> dict:
 
 
 def record_trade_pct(state: dict, pnl_fraction_of_account: float) -> None:
-    """Compound pnl_fraction_of_account into the running return index and update the peak."""
+    """Compound pnl_fraction_of_account into the running return index and update the peak.
+
+    A non-finite pnl (e.g. a zero account value in the divisor upstream) is
+    ignored: once NaN gets into the running index every later comparison
+    is False and the drawdown pause can never trigger again -- which is
+    exactly what had happened to the committed state file at one point."""
+    if not math.isfinite(pnl_fraction_of_account):
+        log.warning("Ignoring non-finite trade pnl %r in portfolio risk tracking", pnl_fraction_of_account)
+        return
+    if not math.isfinite(state.get("cumulative_return_pct", 0.0)):
+        log.warning("Portfolio risk running index was non-finite; resetting it to 0")
+        state["cumulative_return_pct"] = 0.0
     state["cumulative_return_pct"] = (
         (1 + state["cumulative_return_pct"]) * (1 + pnl_fraction_of_account) - 1
     )

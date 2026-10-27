@@ -8,12 +8,18 @@
   python main.py run                 # run one trading cycle (respects DRY_RUN)
   python main.py daytrade            # run one day-trading cycle (respects DRY_RUN)
   python main.py news                # run one news-driven cycle (respects DRY_RUN)
+  python main.py news-history --symbol AAPL   # how did similar news move this stock before?
+  python main.py report --days 7     # markdown report from the state files (+ local cycle log)
   python main.py test-order          # place one small manual order (respects DRY_RUN)
 """
 
 import argparse
 import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
+from t212bot import events, news, regime, report
 from t212bot.backtest import (
     DEFAULT_FEE_BPS,
     DEFAULT_SLIPPAGE_BPS,
@@ -24,6 +30,7 @@ from t212bot.backtest import (
 from t212bot.bot import run_cycle, run_day_trade_cycle, run_news_cycle
 from t212bot.client import Trading212Client
 from t212bot.config import Config
+from t212bot.data import fetch_history
 from t212bot.strategy import (
     EnsembleVote,
     GapFillReversal,
@@ -55,10 +62,87 @@ def cmd_account(cfg: Config) -> None:
         print("\nNo open positions.")
 
 
+def cmd_news_history(cfg: Config, symbol: str, event_types: list[str] | None) -> None:
+    """Event study for one symbol: today's headlines -> event categories ->
+    every free historical analog source -> forward excess returns."""
+    symbol = symbol.upper()
+    now = datetime.now(timezone.utc)
+    today = now.astimezone(ZoneInfo("America/New_York")).date()
+    headlines = news.fetch_headlines([symbol], max_age_hours=cfg.news_max_age_hours, now=now)[symbol]
+    scores = news.aggregate_all({symbol: headlines}, now=now, half_life_hours=cfg.news_half_life_hours)[symbol]
+    print(f"{symbol}: {len(headlines)} recent headlines, lexicon score {scores.score:+.2f} "
+          f"over {scores.n_scored} scored ({scores.pos_frac:.0%} positive)")
+    for h in headlines[:12]:
+        cats = ",".join(sorted(events.classify_headline(h.title))) or "-"
+        print(f"  {news.score_headline(h.title):+.2f} [{cats:<18}] {h.title[:100]}")
+    types = event_types or events.dominant_events(headlines)
+    print(f"\nEvent categories: {', '.join(types) if types else 'none recognised'}"
+          + ("" if event_types else " (auto-classified; override with --event-types)"))
+
+    prices = fetch_history([symbol, regime.SPY_SYMBOL], period="10y")
+    if symbol not in prices:
+        print("No price history.")
+        return
+    cal = events.load_calendar()
+    events.refresh_calendar(cal, [symbol], today)
+    events.save_calendar(cal)
+    delta = events.days_to_earnings(cal, symbol, today)
+    if delta is not None:
+        print(f"Next earnings: {cal[symbol]['next']} ({delta:+d} days)")
+    close = prices[symbol]["Close"]
+    today_move = float(close.iloc[-1] / close.iloc[-2] - 1)
+    edgar = None
+    if cfg.event_study_use_edgar and any(t in events.HEADLINE_TO_EDGAR for t in types):
+        try:
+            edgar = events.fetch_edgar_events(symbol)
+            print(f"EDGAR: {len(edgar)} categorised 8-K filings on record")
+        except Exception as exc:  # noqa: BLE001
+            print(f"EDGAR unavailable: {exc}")
+    archive = events.archive_signal_dates(news.score_history(news.load_state()), symbol,
+                                          cfg.news_buy_threshold, cfg.news_min_headlines, today_move >= 0)
+    study = events.event_study(symbol, prices[symbol], types, today_move, prices.get(regime.SPY_SYMBOL),
+                               cal.get(symbol), edgar, archive, cfg.event_study_min_samples)
+    print(f"Today's move: {today_move:+.1%}. Forward returns are in excess of SPY, from each event day's close.\n")
+    if not study.sources:
+        print("No analogs found from any source.")
+    for src in study.sources:
+        print(f"== {src.name} ({src.n} analogs; latest {src.dates[-1] if src.dates else '-'})")
+        for h, st in sorted(src.horizons.items()):
+            print(f"   +{h:>2}d: median {st.median:+.1%}  mean {st.mean:+.1%}  hit {st.hit_rate:.0%}  "
+                  f"worst {st.worst:+.1%}  best {st.best:+.1%}  (n={st.n})")
+    kind, summary = study.verdict(cfg.event_study_horizon_days, cfg.event_study_min_samples)
+    print(f"\nVerdict at {cfg.event_study_horizon_days}d (min {cfg.event_study_min_samples} analogs): "
+          f"{kind.upper()} — {summary}")
+
+
+def cmd_report(days: int, out: str | None) -> None:
+    text = report.build_report(days)
+    print(text)
+    if out:
+        path = Path(out)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        print(f"\n(written to {path})")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Trading212 algorithmic trading bot")
-    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade", "news", "test-order"])
-    parser.add_argument("--symbol", default="AAPL", help="test-order command only: Yahoo symbol to buy")
+    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade", "news", "news-history",
+                                            "report", "test-order"])
+    parser.add_argument("--symbol", default="AAPL", help="test-order / news-history: Yahoo symbol")
+    parser.add_argument("--event-types", default=None,
+                         help="news-history only: comma-separated event categories to study instead of "
+                              "auto-classifying today's headlines (e.g. earnings_beat,upgrade); see "
+                              "EVENT_PATTERNS in t212bot/events.py")
+    parser.add_argument("--days", type=int, default=None,
+                         help="report: period in days (default 7); backtest --daytrade: calendar days of "
+                              "intraday history to fetch (default 60)")
+    parser.add_argument("--out", default=None, help="report only: also write the markdown to this path")
+    parser.add_argument("--regime-filter", action="store_true",
+                         help="backtest only (any mode): apply the market-regime mask -- BUY only on days "
+                              "SPY closed above its REGIME_SMA_DAYS SMA (t212bot/regime.py), the same "
+                              "rule the live bots apply when REGIME_FILTER_ENABLED (off in backtests by "
+                              "default so with/without can be compared)")
     parser.add_argument("--qty", type=float, default=0.01,
                          help="test-order command only: share quantity to buy (small, fractional)")
     parser.add_argument("--fast", type=int, default=20, help="fast SMA window (swing strategy)")
@@ -146,9 +230,6 @@ def main() -> None:
     parser.add_argument("--max-hold-days", type=int, default=None,
                          help="backtest --news only: force-exit after this many daily bars (default: "
                               "NEWS_MAX_HOLD_DAYS config value; 0 disables)")
-    parser.add_argument("--days", type=int, default=60,
-                         help="backtest --daytrade only: calendar days of intraday history to fetch "
-                              "(default 60)")
     parser.add_argument("--exclude-recent-days", type=int, default=0,
                          help="backtest --daytrade only: trim the most recent N calendar days from the "
                               "fetched data before windowing -- with --days > N this backtests only an "
@@ -225,7 +306,8 @@ def main() -> None:
                                                else cfg.news_stop_loss_pct or None),
                                 take_profit_pct=(args.take_profit_pct if args.take_profit_pct is not None
                                                  else cfg.news_take_profit_pct or None),
-                                max_hold_days=max_hold or None)
+                                max_hold_days=max_hold or None,
+                                regime_filter=args.regime_filter, regime_sma_days=cfg.regime_sma_days)
         elif args.daytrade:
             confirm_bars = args.confirm_bars if args.confirm_bars is not None else cfg.daytrade_confirm_bars
             rsi_buy_range = None
@@ -245,7 +327,8 @@ def main() -> None:
                                      ensemble_strategies=args.ensemble_strategies,
                                      ensemble_required=args.ensemble_required,
                                      trend_filter_days=args.trend_filter_days,
-                                     days=args.days, exclude_recent_days=args.exclude_recent_days)
+                                     days=args.days or 60, exclude_recent_days=args.exclude_recent_days,
+                                     regime_filter=args.regime_filter, regime_sma_days=cfg.regime_sma_days)
         else:
             print_backtest(symbols, args.fast, args.slow, args.windows or 4,
                             args.fee_bps, args.slippage_bps, period=args.period,
@@ -254,7 +337,15 @@ def main() -> None:
                             sma_period=args.sma_period, ema_period=args.ema_period,
                             long_term_direction=args.long_term_direction,
                             long_term_signal_exit=not args.long_term_no_signal_exit,
-                            stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct)
+                            stop_loss_pct=args.stop_loss_pct, take_profit_pct=args.take_profit_pct,
+                            regime_filter=args.regime_filter, regime_sma_days=cfg.regime_sma_days)
+        return
+    if args.command == "report":
+        cmd_report(args.days or 7, args.out)
+        return
+    if args.command == "news-history":
+        types = [t.strip() for t in args.event_types.split(",") if t.strip()] if args.event_types else None
+        cmd_news_history(cfg, args.symbol, types)
         return
 
     cfg.validate()

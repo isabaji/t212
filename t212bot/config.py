@@ -76,6 +76,36 @@ class Config:
     # in), and only buy above the trend_filter-day SMA. 0 disables either.
     news_max_chase_pct: float = field(default_factory=lambda: float(os.getenv("NEWS_MAX_CHASE_PCT", "0.05")))
     news_trend_filter_days: int = field(default_factory=lambda: int(os.getenv("NEWS_TREND_FILTER_DAYS", "20")))
+    # Sector read-through (t212bot/news.py: peer_scores): a symbol with too
+    # few headlines of its own borrows its sector peers' consensus times
+    # this discount. 0 disables.
+    news_peer_discount: float = field(default_factory=lambda: float(os.getenv("NEWS_PEER_DISCOUNT", "0.5")))
+    # "lexicon" (default, free, deterministic) or "llm" (t212bot/news_llm.py;
+    # needs ANTHROPIC_API_KEY, falls back to the lexicon on any failure).
+    news_scorer: str = field(default_factory=lambda: os.getenv("NEWS_SCORER", "lexicon").strip().lower())
+    news_llm_model: str = field(default_factory=lambda: os.getenv("NEWS_LLM_MODEL", "claude-opus-5-5").strip())
+    # Event study (t212bot/events.py): "how did similar news move this stock
+    # before?" -- logged for every news signal; only gates entries when
+    # EVENT_STUDY_GATE=true (skip a BUY whose best-matching history shows
+    # median excess return <= 0 or hit rate < 50% at EVENT_STUDY_HORIZON_DAYS,
+    # given at least EVENT_STUDY_MIN_SAMPLES analogs).
+    event_study_enabled: bool = field(default_factory=lambda: _bool("EVENT_STUDY_ENABLED", "true"))
+    event_study_gate: bool = field(default_factory=lambda: _bool("EVENT_STUDY_GATE", "false"))
+    event_study_min_samples: int = field(default_factory=lambda: int(os.getenv("EVENT_STUDY_MIN_SAMPLES", "5")))
+    event_study_horizon_days: int = field(default_factory=lambda: int(os.getenv("EVENT_STUDY_HORIZON_DAYS", "5")))
+    event_study_use_edgar: bool = field(default_factory=lambda: _bool("EVENT_STUDY_USE_EDGAR", "true"))
+    # Earnings-calendar awareness (all three bots): don't open a new
+    # position when the symbol reports within this many days. The news bot
+    # is exempt on the report day itself (the report is its news). 0 disables.
+    earnings_blackout_days: int = field(default_factory=lambda: int(os.getenv("EARNINGS_BLACKOUT_DAYS", "2")))
+    # Market-regime filter (t212bot/regime.py, all three bots): no new
+    # entries while SPY is below its SMA or VIX is above the block level;
+    # sizes halved above the scale level. `backtest --regime-filter`
+    # applies the same SPY mask historically.
+    regime_filter_enabled: bool = field(default_factory=lambda: _bool("REGIME_FILTER_ENABLED", "true"))
+    regime_sma_days: int = field(default_factory=lambda: int(os.getenv("REGIME_SMA_DAYS", "50")))
+    regime_vix_scale_above: float = field(default_factory=lambda: float(os.getenv("REGIME_VIX_SCALE_ABOVE", "25")))
+    regime_vix_block_above: float = field(default_factory=lambda: float(os.getenv("REGIME_VIX_BLOCK_ABOVE", "35")))
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))

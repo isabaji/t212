@@ -1,0 +1,50 @@
+name: Weekly Bot Report
+
+on:
+  # Ships without an active schedule, like the news bot -- uncomment to get
+  # a report committed to reports/latest.md every Sunday evening (UTC).
+  # schedule:
+  #   - cron: '17 18 * * 0'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Period to report on, in days'
+        type: number
+        default: 7
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Build report
+        # Reads only the committed state files (percentages, counts, dates,
+        # -1..1 scores), so the output is as safe to commit as they are. The
+        # per-cycle log (logs/history.jsonl) is local-only and won't be here.
+        run: python main.py report --days "${{ github.event.inputs.days || 7 }}" --out reports/latest.md
+
+      - name: Commit report
+        run: |
+          git config user.name "t212-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports/latest.md
+          if git diff --cached --quiet; then
+            echo "Report unchanged."
+          else
+            git commit -m "chore: weekly bot report"
+            for i in 1 2 3; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+              echo "Push attempt $i failed, retrying..."
+              sleep $((i * 3))
+            done
+          fi

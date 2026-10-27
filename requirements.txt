@@ -2,3 +2,5 @@ requests>=2.31
 python-dotenv>=1.0
 yfinance>=0.2.40
 pandas>=2.0
+# Optional LLM headline scorer (NEWS_SCORER=llm) -- see t212bot/news_llm.py
+anthropic>=1.0

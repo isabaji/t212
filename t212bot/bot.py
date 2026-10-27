@@ -12,7 +12,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import daily_target, history, news, pnl_history, portfolio_risk, position_ownership, trade_stats
+from . import daily_target, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
+from . import regime as market_regime
 from .client import Trading212Client, Trading212Error
 from .config import Config
 from .data import fetch_fx_rate, fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
@@ -22,6 +23,41 @@ from .sectors import sector_of
 from .strategy import NewsSentiment, Signal, SignalResult, Strategy
 
 log = logging.getLogger(__name__)
+
+# Most symbols the news cycle runs an event study for per cycle -- each one
+# is a 10-year price pull plus (usually) an EDGAR request.
+EVENT_STUDY_MAX_SYMBOLS = 8
+
+
+def _entry_context(cfg: Config, watch_symbols: list[str], today: datetime.date):
+    """Shared by all three cycles: the market regime (t212bot/regime.py)
+    and the earnings calendar (t212bot/events.py), both of which gate new
+    entries only -- exits never consult them."""
+    reg = market_regime.fetch_regime(cfg.regime_filter_enabled, cfg.regime_sma_days,
+                                     cfg.regime_vix_scale_above, cfg.regime_vix_block_above)
+    log.info("Regime: %s", reg.describe())
+    cal = events.load_calendar()
+    if cfg.earnings_blackout_days > 0:
+        events.refresh_calendar(cal, watch_symbols, today)
+        events.save_calendar(cal)
+        soon = events.upcoming_reports(cal, today, cfg.earnings_blackout_days)
+        if soon:
+            log.info("Earnings within %d day(s): %s", cfg.earnings_blackout_days,
+                     ", ".join(f"{sym} {d}" for d, sym in soon))
+    return reg, cal
+
+
+def _context_decisions(cfg: Config, reg, regime_symbols: list, earnings_symbols: list) -> list:
+    out = []
+    if regime_symbols:
+        out.append(history.decision(None, "warning", "Skipped",
+                                    f"{', '.join(regime_symbols)} — market regime hostile ({reg.reason}), "
+                                    "no new entries."))
+    if earnings_symbols:
+        out.append(history.decision(None, "warning", "Skipped",
+                                    f"{', '.join(earnings_symbols)} — earnings report within "
+                                    f"{cfg.earnings_blackout_days} day(s), not opening into it."))
+    return out
 
 # Day-trading safety knobs.
 MARKET_CLOSE_TIME = datetime.time(16, 0)   # exchange-local (e.g. US equities, ET)
@@ -110,8 +146,11 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         pnl_hist = pnl_history.load()
         pos_owner = position_ownership.load()
 
-        prices = _convert_prices_fx(fetch_history(sorted(set(cfg.watchlist) | held_symbols)), fx_rate)
+        watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
+        prices = _convert_prices_fx(fetch_history(watch_symbols), fx_rate)
         signals = strategy.generate_signals(prices)
+        today_et = datetime.datetime.now(datetime.timezone.utc).astimezone(ZoneInfo("America/New_York")).date()
+        reg, cal = _entry_context(cfg, watch_symbols, today_et)
 
         decisions = []
         hold_symbols = []
@@ -119,6 +158,8 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         blocked_symbols = []
         drawdown_symbols = []
         paused_symbols = []
+        regime_symbols = []
+        earnings_symbols = []
 
         for sym, sig in sorted(signals.items()):
             signal = sig.signal
@@ -156,6 +197,13 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                     log.info("BUY %s skipped: in a losing-streak cooldown", sym)
                     paused_symbols.append(sym)
                     continue
+                if not reg.entries_allowed:
+                    regime_symbols.append(sym)
+                    continue
+                if events.in_earnings_blackout(cal, sym, today_et, cfg.earnings_blackout_days):
+                    log.info("BUY %s skipped: earnings within %d day(s)", sym, cfg.earnings_blackout_days)
+                    earnings_symbols.append(sym)
+                    continue
                 if not risk.can_open_position(len(positions)):
                     log.info("BUY %s skipped: max open positions reached", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped",
@@ -170,7 +218,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
                     continue
                 atr_value = compute_atr(prices[sym], period=cfg.atr_period).iloc[-1]
                 qty = risk.size_buy(account_value, free_cash, last_price, atr_value,
-                                     sector_value_held, sig.strength)
+                                     sector_value_held, sig.strength * reg.size_scale)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -213,6 +261,7 @@ def run_cycle(cfg: Config, strategy: Strategy) -> None:
         if paused_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(paused_symbols)} — in a losing-streak cooldown."))
+        decisions += _context_decisions(cfg, reg, regime_symbols, earnings_symbols)
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
@@ -298,6 +347,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         # DAYTRADE_WINDOW_START_UTC and Config.daytrade_entry_delay_minutes.
         too_early_for_entries = _too_early_for_entries(
             datetime.datetime.now(datetime.timezone.utc), cfg.daytrade_entry_delay_minutes)
+        today_et = datetime.datetime.now(datetime.timezone.utc).astimezone(ZoneInfo("America/New_York")).date()
+        reg, cal = _entry_context(cfg, watch_symbols, today_et)
 
         decisions = []
         stale_symbols = []
@@ -308,6 +359,8 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         drawdown_symbols = []
         paused_symbols = []
         warmup_symbols = []
+        regime_symbols = []
+        earnings_symbols = []
 
         for sym, df in sorted(prices.items()):
             t212_ticker = to_t212_ticker(sym)
@@ -411,6 +464,13 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                     log.info("BUY %s skipped: in a losing-streak cooldown", sym)
                     paused_symbols.append(sym)
                     continue
+                if not reg.entries_allowed:
+                    regime_symbols.append(sym)
+                    continue
+                if events.in_earnings_blackout(cal, sym, today_et, cfg.earnings_blackout_days):
+                    log.info("BUY %s skipped: earnings within %d day(s)", sym, cfg.earnings_blackout_days)
+                    earnings_symbols.append(sym)
+                    continue
                 if minutes_to_close <= NO_NEW_ENTRIES_MINUTES_BEFORE_CLOSE:
                     log.info("BUY %s skipped: too close to the close for a new day-trade entry", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped",
@@ -430,7 +490,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                     continue
                 atr_value = compute_atr(df, period=cfg.atr_period).iloc[-1]
                 qty = risk.size_buy(account_value, free_cash, last_price, atr_value,
-                                     sector_value_held, sig.strength)
+                                     sector_value_held, sig.strength * reg.size_scale)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -489,6 +549,7 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
         if paused_symbols:
             decisions.append(history.decision(None, "warning", "Skipped",
                               f"{', '.join(paused_symbols)} — in a losing-streak cooldown."))
+        decisions += _context_decisions(cfg, reg, regime_symbols, earnings_symbols)
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
@@ -573,25 +634,62 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
         watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
         prices = _convert_prices_fx(fetch_history(watch_symbols, period="6mo"), fx_rate)
         headlines = news.fetch_headlines(watch_symbols, max_age_hours=cfg.news_max_age_hours, now=now_utc)
-        scores = news.aggregate_all(headlines, now=now_utc, half_life_hours=cfg.news_half_life_hours)
+        scorer = news_llm.make_scorer(cfg.news_scorer, cfg.news_llm_model)
+        scores = news.aggregate_all(headlines, now=now_utc, half_life_hours=cfg.news_half_life_hours,
+                                    scorer=scorer)
+        scores = news.peer_scores(scores, sector_of, cfg.news_min_headlines, cfg.news_peer_discount)
         news.record_scores(news_state, today, scores)
-        strategy.set_news(scores, history=news.score_history(news_state))
+        score_hist = news.score_history(news_state)
+        strategy.set_news(scores, history=score_hist)
         signals = strategy.generate_signals(prices)
+        reg, cal = _entry_context(cfg, watch_symbols, today_et)
 
         n_headlines = sum(len(h) for h in headlines.values())
         n_informative = sum(1 for s in scores.values() if s.n_scored >= cfg.news_min_headlines)
-        log.info("News: %d headlines across %d symbols, %d symbol%s with >= %d scored headlines",
-                 n_headlines, len(scores), n_informative, "" if n_informative == 1 else "s",
-                 cfg.news_min_headlines)
+        log.info("News (%s scorer): %d headlines across %d symbols, %d symbol%s with >= %d scored headlines",
+                 "llm" if scorer else "lexicon", n_headlines, len(scores), n_informative,
+                 "" if n_informative == 1 else "s", cfg.news_min_headlines)
         for sym in sorted(scores):
             ns = scores[sym]
             if ns.n_scored >= cfg.news_min_headlines:
-                log.info("News %s: %+.2f over %d scored headlines (%d%% positive)",
-                         sym, ns.score, ns.n_scored, round(ns.pos_frac * 100))
+                log.info("News %s: %+.2f over %d scored headlines (%d%% positive)%s",
+                         sym, ns.score, ns.n_scored, round(ns.pos_frac * 100),
+                         "" if ns.source == "own" else f" via {ns.source}")
+
+        # Event study for every symbol with a signal (and anything we hold):
+        # how did similar news move this stock before? Informational unless
+        # cfg.event_study_gate -- see t212bot/events.py.
+        studies: dict = {}
+        if cfg.event_study_enabled:
+            study_symbols = [s for s, sg in sorted(signals.items()) if sg.signal is not Signal.HOLD]
+            study_symbols += [s for s in sorted(held_symbols)
+                              if position_ownership.owned_by(pos_owner, to_t212_ticker(s), "news")
+                              and s not in study_symbols]
+            study_symbols = study_symbols[:EVENT_STUDY_MAX_SYMBOLS]
+            if study_symbols:
+                long_prices = fetch_history(study_symbols + [market_regime.SPY_SYMBOL], period="10y")
+                spy_long = long_prices.get(market_regime.SPY_SYMBOL)
+                for sym in study_symbols:
+                    if sym not in long_prices:
+                        continue
+                    try:
+                        studies[sym] = events.run_event_study(
+                            sym, headlines.get(sym, []), long_prices[sym], spy_long, cal, score_hist,
+                            cfg.news_buy_threshold, cfg.news_min_headlines, cfg.event_study_min_samples,
+                            use_edgar=cfg.event_study_use_edgar)
+                    except Exception as exc:  # noqa: BLE001 - never let the study break the cycle
+                        log.warning("Event study failed for %s: %s", sym, exc)
+                        continue
+                    kind, summary = studies[sym].verdict(cfg.event_study_horizon_days, cfg.event_study_min_samples)
+                    log.info("History %s (%s): %s -> %s", sym,
+                             "+".join(studies[sym].event_types) or "uncategorised", kind, summary)
 
         decisions = []
         buckets = {key: [] for key in ("no_bar", "hold", "negative", "chased", "unconfirmed", "stale_news",
-                                       "downtrend", "blocked", "drawdown", "paused", "reentry")}
+                                       "downtrend", "blocked", "drawdown", "paused", "reentry",
+                                       "history_adverse")}
+        regime_symbols = []
+        earnings_symbols = []
 
         for sym, df in sorted(prices.items()):
             t212_ticker = to_t212_ticker(sym)
@@ -602,6 +700,20 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
             sig = signals.get(sym, SignalResult(Signal.HOLD))
             ns = scores.get(sym)
             headline_note = f" Top headline: \"{ns.top_headline}\"" if ns and ns.top_headline else ""
+            if ns and ns.source != "own":
+                headline_note += f" (sector read-through via {ns.source[6:]})"
+            study = studies.get(sym)
+            history_note = ""
+            history_kind = None
+            if study is not None:
+                history_kind, history_summary = study.verdict(cfg.event_study_horizon_days,
+                                                              cfg.event_study_min_samples)
+                history_note = f" History ({'+'.join(study.event_types) or 'uncategorised'}): {history_summary}."
+                decisions.append(history.decision(sym, "neutral", "History",
+                                                  f"{'+'.join(study.event_types) or 'uncategorised'} — "
+                                                  f"{history_kind}: {history_summary}."
+                                                  + (" " + " | ".join(study.lines(cfg.event_study_horizon_days))
+                                                     if len(study.sources) > 1 else "")))
 
             def _close(label: str, detail: str) -> bool:
                 """Sell the whole news-owned position and do the bookkeeping;
@@ -663,6 +775,19 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                     log.info("BUY %s skipped: already closed by the news bot today", sym)
                     buckets["reentry"].append(sym)
                     continue
+                if not reg.entries_allowed:
+                    regime_symbols.append(sym)
+                    continue
+                # Report day itself is allowed: the report *is* the news.
+                if events.in_earnings_blackout(cal, sym, today_et, cfg.earnings_blackout_days,
+                                               allow_report_day=True):
+                    log.info("BUY %s skipped: earnings within %d day(s)", sym, cfg.earnings_blackout_days)
+                    earnings_symbols.append(sym)
+                    continue
+                if cfg.event_study_gate and history_kind == "adverse":
+                    log.info("BUY %s skipped: this stock's history after similar news is adverse", sym)
+                    buckets["history_adverse"].append(sym)
+                    continue
                 if not risk.can_open_position(len(positions)):
                     log.info("BUY %s skipped: max open positions reached", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Max open positions reached."))
@@ -676,7 +801,7 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                     continue
                 atr_value = compute_atr(df, period=cfg.atr_period).iloc[-1]
                 qty = risk.size_buy(account_value, free_cash, last_price, atr_value,
-                                     sector_value_held, sig.strength)
+                                     sector_value_held, sig.strength * reg.size_scale)
                 if qty <= 0:
                     log.info("BUY %s skipped: insufficient budget", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
@@ -692,7 +817,7 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                 news_state["positions"][t212_ticker] = {"entered": today}
                 decisions.append(history.decision(sym, "good", "Buy",
                                   f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
-                                  f"signal strength {sig.strength:.0%}, {sig.reason}.{headline_note}"))
+                                  f"signal strength {sig.strength:.0%}, {sig.reason}.{headline_note}{history_note}"))
 
             elif sig.reason in buckets and sig.signal is Signal.HOLD:
                 log.info("BUY %s skipped: %s", sym, sig.reason)
@@ -720,11 +845,14 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
             "drawdown": ("warning", "Skipped", "account-wide drawdown pause in effect, no new entries until it recovers."),
             "paused": ("warning", "Skipped", "in a losing-streak cooldown."),
             "reentry": ("warning", "Skipped", "already closed by the news bot today, not re-entering the same day."),
+            "history_adverse": ("warning", "Skipped", "this stock's own history after similar news is adverse "
+                                                       "(EVENT_STUDY_GATE), skipped."),
         }
         for key, syms in buckets.items():
             if syms:
                 status, headline, text = summaries[key]
                 decisions.append(history.decision(None, status, headline, f"{', '.join(syms)} — {text}"))
+        decisions += _context_decisions(cfg, reg, regime_symbols, earnings_symbols)
 
         daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
         daily_target.save(daily_state)
