@@ -91,7 +91,7 @@ def wired(monkeypatch, planted_long):
                         lambda sym: {"next": cfgd["earnings_next"].get(sym), "past": [[d, 5.0] for d in beat_days]})
     monkeypatch.setattr(events, "fetch_edgar_events", lambda sym, session=None, max_age_days=7: [])
     monkeypatch.setattr(news, "fetch_headlines",
-                        lambda symbols, max_age_hours, now=None, session=None: {s: cfgd["heads"].get(s, []) for s in symbols})
+                        lambda symbols, max_age_hours, now=None, session=None, **kw: {s: cfgd["heads"].get(s, []) for s in symbols})
     return cfgd
 
 

@@ -80,6 +80,11 @@ class Config:
     # few headlines of its own borrows its sector peers' consensus times
     # this discount. 0 disables.
     news_peer_discount: float = field(default_factory=lambda: float(os.getenv("NEWS_PEER_DISCOUNT", "0.5")))
+    # Relevance filter (t212bot/companies.py): drop headlines that don't
+    # name the company or its ticker. NEWS_COMPANY_NAMES adds aliases for
+    # symbols outside the default watchlist: "AMD=Advanced Micro Devices|AMD;TSM=TSMC".
+    news_relevance_filter: bool = field(default_factory=lambda: _bool("NEWS_RELEVANCE_FILTER", "true"))
+    news_company_names: str = field(default_factory=lambda: os.getenv("NEWS_COMPANY_NAMES", ""))
     # "lexicon" (default, free, deterministic) or "llm" (t212bot/news_llm.py;
     # needs ANTHROPIC_API_KEY, falls back to the lexicon on any failure).
     news_scorer: str = field(default_factory=lambda: os.getenv("NEWS_SCORER", "lexicon").strip().lower())

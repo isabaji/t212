@@ -80,6 +80,7 @@ Key settings in `.env`:
 | `NEWS_MAX_HOLD_DAYS` | `3` | News bot only: force-exit a news position after this many calendar days |
 | `NEWS_STOP_LOSS_PCT` / `NEWS_TAKE_PROFIT_PCT` | `0.03` / `0.06` | News bot only: force-exit if the day's Low/High crosses this far from the real average fill — `0` disables either side |
 | `NEWS_MAX_CHASE_PCT` / `NEWS_TREND_FILTER_DAYS` | `0.05` / `20` | News bot only: skip a buy if today's move is already past the chase limit, or price is below its N-day SMA — `0` disables either |
+| `NEWS_RELEVANCE_FILTER` / `NEWS_COMPANY_NAMES` | `true` / — | News bot only: drop headlines that don't name the company; extra aliases as `AMD=Advanced Micro Devices\|AMD;TSM=TSMC` |
 | `NEWS_PEER_DISCOUNT` | `0.5` | News bot only: sector read-through weight for symbols without enough headlines of their own — `0` disables |
 | `NEWS_SCORER` / `NEWS_LLM_MODEL` / `ANTHROPIC_API_KEY` | `lexicon` / `claude-opus-5-5` / — | News bot only: `llm` scores headlines with Claude instead of the lexicon (falls back to the lexicon on any failure) |
 | `EVENT_STUDY_ENABLED` / `EVENT_STUDY_GATE` | `true` / `false` | News bot only: log how similar news moved the stock before; with the gate on, an adverse history skips the buy |
@@ -568,7 +569,11 @@ strategies for comparison with `--strategy orb`, `mean_reversion`, or
 `python main.py news` is the third strategy. Each cycle it pulls the latest
 headlines for every watchlist symbol from **Yahoo Finance's free per-ticker RSS
 feed** (no API key, no account; Google News RSS is the per-symbol fallback if
-Yahoo errors), scores each headline with a finance-specific word/phrase
+Yahoo errors), **keeps only the ones that actually name the company** (Yahoo
+files sector round-ups and other companies' stories under every ticker —
+`t212bot/companies.py` holds the name aliases, `NEWS_COMPANY_NAMES` adds more;
+short tickers like `V`/`KO`/`CAT` are matched by name only, never as English
+words), scores each headline with a finance-specific word/phrase
 lexicon ("raises guidance" +1.0, "misses estimates" −0.9, "downgraded to sell"
 −0.9, generic "rises"/"falls" ±0.3, with negation handling and listicle/"should
 you buy?" filler down-weighted), and combines them into one recency-weighted

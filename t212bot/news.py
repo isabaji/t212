@@ -43,13 +43,15 @@ from pathlib import Path
 
 import requests
 
+from . import companies
+
 log = logging.getLogger(__name__)
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "state" / "news.json"
 ARCHIVE_DAYS = 400
 
 YAHOO_RSS_URL = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US"
-GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q={symbol}+stock&hl=en-US&gl=US&ceid=US:en"
+GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q={query}+stock&hl=en-US&gl=US&ceid=US:en"
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; t212bot/1.0; +https://github.com/isabaji/t212)"}
 _REQUEST_TIMEOUT = 15
 _POLITE_DELAY_SECONDS = 0.25
@@ -285,26 +287,38 @@ def _fetch_feed(url: str, symbol: str, source: str, session: requests.Session) -
 
 def fetch_headlines(symbols: list[str], max_age_hours: float = 48.0,
                     now: datetime | None = None,
-                    session: requests.Session | None = None) -> dict[str, list[Headline]]:
-    """{symbol: [Headline]} -- deduplicated, no older than max_age_hours.
+                    session: requests.Session | None = None,
+                    company_names: dict[str, list[str]] | None = None,
+                    require_relevance: bool = True) -> dict[str, list[Headline]]:
+    """{symbol: [Headline]} -- deduplicated, no older than max_age_hours,
+    and (by default) only headlines that actually name the company.
 
     Yahoo first; Google News only if Yahoo errors or returns nothing for
     that symbol. A failing symbol logs a warning and yields an empty list
     rather than failing the whole cycle: no news just means no signal.
     Undated items are kept (treated as fresh) -- some feeds omit pubDate
     and dropping them would silently blind the strategy to that source.
+
+    require_relevance: drop headlines that mention neither the company's
+    name (t212bot/companies.py) nor its ticker -- Yahoo's per-ticker feed
+    carries plenty of stories about other companies. One INFO line reports
+    how many were dropped in total.
     """
     now = now or datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=max_age_hours)
     session = session or requests.Session()
+    names = companies.names_for() if company_names is None else company_names
     out: dict[str, list[Headline]] = {}
+    dropped_total = seen_total = 0
     for i, sym in enumerate(symbols):
         if i:
             time.sleep(_POLITE_DELAY_SECONDS)
         items: list[Headline] = []
-        for source, template in (("yahoo", YAHOO_RSS_URL), ("google", GOOGLE_NEWS_RSS_URL)):
+        query = names.get(sym, [sym])[0] if names.get(sym) else sym
+        for source, url in (("yahoo", YAHOO_RSS_URL.format(symbol=sym)),
+                            ("google", GOOGLE_NEWS_RSS_URL.format(query=requests.utils.quote(query)))):
             try:
-                items = _fetch_feed(template.format(symbol=sym), sym, source, session)
+                items = _fetch_feed(url, sym, source, session)
             except (requests.RequestException, RuntimeError, ET.ParseError) as exc:
                 log.warning("News fetch failed for %s via %s: %s", sym, source, exc)
                 items = []
@@ -319,8 +333,16 @@ def fetch_headlines(symbols: list[str], max_age_hours: float = 48.0,
             if not key or key in seen:
                 continue
             seen.add(key)
+            seen_total += 1
+            if require_relevance and not companies.is_relevant(sym, h.title, names):
+                dropped_total += 1
+                log.debug("Off-topic for %s, dropped: %s", sym, h.title)
+                continue
             kept.append(h)
         out[sym] = kept
+    if require_relevance and seen_total:
+        log.info("News relevance filter: kept %d of %d headlines (%d didn't name the company)",
+                 seen_total - dropped_total, seen_total, dropped_total)
     return out
 
 

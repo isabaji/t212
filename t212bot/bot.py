@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import daily_target, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
+from . import companies, daily_target, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
 from . import regime as market_regime
 from .client import Trading212Client, Trading212Error
 from .config import Config
@@ -633,7 +633,9 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
 
         watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
         prices = _convert_prices_fx(fetch_history(watch_symbols, period="6mo"), fx_rate)
-        headlines = news.fetch_headlines(watch_symbols, max_age_hours=cfg.news_max_age_hours, now=now_utc)
+        headlines = news.fetch_headlines(watch_symbols, max_age_hours=cfg.news_max_age_hours, now=now_utc,
+                                         company_names=companies.names_for(cfg.news_company_names),
+                                         require_relevance=cfg.news_relevance_filter)
         scorer = news_llm.make_scorer(cfg.news_scorer, cfg.news_llm_model)
         scores = news.aggregate_all(headlines, now=now_utc, half_life_hours=cfg.news_half_life_hours,
                                     scorer=scorer)

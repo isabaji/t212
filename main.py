@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from t212bot import events, news, regime, report
+from t212bot import companies, events, news, regime, report
 from t212bot.backtest import (
     DEFAULT_FEE_BPS,
     DEFAULT_SLIPPAGE_BPS,
@@ -68,10 +68,18 @@ def cmd_news_history(cfg: Config, symbol: str, event_types: list[str] | None) ->
     symbol = symbol.upper()
     now = datetime.now(timezone.utc)
     today = now.astimezone(ZoneInfo("America/New_York")).date()
-    headlines = news.fetch_headlines([symbol], max_age_hours=cfg.news_max_age_hours, now=now)[symbol]
+    names = companies.names_for(cfg.news_company_names)
+    all_heads = news.fetch_headlines([symbol], max_age_hours=cfg.news_max_age_hours, now=now,
+                                     company_names=names, require_relevance=False)[symbol]
+    headlines = [h for h in all_heads if companies.is_relevant(symbol, h.title, names)] \
+        if cfg.news_relevance_filter else all_heads
     scores = news.aggregate_all({symbol: headlines}, now=now, half_life_hours=cfg.news_half_life_hours)[symbol]
-    print(f"{symbol}: {len(headlines)} recent headlines, lexicon score {scores.score:+.2f} "
+    print(f"{symbol}: {len(all_heads)} recent headlines, {len(headlines)} name the company "
+          f"(aliases: {', '.join(names.get(symbol, [])) or 'ticker only'}); lexicon score {scores.score:+.2f} "
           f"over {scores.n_scored} scored ({scores.pos_frac:.0%} positive)")
+    for h in all_heads:
+        if h not in headlines:
+            print(f"  (off-topic, dropped) {h.title[:100]}")
     for h in headlines[:12]:
         cats = ",".join(sorted(events.classify_headline(h.title))) or "-"
         print(f"  {news.score_headline(h.title):+.2f} [{cats:<18}] {h.title[:100]}")

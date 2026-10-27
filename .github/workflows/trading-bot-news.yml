@@ -84,6 +84,8 @@ jobs:
           # Sector read-through, scorer choice and the event study
           # (t212bot/news.py, t212bot/news_llm.py, t212bot/events.py).
           NEWS_PEER_DISCOUNT: ${{ secrets.NEWS_PEER_DISCOUNT || '0.5' }}
+          NEWS_RELEVANCE_FILTER: ${{ secrets.NEWS_RELEVANCE_FILTER || 'true' }}
+          NEWS_COMPANY_NAMES: ${{ secrets.NEWS_COMPANY_NAMES }}
           NEWS_SCORER: ${{ secrets.NEWS_SCORER || 'lexicon' }}
           NEWS_LLM_MODEL: ${{ secrets.NEWS_LLM_MODEL || 'claude-opus-5-5' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
