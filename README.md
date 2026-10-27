@@ -366,12 +366,15 @@ Three workflows are already set up:
   US market hours (`python main.py run`).
 - `.github/workflows/trading-bot-daytrade.yml` — day trading, every 5 minutes
   during a padded market-hours window (`python main.py daytrade`).
-- `.github/workflows/trading-bot-news.yml` — news trading (`python main.py
-  news`). Its dry-run switch is the separate `NEWS_DRY_RUN` secret; no extra
-  API key is needed. **Ships without an active schedule**: it runs only via
-  **Run workflow** or a `repository_dispatch` of type `external-cron-news`
-  (e.g. from cron-job.org) until you uncomment the `schedule:` block in the
-  file (every 30 minutes during market hours).
+- `.github/workflows/trading-bot-news.yml` — news trading, every 30 minutes
+  during market hours (`python main.py news`). Its dry-run switch is the
+  separate `NEWS_DRY_RUN` secret; no extra API key is needed. Also accepts a
+  `repository_dispatch` of type `external-cron-news` (e.g. from cron-job.org).
+
+Two more workflows support them: `tests.yml` runs the offline test suite on
+every push, and `smoke-test.yml` (manual) runs every cycle against the real
+feeds with dry-run hard-wired on — see "Testing" below. `weekly-report.yml`
+commits a summary every Sunday.
 
 They're independent — enable any subset. To turn them on:
 
@@ -688,6 +691,32 @@ never affected by either):
   (any mode) so the effect can be measured against the unfiltered run rather
   than assumed — it's off in backtests by default for exactly that comparison.
 
+## Testing
+
+Two layers, deliberately different:
+
+- **Offline suite** (`tests/`, `python -m pytest`, ~5 s): every cycle runs end
+  to end against faked broker, price feeds, news feed, regime and calendar —
+  buys, the stop/max-hold/signal exits, every skip gate (blackout, regime,
+  chase, stale news, event-study gate, same-day re-entry), the lexicon, RSS
+  parsing with the Google fallback, the event study on planted events, the
+  LLM scorer's cache and fallbacks, the report. No credentials, no network;
+  `.github/workflows/tests.yml` runs it on every push, so a change that
+  breaks a cycle fails there rather than at market open.
+- **Dry-run smoke test** (`.github/workflows/smoke-test.yml`, **Run
+  workflow**): the parts the suite fakes — runs `account`, all three cycles,
+  `news-history` and `report` against the real Trading212 demo account,
+  Yahoo RSS, yfinance and EDGAR, with `DRY_RUN` hard-wired to `true` (not
+  read from any secret), every step running even if an earlier one failed,
+  nothing committed. Run it after changing a feed or a cycle, and when a
+  feed starts behaving differently.
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest            # offline suite
+python -m pytest -k cycles  # just the end-to-end cycle tests
+```
+
 ## Weekly report
 
 `python main.py report --days 7` prints a markdown summary from the state
@@ -696,9 +725,9 @@ open positions by owner, risk-state flags and pauses, news-archive growth and
 the most positive/negative symbols, upcoming earnings, and — when run on the
 machine that runs the bots, where `logs/history.jsonl` lives — cycles, errors,
 buys/sells and the most frequent skip-reasons per bot. `--out reports/latest.md`
-writes it too; `.github/workflows/weekly-report.yml` does that on demand (its
-Sunday schedule ships commented out, like the news bot's). Percentages, counts
-and dates only, so it's safe to commit.
+writes it too; `.github/workflows/weekly-report.yml` does that every Sunday
+evening and on demand. Percentages, counts and dates only, so it's safe to
+commit.
 
 ## Extending
 

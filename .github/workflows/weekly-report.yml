@@ -1,10 +1,10 @@
 name: Weekly Bot Report
 
 on:
-  # Ships without an active schedule, like the news bot -- uncomment to get
-  # a report committed to reports/latest.md every Sunday evening (UTC).
-  # schedule:
-  #   - cron: '17 18 * * 0'
+  # Every Sunday evening (UTC): commits reports/latest.md so the paper run
+  # can be judged without pulling the repo. Read-only otherwise.
+  schedule:
+    - cron: '17 18 * * 0'
   workflow_dispatch:
     inputs:
       days:

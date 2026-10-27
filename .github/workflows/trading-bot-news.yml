@@ -1,20 +1,20 @@
 name: Trading212 News Bot
 
 on:
-  # NOT SCHEDULED YET, on purpose: this strategy was added while the other
-  # two bots were deliberately switched off, so it ships able to run only by
-  # hand (Run workflow) or via an external dispatch. To start paper-trading
-  # it on GitHub's own scheduler, uncomment the two lines below -- every 30
-  # minutes during US market hours (13:00-21:00 UTC covers both EST and
-  # EDT), weekdays. Headlines are polled from a free RSS feed each run, so
-  # this is "check the news every half hour", not a streaming wire -- see
-  # t212bot/news.py. Half-hourly rather than every 5 minutes on purpose: the
-  # strategy trades a multi-day drift on daily bars, not the first seconds
-  # of a reaction, and a free RSS endpoint hit 30 times per run shouldn't
-  # be hammered. Alternatively point cron-job.org at the repository_dispatch
-  # type below, like the other two bots.
-  # schedule:
-  #   - cron: '20,50 13-20 * * 1-5'
+  # Paper run: every 30 minutes during US market hours (13:00-21:00 UTC
+  # covers both EST and EDT), weekdays, dry-run unless the NEWS_DRY_RUN
+  # secret says otherwise. Its job for the first weeks is to build the
+  # score archive (state/news.json) that `backtest --news` replays; see
+  # README "News trading". Headlines are polled from a free RSS feed each
+  # run, so this is "check the news every half hour", not a streaming wire
+  # -- see t212bot/news.py. Half-hourly rather than every 5 minutes on
+  # purpose: the strategy trades a multi-day drift on daily bars, not the
+  # first seconds of a reaction, and a free RSS endpoint hit 30 times per
+  # run shouldn't be hammered. If GitHub's scheduler stalls (it has, for
+  # the other two bots), point cron-job.org at the repository_dispatch type
+  # below instead.
+  schedule:
+    - cron: '20,50 13-20 * * 1-5'
   workflow_dispatch:
     inputs:
       dry_run:

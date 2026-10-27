@@ -1,0 +1,80 @@
+name: Dry-Run Smoke Test
+
+# Manual only. Runs all three cycles, the event study and the report
+# against the REAL feeds (Trading212 demo account, Yahoo RSS, yfinance,
+# EDGAR) with DRY_RUN hard-wired to true -- not read from any secret -- so
+# it can never place an order. The point is exercising the parts the unit
+# tests fake: does each feed still answer, parse, and get through a whole
+# cycle without an exception. Every step runs even if an earlier one
+# fails, so one job shows which cycle is broken. Nothing is committed.
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      T212_API_KEY: ${{ secrets.T212_API_KEY }}
+      T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+      T212_ENV: ${{ secrets.T212_ENV || 'demo' }}
+      # Hard-wired, deliberately not `secrets.DRY_RUN`: this job is a
+      # plumbing check and must never be able to trade.
+      DRY_RUN: 'true'
+      I_UNDERSTAND_LIVE_TRADING_RISK: ${{ secrets.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+      WATCHLIST: ${{ secrets.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE' }}
+      DAYTRADE_ENTRY_DELAY_MINUTES: '0'
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 't212bot/1.0 (https://github.com/isabaji/t212)' }}
+      NEWS_SCORER: ${{ secrets.NEWS_SCORER || 'lexicon' }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Account (Trading212 demo reachable, credentials valid)
+        run: python main.py account
+
+      - name: Swing cycle (yfinance + regime + earnings calendar)
+        if: always()
+        run: python main.py run
+
+      - name: News cycle (Yahoo RSS + event study + EDGAR)
+        if: always()
+        run: python main.py news
+
+      - name: Day-trade cycle (Alpaca intraday) -- skipped without Alpaca keys
+        if: always() && env.ALPACA_API_KEY != ''
+        run: python main.py daytrade
+
+      - name: Event study by hand
+        if: always()
+        run: python main.py news-history --symbol AAPL
+
+      - name: Report
+        if: always()
+        run: python main.py report --days 7
+
+      - name: Show what the cycles would have done
+        # history.jsonl is local to this runner and discarded with it; it
+        # holds figures the public job log must not, so only the decision
+        # headlines are printed.
+        if: always()
+        run: |
+          python - <<'EOF'
+          import json, pathlib
+          p = pathlib.Path("logs/history.jsonl")
+          if not p.exists():
+              print("no cycles logged"); raise SystemExit
+          for line in p.read_text().splitlines():
+              rec = json.loads(line)
+              print(f"{rec['t']} {rec['bot']:<9} dry_run={rec['dry_run']} error={rec['error']!r}")
+              for d in rec["decisions"]:
+                  print(f"    {d['status']:<8} {d['headline']:<8} {d['symbol'] or '-'}")
+          EOF
