@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from t212bot import companies, events, news, regime, report
+from t212bot import companies, discovery, events, news, regime, report
 from t212bot.backtest import (
     DEFAULT_FEE_BPS,
     DEFAULT_SLIPPAGE_BPS,
@@ -69,6 +69,9 @@ def cmd_news_history(cfg: Config, symbol: str, event_types: list[str] | None) ->
     now = datetime.now(timezone.utc)
     today = now.astimezone(ZoneInfo("America/New_York")).date()
     names = companies.names_for(cfg.news_company_names)
+    if symbol not in names:
+        # A discovered name outside the curated list: borrow its SEC-derived aliases.
+        names = discovery.TickerResolver.build(names, events.load_sec_entries(), cfg.news_sec_top_n).names
     all_heads = news.fetch_headlines([symbol], max_age_hours=cfg.news_max_age_hours, now=now,
                                      company_names=names, require_relevance=False)[symbol]
     headlines = [h for h in all_heads if companies.is_relevant(symbol, h.title, names)] \
@@ -305,7 +308,7 @@ def main() -> None:
             else cfg.watchlist
         if args.news:
             max_hold = args.max_hold_days if args.max_hold_days is not None else cfg.news_max_hold_days
-            print_news_backtest(symbols, args.windows or 1, args.fee_bps, args.slippage_bps,
+            print_news_backtest(symbols if args.symbols else None, args.windows or 1, args.fee_bps, args.slippage_bps,
                                 buy_threshold=cfg.news_buy_threshold, sell_threshold=cfg.news_sell_threshold,
                                 min_headlines=cfg.news_min_headlines,
                                 trend_filter_days=cfg.news_trend_filter_days or None,

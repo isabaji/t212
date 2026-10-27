@@ -796,7 +796,11 @@ def print_news_backtest(symbols: list, n_windows: int = 1,
     print(f"Walk-forward: {n_windows} sequential out-of-sample window{'s' if n_windows != 1 else ''} per symbol.\n")
 
     archived_symbols = sorted({s for by_sym in hist.values() for s in by_sym})
-    symbols = [s for s in symbols if s in archived_symbols] or archived_symbols
+    # symbols=None (the default for `backtest --news` without --symbols)
+    # replays everything the archive holds -- with a discovered universe
+    # that's a different set of names every day, not the watchlist.
+    symbols = ([s for s in symbols if s in archived_symbols] if symbols else []) or archived_symbols
+    print(f"Symbols: {len(symbols)} with archived scores.")
     price_data = fetch_history(symbols, period=period)
     if not price_data:
         print("No price data for any symbol.")

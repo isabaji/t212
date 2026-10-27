@@ -80,6 +80,25 @@ class Config:
     # few headlines of its own borrows its sector peers' consensus times
     # this discount. 0 disables.
     news_peer_discount: float = field(default_factory=lambda: float(os.getenv("NEWS_PEER_DISCOUNT", "0.5")))
+    # Universe for the news bot (t212bot/discovery.py): "discover" (default)
+    # scans many general finance feeds and trades whatever companies are
+    # in the news; "watchlist" is the fixed WATCHLIST only; "both" unions
+    # them. Held positions are always included.
+    news_universe: str = field(default_factory=lambda: os.getenv("NEWS_UNIVERSE", "discover").strip().lower())
+    # Feeds to scan: empty = built-in defaults + event searches; see
+    # discovery.feed_list for the override/extend syntax.
+    news_feeds: str = field(default_factory=lambda: os.getenv("NEWS_FEEDS", ""))
+    # A company must be named in this many distinct headlines across the
+    # scan to become a candidate (an explicit "(NYSE: XYZ)" mention counts
+    # double); at most this many candidates per cycle, by mention count.
+    news_min_mentions: int = field(default_factory=lambda: int(os.getenv("NEWS_MIN_MENTIONS", "2")))
+    news_max_candidates: int = field(default_factory=lambda: int(os.getenv("NEWS_MAX_CANDIDATES", "40")))
+    # How far down the SEC company list (largest first) to build name
+    # aliases from.
+    news_sec_top_n: int = field(default_factory=lambda: int(os.getenv("NEWS_SEC_TOP_N", "1500")))
+    # Liquidity gate for discovered (non-watchlist) names before any BUY.
+    news_min_market_cap: float = field(default_factory=lambda: float(os.getenv("NEWS_MIN_MARKET_CAP", "2e9")))
+    news_min_dollar_volume: float = field(default_factory=lambda: float(os.getenv("NEWS_MIN_DOLLAR_VOLUME", "2e7")))
     # Relevance filter (t212bot/companies.py): drop headlines that don't
     # name the company or its ticker. NEWS_COMPANY_NAMES adds aliases for
     # symbols outside the default watchlist: "AMD=Advanced Micro Devices|AMD;TSM=TSMC".

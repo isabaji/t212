@@ -152,6 +152,8 @@ class FakeSession:
 
 def test_edgar_events_and_cache(monkeypatch):
     monkeypatch.setattr(events.time, "sleep", lambda s: None)
+    assert events.load_sec_entries(FakeSession()) == [{"ticker": "AAPL", "title": "Apple Inc.", "cik": 320193}]
+    assert events.load_sec_entries(None) == [{"ticker": "AAPL", "title": "Apple Inc.", "cik": 320193}]  # cached
     ev = events.fetch_edgar_events("AAPL", FakeSession())
     assert ev == [("2026-05-01", ["earnings"]), ("2026-02-01", ["exec_change"])]
     assert events.fetch_edgar_events("AAPL", None) == ev        # cached: no session needed

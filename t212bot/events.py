@@ -239,6 +239,40 @@ def upcoming_reports(state: dict, today: date, within_days: int = 7) -> list[tup
 # EDGAR 8-K events
 # ---------------------------------------------------------------------------
 _cik_cache: dict[str, int] | None = None
+SEC_TICKERS_CACHE_PATH = Path(__file__).resolve().parent.parent / "logs" / "sec_tickers.json"
+
+
+def load_sec_entries(session: requests.Session | None = None, max_age_days: int = 7) -> list[dict]:
+    """[{"ticker", "title", "cik"}, ...] from the SEC's public company list,
+    in file order (roughly largest companies first), cached locally. Used
+    for CIK lookup here and for name->ticker resolution in discovery.py.
+    Returns [] (with a warning) if it can't be fetched."""
+    if SEC_TICKERS_CACHE_PATH.exists():
+        try:
+            cached = json.loads(SEC_TICKERS_CACHE_PATH.read_text())
+            if (datetime.now(timezone.utc).date() - date.fromisoformat(cached["fetched"])).days < max_age_days:
+                return cached["entries"]
+        except (json.JSONDecodeError, OSError, KeyError, ValueError):
+            pass
+    session = session or requests.Session()
+    try:
+        resp = session.get(EDGAR_TICKERS_URL, headers=_sec_headers(), timeout=20)
+        if not resp.ok:
+            raise RuntimeError(f"HTTP {resp.status_code}")
+        raw = resp.json()
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
+        log.warning("SEC ticker list unavailable (%s)", exc)
+        return []
+    entries = [{"ticker": str(v.get("ticker", "")).upper(), "title": str(v.get("title", "")),
+                "cik": int(v.get("cik_str", 0))}
+               for _, v in sorted(raw.items(), key=lambda kv: int(kv[0]) if str(kv[0]).isdigit() else 0)]
+    try:
+        SEC_TICKERS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SEC_TICKERS_CACHE_PATH.write_text(json.dumps({"fetched": datetime.now(timezone.utc).date().isoformat(),
+                                                      "entries": entries}))
+    except OSError:
+        pass
+    return entries
 
 
 def _load_edgar_cache() -> dict:
@@ -258,12 +292,13 @@ def _save_edgar_cache(cache: dict) -> None:
 def lookup_cik(symbol: str, session: requests.Session | None = None) -> int | None:
     global _cik_cache
     if _cik_cache is None:
-        session = session or requests.Session()
-        resp = session.get(EDGAR_TICKERS_URL, headers=_sec_headers(), timeout=20)
-        if not resp.ok:
-            raise RuntimeError(f"EDGAR ticker list HTTP {resp.status_code}")
-        _cik_cache = {v["ticker"].upper(): int(v["cik_str"]) for v in resp.json().values()}
-    return _cik_cache.get(symbol.upper().replace("-", "."))
+        entries = load_sec_entries(session)
+        if not entries:
+            raise RuntimeError("EDGAR ticker list unavailable")
+        _cik_cache = {}
+        for e in entries:
+            _cik_cache.setdefault(e["ticker"], e["cik"])
+    return _cik_cache.get(symbol.upper())
 
 
 def fetch_edgar_events(symbol: str, session: requests.Session | None = None,

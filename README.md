@@ -80,6 +80,10 @@ Key settings in `.env`:
 | `NEWS_MAX_HOLD_DAYS` | `3` | News bot only: force-exit a news position after this many calendar days |
 | `NEWS_STOP_LOSS_PCT` / `NEWS_TAKE_PROFIT_PCT` | `0.03` / `0.06` | News bot only: force-exit if the day's Low/High crosses this far from the real average fill — `0` disables either side |
 | `NEWS_MAX_CHASE_PCT` / `NEWS_TREND_FILTER_DAYS` | `0.05` / `20` | News bot only: skip a buy if today's move is already past the chase limit, or price is below its N-day SMA — `0` disables either |
+| `NEWS_UNIVERSE` | `discover` | News bot only: `discover` (scan many feeds, trade what's in the news), `watchlist`, or `both` — see "Market-wide discovery" |
+| `NEWS_FEEDS` | built-in list | News bot only: feeds to scan — `name=url;…` replaces, `+name=url;-name` extends/removes |
+| `NEWS_MIN_MENTIONS` / `NEWS_MAX_CANDIDATES` / `NEWS_SEC_TOP_N` | `2` / `40` / `1500` | News bot only: candidate selection — headlines naming a company, cap per cycle, depth of the SEC name list |
+| `NEWS_MIN_MARKET_CAP` / `NEWS_MIN_DOLLAR_VOLUME` | `2e9` / `2e7` | News bot only: liquidity gate for discovered names before any buy (watchlist exempt) |
 | `NEWS_RELEVANCE_FILTER` / `NEWS_COMPANY_NAMES` | `true` / — | News bot only: drop headlines that don't name the company; extra aliases as `AMD=Advanced Micro Devices\|AMD;TSM=TSMC` |
 | `NEWS_PEER_DISCOUNT` | `0.5` | News bot only: sector read-through weight for symbols without enough headlines of their own — `0` disables |
 | `NEWS_SCORER` / `NEWS_LLM_MODEL` / `ANTHROPIC_API_KEY` | `lexicon` / `claude-opus-5-5` / — | News bot only: `llm` scores headlines with Claude instead of the lexicon (falls back to the lexicon on any failure) |
@@ -566,10 +570,12 @@ strategies for comparison with `--strategy orb`, `mean_reversion`, or
 
 ## News trading: headline sentiment with price confirmation
 
-`python main.py news` is the third strategy. Each cycle it pulls the latest
-headlines for every watchlist symbol from **Yahoo Finance's free per-ticker RSS
-feed** (no API key, no account; Google News RSS is the per-symbol fallback if
-Yahoo errors), **keeps only the ones that actually name the company** (Yahoo
+`python main.py news` is the third strategy. Each cycle it works out which
+companies are in the news (see "Market-wide discovery" below — or the fixed
+watchlist with `NEWS_UNIVERSE=watchlist`), pulls each one's latest headlines
+from **Yahoo Finance's free per-ticker RSS feed** (no API key, no account;
+Google News RSS is the per-symbol fallback if Yahoo errors), **keeps only the
+ones that actually name the company** (Yahoo
 files sector round-ups and other companies' stories under every ticker —
 `t212bot/companies.py` holds the name aliases, `NEWS_COMPANY_NAMES` adds more;
 short tickers like `V`/`KO`/`CAT` are matched by name only, never as English
@@ -608,6 +614,42 @@ clearly good news with price agreeing, not the first seconds of the reaction.
 The lexicon is deliberately crude and deterministic (same headline → same
 score, every time, which a reproducible backtest needs); an LLM scorer could
 replace `score_headline()` later without touching anything downstream.
+
+### Market-wide discovery: trade what's in the news, not a fixed list
+
+By default (`NEWS_UNIVERSE=discover`) the news bot doesn't start from the
+watchlist at all. Each cycle it:
+
+1. **Scans many general feeds** (`t212bot/discovery.py`): CNBC, MarketWatch,
+   Yahoo Finance, Seeking Alpha, Investing.com, Nasdaq, the PR Newswire and
+   GlobeNewswire press-release wires, Google News business — plus targeted
+   Google News searches for the event phrases the strategy trades ("raises
+   guidance", "misses estimates", "FDA approval", "downgraded to sell", …).
+   All free RSS; a dead feed is logged and skipped; `NEWS_FEEDS` replaces or
+   extends the list.
+2. **Resolves every headline to the companies it names**: explicit tickers
+   first (`(NYSE: XYZ)`, `$XYZ` — press releases always carry them), then
+   company names from the SEC's public ticker list (top `NEWS_SEC_TOP_N` by
+   size) and the curated aliases. Matching is deliberately conservative:
+   generic single words ("Target", "Gap", "General") never match, short
+   first-token shortcuts aren't used, and a shared alias goes to the larger
+   company. Missing a mention costs a trade; a false match costs a wrong one.
+3. **Picks candidates**: names in at least `NEWS_MIN_MENTIONS` distinct
+   headlines (an explicit ticker qualifies alone), ranked by mentions, at most
+   `NEWS_MAX_CANDIDATES`. Candidates must be **tradable on Trading212**
+   (checked against the account's instrument list) and, before any buy, pass
+   a **liquidity gate** (market cap ≥ `NEWS_MIN_MARKET_CAP`, average dollar
+   volume ≥ `NEWS_MIN_DOLLAR_VOLUME`, via yfinance, cached a week in
+   `state/universe.json` as yes/no). Watchlist names are exempt from the gate.
+4. **Goes deep on each candidate** exactly as before: its own Yahoo feed is
+   merged with the headlines that surfaced it, scored, archived, and run
+   through every gate (price confirmation, freshness, regime, earnings
+   blackout, event study).
+
+Positions the bot holds are always included regardless of mode;
+`NEWS_UNIVERSE=watchlist` restores the fixed list, `both` unions them. The
+weekly report lists what was discovered and why anything was rejected, and
+`backtest --news` replays every archived name by default.
 
 ### "How did similar news move this stock before?" — the event study
 

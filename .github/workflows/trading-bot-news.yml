@@ -32,7 +32,7 @@ on:
 jobs:
   run-news-bot:
     runs-on: ubuntu-latest
-    # Needed to commit the state files (including the news score archive)
+    # Needed to commit the state files (including the news score archive, discovered universe)
     # back to the repo.
     permissions:
       contents: write
@@ -84,6 +84,13 @@ jobs:
           # Sector read-through, scorer choice and the event study
           # (t212bot/news.py, t212bot/news_llm.py, t212bot/events.py).
           NEWS_PEER_DISCOUNT: ${{ secrets.NEWS_PEER_DISCOUNT || '0.5' }}
+          NEWS_UNIVERSE: ${{ secrets.NEWS_UNIVERSE || 'discover' }}
+          NEWS_MIN_MENTIONS: ${{ secrets.NEWS_MIN_MENTIONS || '2' }}
+          NEWS_MAX_CANDIDATES: ${{ secrets.NEWS_MAX_CANDIDATES || '40' }}
+          NEWS_SEC_TOP_N: ${{ secrets.NEWS_SEC_TOP_N || '1500' }}
+          NEWS_MIN_MARKET_CAP: ${{ secrets.NEWS_MIN_MARKET_CAP || '2e9' }}
+          NEWS_MIN_DOLLAR_VOLUME: ${{ secrets.NEWS_MIN_DOLLAR_VOLUME || '2e7' }}
+          NEWS_FEEDS: ${{ secrets.NEWS_FEEDS }}
           NEWS_RELEVANCE_FILTER: ${{ secrets.NEWS_RELEVANCE_FILTER || 'true' }}
           NEWS_COMPANY_NAMES: ${{ secrets.NEWS_COMPANY_NAMES }}
           NEWS_SCORER: ${{ secrets.NEWS_SCORER || 'lexicon' }}
@@ -109,7 +116,7 @@ jobs:
           MAX_PORTFOLIO_DRAWDOWN_PCT: ${{ secrets.MAX_PORTFOLIO_DRAWDOWN_PCT || '0.15' }}
         run: python main.py news
 
-      - name: Persist bot state (daily target, trade stats, portfolio risk, news score archive)
+      - name: Persist bot state (daily target, trade stats, portfolio risk, news score archive, discovered universe)
         # Percentages/counts/dates/-1..1 scores only, never a dollar figure
         # — see t212bot/news.py alongside the other state modules. Shared
         # with the other two workflows, so pushes can race; retry a few

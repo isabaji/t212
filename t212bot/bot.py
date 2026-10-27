@@ -12,7 +12,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import companies, daily_target, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
+from . import companies, daily_target, discovery, events, history, news, news_llm, pnl_history, portfolio_risk
+from . import position_ownership, trade_stats
 from . import regime as market_regime
 from .client import Trading212Client, Trading212Error
 from .config import Config
@@ -631,11 +632,35 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                 if pos_owner.get(ticker) == "news":
                     position_ownership.clear_owner(pos_owner, ticker)
 
-        watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
+        # Universe: a fixed watchlist, or whatever is in the news today
+        # (t212bot/discovery.py), or both. Held positions always included.
+        names = companies.names_for(cfg.news_company_names)
+        discovered: dict[str, list] = {}
+        discovered_names: dict[str, str] = {}
+        if cfg.news_universe in ("discover", "both"):
+            market = discovery.fetch_market_headlines(discovery.feed_list(cfg.news_feeds), now=now_utc,
+                                                      max_age_hours=cfg.news_max_age_hours)
+            resolver = discovery.TickerResolver.build(names, events.load_sec_entries(), cfg.news_sec_top_n)
+            names = resolver.names
+            discovered = discovery.discover(market, resolver, cfg.news_min_mentions, cfg.news_max_candidates)
+            tradable = discovery.tradable_tickers(client)
+            if tradable is not None:
+                untradable = [s for s in discovered if to_t212_ticker(s) not in tradable]
+                if untradable:
+                    log.info("Discovery: not tradable on Trading212, dropped: %s", ", ".join(untradable))
+                    discovered = {s: h for s, h in discovered.items() if s not in untradable}
+            discovered_names = {s: (names.get(s) or [s])[0] for s in discovered}
+        base_symbols = set(cfg.watchlist) if cfg.news_universe in ("watchlist", "both") else set()
+        watch_symbols = sorted(base_symbols | held_symbols | set(discovered))
         prices = _convert_prices_fx(fetch_history(watch_symbols, period="6mo"), fx_rate)
         headlines = news.fetch_headlines(watch_symbols, max_age_hours=cfg.news_max_age_hours, now=now_utc,
-                                         company_names=companies.names_for(cfg.news_company_names),
-                                         require_relevance=cfg.news_relevance_filter)
+                                         company_names=names, require_relevance=cfg.news_relevance_filter)
+        for sym, extra in discovered.items():
+            have = {news._normalize_title(h.title) for h in headlines.get(sym, [])}
+            headlines.setdefault(sym, []).extend(h for h in extra if news._normalize_title(h.title) not in have)
+        universe = discovery.load_universe()
+        discovery.refresh_universe(universe, {s: discovered_names.get(s, s) for s in watch_symbols}, today_et,
+                                   cfg.news_min_market_cap, cfg.news_min_dollar_volume, exempt=set(cfg.watchlist))
         scorer = news_llm.make_scorer(cfg.news_scorer, cfg.news_llm_model)
         scores = news.aggregate_all(headlines, now=now_utc, half_life_hours=cfg.news_half_life_hours,
                                     scorer=scorer)
@@ -689,7 +714,7 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
         decisions = []
         buckets = {key: [] for key in ("no_bar", "hold", "negative", "chased", "unconfirmed", "stale_news",
                                        "downtrend", "blocked", "drawdown", "paused", "reentry",
-                                       "history_adverse")}
+                                       "history_adverse", "illiquid")}
         regime_symbols = []
         earnings_symbols = []
 
@@ -790,6 +815,11 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
                     log.info("BUY %s skipped: this stock's history after similar news is adverse", sym)
                     buckets["history_adverse"].append(sym)
                     continue
+                if sym not in cfg.watchlist and not discovery.is_liquid(universe, sym):
+                    log.info("BUY %s skipped: discovered name failed the liquidity/eligibility check (%s)",
+                             sym, (universe.get(sym) or {}).get("reason", "unchecked"))
+                    buckets["illiquid"].append(sym)
+                    continue
                 if not risk.can_open_position(len(positions)):
                     log.info("BUY %s skipped: max open positions reached", sym)
                     decisions.append(history.decision(sym, "warning", "Skipped", "Max open positions reached."))
@@ -849,6 +879,8 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
             "reentry": ("warning", "Skipped", "already closed by the news bot today, not re-entering the same day."),
             "history_adverse": ("warning", "Skipped", "this stock's own history after similar news is adverse "
                                                        "(EVENT_STUDY_GATE), skipped."),
+            "illiquid": ("warning", "Skipped", "discovered in the news but too small/illiquid (or no data) to "
+                                               "trade, skipped."),
         }
         for key, syms in buckets.items():
             if syms:
@@ -864,6 +896,7 @@ def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
         pnl_history.save(pnl_hist)
         position_ownership.save(pos_owner)
         news.save_state(news_state)
+        discovery.save_universe(universe)
 
         history.append("news", cfg.env, cfg.dry_run,
                         {"value": account_value, "free": free_cash, "positions": len(positions)},

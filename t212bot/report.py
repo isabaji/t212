@@ -17,7 +17,7 @@ import math
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 
-from . import daily_target, events, history, news, pnl_history, portfolio_risk, position_ownership, trade_stats
+from . import daily_target, discovery, events, history, news, pnl_history, portfolio_risk, position_ownership, trade_stats
 
 BOTS = ("swing", "daytrade", "news")
 
@@ -107,6 +107,23 @@ def build_report(days: int = 7, today: date | None = None, history_path=None) ->
         srcs = Counter(v.get("src", "own") for d in recent_days for v in st["scores"][d].values())
         if srcs:
             lines.append("- score sources this period: " + ", ".join(f"{k} {v}" for k, v in srcs.most_common()))
+    lines.append("")
+
+    # --- discovered universe --------------------------------------------
+    uni = discovery.load_universe()
+    lines += ["## Discovered universe", ""]
+    if not uni:
+        lines.append("- empty — no discovery scan has run yet")
+    else:
+        recent = {s: e for s, e in uni.items() if (e.get("last_seen") or "") >= since_iso}
+        eligible = [s for s, e in recent.items() if e.get("liquid")]
+        rejected = Counter((e.get("reason") or "unchecked") for e in recent.values() if not e.get("liquid"))
+        lines.append(f"- {len(uni)} names seen all-time, {len(recent)} in this period, {len(eligible)} eligible to trade")
+        if rejected:
+            lines.append("- not eligible: " + ", ".join(f"{r} ×{n}" for r, n in rejected.most_common()))
+        newest = sorted(recent.items(), key=lambda kv: kv[1].get("first_seen") or "", reverse=True)[:10]
+        if newest:
+            lines.append("- newest: " + ", ".join(f"{s} ({e.get('name', s)}, {e.get('first_seen')})" for s, e in newest))
     lines.append("")
 
     # --- earnings calendar ---------------------------------------------

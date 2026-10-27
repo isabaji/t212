@@ -26,6 +26,13 @@ jobs:
       WATCHLIST: ${{ secrets.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE' }}
       DAYTRADE_ENTRY_DELAY_MINUTES: '0'
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 't212bot/1.0 (https://github.com/isabaji/t212)' }}
+      NEWS_UNIVERSE: ${{ secrets.NEWS_UNIVERSE || 'discover' }}
+      NEWS_MIN_MENTIONS: ${{ secrets.NEWS_MIN_MENTIONS || '2' }}
+      NEWS_MAX_CANDIDATES: ${{ secrets.NEWS_MAX_CANDIDATES || '40' }}
+      NEWS_SEC_TOP_N: ${{ secrets.NEWS_SEC_TOP_N || '1500' }}
+      NEWS_MIN_MARKET_CAP: ${{ secrets.NEWS_MIN_MARKET_CAP || '2e9' }}
+      NEWS_MIN_DOLLAR_VOLUME: ${{ secrets.NEWS_MIN_DOLLAR_VOLUME || '2e7' }}
+      NEWS_FEEDS: ${{ secrets.NEWS_FEEDS }}
       NEWS_RELEVANCE_FILTER: ${{ secrets.NEWS_RELEVANCE_FILTER || 'true' }}
       NEWS_COMPANY_NAMES: ${{ secrets.NEWS_COMPANY_NAMES }}
       NEWS_SCORER: ${{ secrets.NEWS_SCORER || 'lexicon' }}

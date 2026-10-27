@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from conftest import NOW, UPTREND, BELOW_SMA, make_prices, today_et
-from t212bot import bot, events, history, news, position_ownership, regime
+from t212bot import bot, discovery, events, history, news, position_ownership, regime
 from t212bot.config import Config
 from t212bot.strategy import NewsSentiment, SMACrossover, Signal, SignalResult, Strategy
 
@@ -29,6 +29,9 @@ class FakeT212:
 
     def portfolio(self):
         return list(self.positions)
+
+    def instruments(self):
+        return [{"ticker": f"{s}_US_EQ"} for s in ("AAPL", "MSFT", "NVDA", "AVGO", "GOOGL", "LLY", "PLTR", "TINY")]
 
     def place_market_order(self, *a):
         raise AssertionError("dry run must never place an order")
@@ -92,6 +95,14 @@ def wired(monkeypatch, planted_long):
     monkeypatch.setattr(events, "fetch_edgar_events", lambda sym, session=None, max_age_days=7: [])
     monkeypatch.setattr(news, "fetch_headlines",
                         lambda symbols, max_age_hours, now=None, session=None, **kw: {s: cfgd["heads"].get(s, []) for s in symbols})
+    # discovery touchpoints (only used when NEWS_UNIVERSE=discover/both)
+    cfgd["market"] = []
+    monkeypatch.setattr(discovery, "fetch_market_headlines", lambda feeds, now=None, max_age_hours=48.0, session=None: list(cfgd["market"]))
+    monkeypatch.setattr(events, "load_sec_entries", lambda session=None, max_age_days=7: [
+        {"ticker": "LLY", "title": "ELI LILLY & Co", "cik": 1}, {"ticker": "PLTR", "title": "Palantir Technologies Inc.", "cik": 2},
+        {"ticker": "TINY", "title": "Tinyco Holdings Inc", "cik": 3}])
+    cfgd["liquid"] = {"LLY": (True, "ok"), "PLTR": (True, "ok"), "TINY": (False, "market cap below minimum")}
+    monkeypatch.setattr(discovery, "check_liquidity", lambda sym, cap, vol: cfgd["liquid"].get(sym, (False, "no market-cap/volume data")))
     return cfgd
 
 
@@ -249,3 +260,43 @@ def test_daytrade_cycle_guards(intraday):
     bot.run_day_trade_cycle(Config(), AlwaysBuy())
     rec = last_record()
     assert not decisions_of(rec, "Buy") and any("regime hostile" in d["detail"] for d in rec["decisions"])
+
+
+def test_news_cycle_discover_mode(wired, monkeypatch):
+    """Universe comes from the market scan: LLY (named in 3 headlines, liquid,
+    tradable) is bought; TINY is discovered but fails the liquidity gate;
+    ZZZZ-style untradable names never reach the universe; the watchlist is
+    not scanned at all."""
+    monkeypatch.setenv("NEWS_UNIVERSE", "discover")
+    wired["market"] = [news.Headline("", t, NOW - timedelta(hours=1)) for t in (
+        "Eli Lilly raises full-year guidance after record quarter", "Eli Lilly beats estimates, shares jump",
+        "Eli Lilly posts strong quarter, raises outlook", "Tinyco Holdings beats estimates", "Tinyco Holdings raises guidance",
+        "Tinyco Holdings wins contract", "Apple unveils new iPad")]
+    wired["heads"] = {}                       # per-ticker feeds return nothing: discovery headlines alone must do
+    cfg = Config()
+    assert cfg.news_universe == "discover"
+    bot.run_news_cycle(cfg, news_strategy(cfg))
+    rec = last_record()
+    assert rec["error"] is None, rec["error"]
+    buys = decisions_of(rec, "Buy")
+    assert "LLY" in buys and "TINY" not in buys and "AAPL" not in buys, buys
+    assert any("too small/illiquid" in d["detail"] and "TINY" in d["detail"] for d in rec["decisions"]), rec["decisions"]
+    arch = json.loads(news.STATE_PATH.read_text())["scores"][today_et().isoformat()]
+    assert set(arch) >= {"LLY", "TINY"} and "MSFT" not in arch           # watchlist not scanned in discover mode
+    uni = json.loads(discovery.UNIVERSE_PATH.read_text())
+    assert uni["LLY"]["liquid"] is True and uni["TINY"]["liquid"] is False
+    assert uni["LLY"]["name"] == "eli lilly" and uni["TINY"]["name"] == "tinyco"
+
+
+def test_news_cycle_discover_drops_untradable(wired, monkeypatch):
+    monkeypatch.setenv("NEWS_UNIVERSE", "both")
+    monkeypatch.setattr(FakeT212, "instruments", lambda self: [{"ticker": "AAPL_US_EQ"}, {"ticker": "MSFT_US_EQ"},
+                                                               {"ticker": "NVDA_US_EQ"}, {"ticker": "AVGO_US_EQ"}])
+    wired["market"] = [news.Headline("", t, NOW - timedelta(hours=1)) for t in (
+        "Eli Lilly raises guidance", "Eli Lilly beats estimates")]
+    cfg = Config()
+    bot.run_news_cycle(cfg, news_strategy(cfg))
+    rec = last_record()
+    assert rec["error"] is None
+    arch = json.loads(news.STATE_PATH.read_text())["scores"][today_et().isoformat()]
+    assert "LLY" not in arch and "AAPL" in arch                             # untradable dropped; watchlist kept ("both")

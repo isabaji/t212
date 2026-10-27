@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from t212bot import daily_target, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
+from t212bot import daily_target, discovery, events, history, news, news_llm, pnl_history, portfolio_risk, position_ownership, trade_stats
 
 NOW = datetime(2026, 10, 27, 15, 0, tzinfo=timezone.utc)
 ET = ZoneInfo("America/New_York")
@@ -32,16 +32,20 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(events, "CALENDAR_PATH", tmp_path / "earnings_calendar.json")
     monkeypatch.setattr(events, "EDGAR_CACHE_PATH", tmp_path / "edgar_cache.json")
     monkeypatch.setattr(events, "_cik_cache", None)
+    monkeypatch.setattr(events, "SEC_TICKERS_CACHE_PATH", tmp_path / "sec_tickers.json")
+    monkeypatch.setattr(discovery, "UNIVERSE_PATH", tmp_path / "universe.json")
     monkeypatch.setattr(news_llm, "CACHE_PATH", tmp_path / "llm_cache.json")
     monkeypatch.setattr(history, "HISTORY_PATH", tmp_path / "history.jsonl")
     monkeypatch.setattr(news, "_POLITE_DELAY_SECONDS", 0)
     for var in ("ANTHROPIC_API_KEY", "EVENT_STUDY_GATE", "NEWS_PEER_DISCOUNT", "NEWS_SCORER",
-                "REGIME_FILTER_ENABLED", "EARNINGS_BLACKOUT_DAYS", "WATCHLIST"):
+                "REGIME_FILTER_ENABLED", "EARNINGS_BLACKOUT_DAYS", "WATCHLIST", "NEWS_UNIVERSE", "NEWS_FEEDS"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("T212_API_KEY", "test-key")
     monkeypatch.setenv("T212_API_SECRET", "test-secret")
     monkeypatch.setenv("DRY_RUN", "true")
     monkeypatch.setenv("T212_ENV", "demo")
+    # Cycle tests default to the fixed watchlist; discovery has its own tests.
+    monkeypatch.setenv("NEWS_UNIVERSE", "watchlist")
     yield tmp_path
 
 
