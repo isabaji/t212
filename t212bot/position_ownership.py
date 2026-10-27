@@ -9,12 +9,13 @@ on a completely different signal — a swing SMA-crossover entry could get
 whipsawed out within minutes by the day-trade bot's much faster intraday
 exits, and vice versa.
 
-This records, per T212 ticker, which strategy ("swing" or "daytrade") owns
-the currently-open position. Each cycle's exit logic (see bot.py) only
-manages positions it owns; a position owned by the other strategy, or with
-no record at all (pre-migration position, manual trade), is left alone by
-the day-trade bot specifically, since its exits are the fast/aggressive
-ones -- the slower swing bot's own signal-based exit already tolerates
+This records, per T212 ticker, which strategy ("swing", "daytrade" or
+"news") owns the currently-open position. Each cycle's exit logic (see
+bot.py) only manages positions it owns; a position owned by another
+strategy, or with no record at all (pre-migration position, manual trade),
+is left alone by the day-trade and news bots specifically, since their
+exits are the fast/aggressive ones (EOD flatten, tight stops, max-hold
+days) -- the slower swing bot's own signal-based exit already tolerates
 holding through noise, so treating unknown positions as swing-manageable
 by default is the safer failure mode than leaving them unmanaged forever.
 
@@ -57,7 +58,7 @@ def owned_by(state: dict, ticker: str, strategy: str) -> bool:
     """True if `ticker` is recorded as opened by `strategy`.
 
     An untracked ticker (no record at all) is treated as owned by "swing"
-    and not by "daytrade" -- see the module docstring for why.
+    and by nobody else ("daytrade", "news") -- see the module docstring.
     """
     owner = state.get(ticker)
     if owner is None:

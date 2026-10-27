@@ -8,17 +8,18 @@ which is what feeds the published dashboard.
 
 import datetime
 import logging
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import daily_target, history, pnl_history, portfolio_risk, position_ownership, trade_stats
+from . import daily_target, history, news, pnl_history, portfolio_risk, position_ownership, trade_stats
 from .client import Trading212Client, Trading212Error
 from .config import Config
 from .data import fetch_fx_rate, fetch_history, fetch_intraday, to_t212_ticker, to_yahoo_symbol
 from .indicators import atr as compute_atr
 from .risk import RiskManager
 from .sectors import sector_of
-from .strategy import Signal, SignalResult, Strategy
+from .strategy import NewsSentiment, Signal, SignalResult, Strategy
 
 log = logging.getLogger(__name__)
 
@@ -502,6 +503,243 @@ def run_day_trade_cycle(cfg: Config, strategy: Strategy) -> None:
                         decisions)
     except Exception as exc:
         history.append("daytrade", cfg.env, cfg.dry_run, None, [], error=str(exc))
+        raise
+
+
+def run_news_cycle(cfg: Config, strategy: NewsSentiment) -> None:
+    """News-driven cycle: daily bars (yfinance) + free headline scores
+    (t212bot/news.py) -> NewsSentiment signals -> the same risk gates and
+    bookkeeping as the other two cycles, under its own owner tag "news".
+
+    Exits, checked in this order for every position this cycle opened and
+    before the strategy's own signal is consulted:
+    1. stop-loss / take-profit against the latest daily bar's Low/High and
+       the real average fill (cfg.news_stop_loss_pct / news_take_profit_pct)
+       -- a polling check per cycle, not a resting broker order;
+    2. max hold: cfg.news_max_hold_days calendar days since entry (the
+       post-news drift this trades decays within days; past that it's just
+       an untended position);
+    3. signal SELL: the headlines turned clearly negative.
+    Positions owned by the swing/day-trade bots, or untracked ones, are
+    never touched (see position_ownership.py).
+
+    New entries need a daily bar dated today (US/Eastern) -- on a holiday
+    or before the open yfinance's last bar is yesterday's and the "today's
+    move" the strategy confirms against would be stale -- and a symbol
+    closed by this cycle earlier today isn't re-bought the same day.
+
+    Every cycle also archives the day's per-symbol scores to
+    state/news.json (scores/counts/dates only -- public repo), which is the
+    history `backtest --news` replays: RSS feeds don't keep any.
+    """
+    try:
+        client = Trading212Client(cfg.api_key, cfg.api_secret, cfg.base_url)
+        risk = RiskManager(cfg.max_position_pct, cfg.max_open_positions, cfg.cash_buffer_pct,
+                            cfg.risk_per_trade_pct, cfg.atr_multiple, cfg.max_sector_exposure_pct)
+
+        cash = client.account_cash()
+        free_cash = float(cash.get("free", 0))
+        account_value = float(cash.get("total", free_cash))
+        account_currency = client.account_info().get("currencyCode", "USD")
+        fx_rate = fetch_fx_rate(account_currency)
+        positions = _convert_positions_fx({p["ticker"]: p for p in client.portfolio()}, fx_rate)
+        held_symbols = {to_yahoo_symbol(t) for t in positions}
+        sector_exposure = _sector_exposure(positions)
+        log.info("Account snapshot retrieved (%d open position%s)",
+                 len(positions), "" if len(positions) == 1 else "s")
+
+        daily_state = daily_target.load()
+        blocked = daily_target.entries_blocked(daily_state)
+        pr_state = portfolio_risk.load()
+        drawdown_blocked = portfolio_risk.entries_blocked(pr_state)
+        tstats = trade_stats.load()
+        pnl_hist = pnl_history.load()
+        pos_owner = position_ownership.load()
+        news_state = news.load_state()
+
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        today_et = now_utc.astimezone(ZoneInfo("America/New_York")).date()
+        today = today_et.isoformat()
+        # Housekeeping: same-day re-entry blocks expire overnight; entry-date
+        # records for positions no longer held (closed by hand, or by a
+        # rejected-then-retried order) go too, along with their owner tag.
+        news_state["closed"] = {t: d for t, d in news_state.get("closed", {}).items() if d == today}
+        for ticker in list(news_state.get("positions", {})):
+            if ticker not in positions:
+                del news_state["positions"][ticker]
+                if pos_owner.get(ticker) == "news":
+                    position_ownership.clear_owner(pos_owner, ticker)
+
+        watch_symbols = sorted(set(cfg.watchlist) | held_symbols)
+        prices = _convert_prices_fx(fetch_history(watch_symbols, period="6mo"), fx_rate)
+        headlines = news.fetch_headlines(watch_symbols, max_age_hours=cfg.news_max_age_hours, now=now_utc)
+        scores = news.aggregate_all(headlines, now=now_utc, half_life_hours=cfg.news_half_life_hours)
+        news.record_scores(news_state, today, scores)
+        strategy.set_news(scores, history=news.score_history(news_state))
+        signals = strategy.generate_signals(prices)
+
+        n_headlines = sum(len(h) for h in headlines.values())
+        n_informative = sum(1 for s in scores.values() if s.n_scored >= cfg.news_min_headlines)
+        log.info("News: %d headlines across %d symbols, %d symbol%s with >= %d scored headlines",
+                 n_headlines, len(scores), n_informative, "" if n_informative == 1 else "s",
+                 cfg.news_min_headlines)
+        for sym in sorted(scores):
+            ns = scores[sym]
+            if ns.n_scored >= cfg.news_min_headlines:
+                log.info("News %s: %+.2f over %d scored headlines (%d%% positive)",
+                         sym, ns.score, ns.n_scored, round(ns.pos_frac * 100))
+
+        decisions = []
+        buckets = {key: [] for key in ("no_bar", "hold", "negative", "chased", "unconfirmed", "stale_news",
+                                       "downtrend", "blocked", "drawdown", "paused", "reentry")}
+
+        for sym, df in sorted(prices.items()):
+            t212_ticker = to_t212_ticker(sym)
+            last_price = float(df["Close"].iloc[-1])
+            bar_date = pd.Timestamp(df.index[-1]).date()
+            holding = t212_ticker in positions
+            news_owned = holding and position_ownership.owned_by(pos_owner, t212_ticker, "news")
+            sig = signals.get(sym, SignalResult(Signal.HOLD))
+            ns = scores.get(sym)
+            headline_note = f" Top headline: \"{ns.top_headline}\"" if ns and ns.top_headline else ""
+
+            def _close(label: str, detail: str) -> bool:
+                """Sell the whole news-owned position and do the bookkeeping;
+                False if Trading212 rejected the order."""
+                qty = float(positions[t212_ticker]["quantity"])
+                avg_price = float(positions[t212_ticker]["averagePrice"])
+                if not _execute(client, cfg.dry_run, t212_ticker, -qty, last_price, label):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      f"{label} order rejected by Trading212 -- position may already be closed."))
+                    return False
+                pnl_pct = (last_price - avg_price) * qty / account_value
+                daily_target.record_trade_pct(daily_state, pnl_pct)
+                portfolio_risk.record_trade_pct(pr_state, pnl_pct)
+                trade_stats.record_trade(tstats, "news", sym, pnl_pct,
+                                          cfg.losing_streak_limit, cfg.losing_streak_cooldown_days)
+                pnl_history.record_trade(pnl_hist, "news", sym, pnl_pct)
+                position_ownership.clear_owner(pos_owner, t212_ticker)
+                news_state["positions"].pop(t212_ticker, None)
+                news_state["closed"][t212_ticker] = today
+                decisions.append(history.decision(sym, "serious", "Sell", f"Closed {qty:g} shares {detail}"))
+                return True
+
+            if news_owned:
+                avg_price = float(positions[t212_ticker]["averagePrice"])
+                stop_price = avg_price * (1 - cfg.news_stop_loss_pct) if cfg.news_stop_loss_pct else None
+                target_price = avg_price * (1 + cfg.news_take_profit_pct) if cfg.news_take_profit_pct else None
+                bar_low, bar_high = float(df["Low"].iloc[-1]), float(df["High"].iloc[-1])
+                hit_stop = stop_price is not None and bar_low <= stop_price
+                hit_target = target_price is not None and bar_high >= target_price
+                if hit_stop or hit_target:
+                    reason = "stop-loss" if hit_stop else "take-profit"
+                    _close(f"SELL ({reason})", f"({reason} hit).")
+                    continue
+                entered = news_state["positions"].get(t212_ticker, {}).get("entered")
+                held_days = (today_et - datetime.date.fromisoformat(entered)).days if entered else None
+                if held_days is not None and held_days >= cfg.news_max_hold_days:
+                    _close("SELL (max hold)", f"(held {held_days} days, max {cfg.news_max_hold_days}).")
+                    continue
+                if sig.signal is Signal.SELL:
+                    _close("SELL", f"(news turned negative, {sig.reason}).{headline_note}")
+                    continue
+
+            if sig.signal is Signal.BUY and not holding:
+                if bar_date != today_et:
+                    log.info("BUY %s skipped: latest daily bar is %s, no bar for today yet", sym, bar_date)
+                    buckets["no_bar"].append(sym)
+                    continue
+                if blocked:
+                    buckets["blocked"].append(sym)
+                    continue
+                if drawdown_blocked:
+                    buckets["drawdown"].append(sym)
+                    continue
+                if trade_stats.is_paused(tstats, "news", sym):
+                    log.info("BUY %s skipped: in a losing-streak cooldown", sym)
+                    buckets["paused"].append(sym)
+                    continue
+                if news_state["closed"].get(t212_ticker) == today:
+                    log.info("BUY %s skipped: already closed by the news bot today", sym)
+                    buckets["reentry"].append(sym)
+                    continue
+                if not risk.can_open_position(len(positions)):
+                    log.info("BUY %s skipped: max open positions reached", sym)
+                    decisions.append(history.decision(sym, "warning", "Skipped", "Max open positions reached."))
+                    continue
+                sector = sector_of(sym)
+                sector_value_held = sector_exposure.get(sector, 0.0)
+                if risk.sector_capacity_shares(account_value, last_price, sector_value_held) <= 0:
+                    log.info("BUY %s skipped: %s sector exposure cap reached", sym, sector)
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                                        f"{sector} sector exposure cap reached."))
+                    continue
+                atr_value = compute_atr(df, period=cfg.atr_period).iloc[-1]
+                qty = risk.size_buy(account_value, free_cash, last_price, atr_value,
+                                     sector_value_held, sig.strength)
+                if qty <= 0:
+                    log.info("BUY %s skipped: insufficient budget", sym)
+                    decisions.append(history.decision(sym, "warning", "Skipped", "Insufficient budget."))
+                    continue
+                if not _execute(client, cfg.dry_run, t212_ticker, qty, last_price, "BUY"):
+                    decisions.append(history.decision(sym, "warning", "Skipped",
+                                      "Buy order rejected by Trading212."))
+                    continue
+                free_cash -= qty * last_price
+                positions[t212_ticker] = {"quantity": qty}
+                sector_exposure[sector] = sector_value_held + qty * last_price
+                position_ownership.set_owner(pos_owner, t212_ticker, "news")
+                news_state["positions"][t212_ticker] = {"entered": today}
+                decisions.append(history.decision(sym, "good", "Buy",
+                                  f"Bought {qty:g} shares (~{qty * last_price:,.2f}), "
+                                  f"signal strength {sig.strength:.0%}, {sig.reason}.{headline_note}"))
+
+            elif sig.reason in buckets and sig.signal is Signal.HOLD:
+                log.info("BUY %s skipped: %s", sym, sig.reason)
+                buckets[sig.reason].append(sym)
+
+            elif sig.signal is Signal.SELL:
+                # Clearly negative news on a symbol this bot doesn't hold:
+                # long-only, so nothing to do -- but worth logging apart from
+                # a plain "no signal" so the dashboard shows the read.
+                buckets["negative"].append(sym)
+
+            else:
+                log.debug("%s: %s (no action)", sym, sig.signal.value)
+                buckets["hold"].append(sym)
+
+        summaries = {
+            "no_bar": ("warning", "Skipped", "no daily bar for today yet (market closed or holiday), no new entries."),
+            "hold": ("neutral", "Hold", "no clear news signal, no action taken."),
+            "negative": ("neutral", "Hold", "clearly negative news but no news-bot position to sell (long-only), no action."),
+            "chased": ("warning", "Skipped", "positive news but today's move already past the chase limit, skipped."),
+            "unconfirmed": ("warning", "Skipped", "positive news but the price isn't confirming it (down on the day), skipped."),
+            "stale_news": ("warning", "Skipped", "positive news but it was already positive yesterday -- not a fresh event, skipped."),
+            "downtrend": ("warning", "Skipped", f"positive news but price is below its {cfg.news_trend_filter_days}-day SMA, skipped."),
+            "blocked": ("warning", "Skipped", "daily profit target or loss limit already reached, no new entries today."),
+            "drawdown": ("warning", "Skipped", "account-wide drawdown pause in effect, no new entries until it recovers."),
+            "paused": ("warning", "Skipped", "in a losing-streak cooldown."),
+            "reentry": ("warning", "Skipped", "already closed by the news bot today, not re-entering the same day."),
+        }
+        for key, syms in buckets.items():
+            if syms:
+                status, headline, text = summaries[key]
+                decisions.append(history.decision(None, status, headline, f"{', '.join(syms)} — {text}"))
+
+        daily_target.evaluate(daily_state, cfg.daily_profit_target_pct, cfg.daily_loss_limit_pct)
+        daily_target.save(daily_state)
+        portfolio_risk.evaluate(pr_state, cfg.max_portfolio_drawdown_pct)
+        portfolio_risk.save(pr_state)
+        trade_stats.save(tstats)
+        pnl_history.save(pnl_hist)
+        position_ownership.save(pos_owner)
+        news.save_state(news_state)
+
+        history.append("news", cfg.env, cfg.dry_run,
+                        {"value": account_value, "free": free_cash, "positions": len(positions)},
+                        decisions)
+    except Exception as exc:
+        history.append("news", cfg.env, cfg.dry_run, None, [], error=str(exc))
         raise
 
 

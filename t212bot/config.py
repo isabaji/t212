@@ -51,6 +51,31 @@ class Config:
     daytrade_take_profit_pct: float = field(
         default_factory=lambda: float(os.getenv("DAYTRADE_TAKE_PROFIT_PCT", "0.02"))
     )
+    # News-driven strategy knobs (t212bot/news.py + NewsSentiment in
+    # t212bot/strategy.py, run by `python main.py news`). All untuned
+    # starting points -- there was no headline history to backtest against
+    # when they were set; `backtest --news` replays the archive the bot
+    # builds while paper-trading. Thresholds are on the -1..1 lexicon score.
+    news_buy_threshold: float = field(default_factory=lambda: float(os.getenv("NEWS_BUY_THRESHOLD", "0.35")))
+    news_sell_threshold: float = field(default_factory=lambda: float(os.getenv("NEWS_SELL_THRESHOLD", "-0.35")))
+    # Headlines the lexicon could score needed before a score counts at all.
+    news_min_headlines: int = field(default_factory=lambda: int(os.getenv("NEWS_MIN_HEADLINES", "3")))
+    # Recency weighting: a headline's weight halves every this many hours;
+    # anything older than max_age is ignored outright.
+    news_half_life_hours: float = field(default_factory=lambda: float(os.getenv("NEWS_HALF_LIFE_HOURS", "12")))
+    news_max_age_hours: float = field(default_factory=lambda: float(os.getenv("NEWS_MAX_AGE_HOURS", "48")))
+    # Exit rules for positions the news bot opened (bot.py: run_news_cycle):
+    # force-close after this many calendar days regardless of signal (the
+    # drift this trades decays within days), or when the day's Low/High
+    # crosses the stop/take-profit from the real average fill. 0 disables
+    # the stop/TP sides independently.
+    news_max_hold_days: int = field(default_factory=lambda: int(os.getenv("NEWS_MAX_HOLD_DAYS", "3")))
+    news_stop_loss_pct: float = field(default_factory=lambda: float(os.getenv("NEWS_STOP_LOSS_PCT", "0.03")))
+    news_take_profit_pct: float = field(default_factory=lambda: float(os.getenv("NEWS_TAKE_PROFIT_PCT", "0.06")))
+    # Don't buy if today's move is already past this (the drift is priced
+    # in), and only buy above the trend_filter-day SMA. 0 disables either.
+    news_max_chase_pct: float = field(default_factory=lambda: float(os.getenv("NEWS_MAX_CHASE_PCT", "0.05")))
+    news_trend_filter_days: int = field(default_factory=lambda: int(os.getenv("NEWS_TREND_FILTER_DAYS", "20")))
     env: str = field(default_factory=lambda: os.getenv("T212_ENV", "demo").strip().lower())
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", "true"))
     live_ack: bool = field(default_factory=lambda: _bool("I_UNDERSTAND_LIVE_TRADING_RISK", "no"))

@@ -17,6 +17,7 @@ windows rather than hidden inside a single blended average.
 
 import pandas as pd
 
+from . import news
 from .data import fetch_history, fetch_intraday
 from .indicators import atr as compute_atr
 from .strategy import (
@@ -26,6 +27,7 @@ from .strategy import (
     LongTermTrendConfluence,
     MeanReversionPullback,
     MorningWashoutRecovery,
+    NewsSentiment,
     OpeningRangeConfluence,
     SMACrossover,
     Signal,
@@ -71,7 +73,8 @@ def _signal_series(strategy, df: pd.DataFrame, min_bars: int,
 
 def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, slippage_bps: float,
                    stop_atr_multiple: float | None = None, atr_series: pd.Series | None = None,
-                   stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> list:
+                   stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
+                   max_hold_bars: int | None = None) -> list:
     """stop_atr_multiple (optional): force-close a position the first day its bar Low
     touches entry_price - stop_atr_multiple * (ATR at entry), regardless of what the
     strategy's own signal says that day — models a real stop order sitting with the
@@ -86,6 +89,12 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
     range spans both the stop and the target, the stop is assumed to hit first (the
     conservative, can't-know-intrabar-order assumption also used for the ATR stop).
 
+    max_hold_bars (optional): force-close at the close of the Nth bar after
+    entry regardless of signal (entry at bar 0's close, exit at bar N's) --
+    models the news cycle's max-hold-days exit. Checked after the stop and
+    target for that bar, so a stop touched on the final day still counts as
+    a stop.
+
     Each trade records entry_reason -- the entry signal's .reason (e.g. an
     EnsembleVote's voting-strategy breakdown), None for strategies that
     don't set one."""
@@ -96,6 +105,8 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
         sig = sig_result.signal
         row = df.loc[date]
         price = float(row["Close"])
+        if position is not None:
+            position["bars_held"] += 1
 
         if position is not None and position.get("stop_price") is not None:
             if float(row["Low"]) <= position["stop_price"]:
@@ -123,6 +134,18 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
                 position = None
                 continue
 
+        if position is not None and max_hold_bars is not None and position["bars_held"] >= max_hold_bars:
+            exit_price = price * (1 - cost_frac)
+            trades.append({
+                "entry_date": position["entry_date"], "exit_date": date,
+                "entry_price": position["entry_price"], "exit_price": exit_price,
+                "pnl_pct": exit_price / position["entry_price"] - 1,
+                "open_at_end": False, "exit_reason": "max_hold",
+                "entry_reason": position.get("entry_reason"),
+            })
+            position = None
+            continue
+
         if position is None and sig is Signal.BUY:
             entry_price = price * (1 + cost_frac)
             stop_price = None
@@ -140,7 +163,7 @@ def _build_trades(df: pd.DataFrame, signal_results: pd.Series, fee_bps: float, s
             target_price = price * (1 + take_profit_pct) if take_profit_pct is not None else None
             position = {"entry_date": date, "entry_price": entry_price,
                         "stop_price": stop_price, "target_price": target_price,
-                        "entry_reason": sig_result.reason}
+                        "entry_reason": sig_result.reason, "bars_held": 0}
         elif position is not None and sig is Signal.SELL:
             exit_price = price * (1 - cost_frac)
             trades.append({
@@ -192,7 +215,8 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
              slippage_bps: float = DEFAULT_SLIPPAGE_BPS, min_bars: int = 60,
              stop_atr_multiple: float | None = None, atr_period: int = 14,
              confirm_df: pd.DataFrame | None = None, daily_df: pd.DataFrame | None = None,
-             stop_loss_pct: float | None = None, take_profit_pct: float | None = None):
+             stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
+             max_hold_bars: int | None = None):
     """Long-only, single position at a time, all-in/all-out, cost-aware.
 
     Returns (equity_curve, trades). Not enough data -> a flat 1-bar curve
@@ -204,7 +228,7 @@ def simulate(strategy, df: pd.DataFrame, fee_bps: float = DEFAULT_FEE_BPS,
     signals = _signal_series(strategy, df, min_bars, confirm_df, daily_df)
     atr_series = compute_atr(df, period=atr_period) if stop_atr_multiple else None
     trades = _build_trades(df, signals, fee_bps, slippage_bps, stop_atr_multiple, atr_series,
-                            stop_loss_pct, take_profit_pct)
+                            stop_loss_pct, take_profit_pct, max_hold_bars)
     equity = _equity_curve(signals.index, df, trades)
     return equity, trades
 
@@ -267,7 +291,8 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
                   min_bars: int = 60, periods_per_year: int = TRADING_DAYS_PER_YEAR,
                   stop_atr_multiple: float | None = None, atr_period: int = 14,
                   confirm_df: pd.DataFrame | None = None, daily_df: pd.DataFrame | None = None,
-                  stop_loss_pct: float | None = None, take_profit_pct: float | None = None) -> list:
+                  stop_loss_pct: float | None = None, take_profit_pct: float | None = None,
+                  max_hold_bars: int | None = None) -> list:
     """Split df into n_windows sequential, non-overlapping chunks and backtest
     each independently with a fresh strategy instance.
 
@@ -306,7 +331,8 @@ def walk_forward(strategy_factory, df: pd.DataFrame, n_windows: int = 4,
         equity, trades = simulate(strategy_factory(), window_df, fee_bps, slippage_bps, min_bars,
                                    stop_atr_multiple, atr_period, confirm_df=window_confirm_df,
                                    daily_df=daily_df,
-                                   stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct)
+                                   stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct,
+                                   max_hold_bars=max_hold_bars)
         metrics = compute_metrics(equity, trades, periods_per_year)
         metrics["window"] = i + 1
         metrics["start"] = window_df.index[0]
@@ -679,3 +705,105 @@ def print_daytrade_backtest(symbols: list, alpaca_api_key: str, alpaca_api_secre
             avg_pnl = b["pnl_sum"] / b["trades"] if b["trades"] else 0.0
             print(f"  {key}: {b['trades']} trades, win rate {win_rate:+.1%}, avg pnl/trade {avg_pnl:+.2%}")
         print()
+
+
+def print_news_backtest(symbols: list, n_windows: int = 1,
+                        fee_bps: float = DEFAULT_FEE_BPS, slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+                        buy_threshold: float = 0.35, sell_threshold: float = -0.35, min_headlines: int = 3,
+                        trend_filter_days: int | None = 20, max_chase_pct: float | None = 0.05,
+                        stop_loss_pct: float | None = 0.03, take_profit_pct: float | None = 0.06,
+                        max_hold_days: int | None = 3, period: str = "2y",
+                        min_archive_days: int = 20) -> None:
+    """Replay the archived daily news scores (state/news.json, written by
+    `python main.py news` every cycle) against yfinance daily bars, through
+    the same walk-forward engine as the swing backtest.
+
+    There is no free source of *historical* headlines, so this can only
+    test the period the bot has been running for -- the archive grows one
+    day per trading day of paper-trading, and with fewer than
+    min_archive_days of it the result is noise, which is said so rather
+    than hidden. Timing caveat: each day's archived score is the last
+    cycle's reading (typically shortly before the close), and the backtest
+    enters at that day's close, so it sees roughly what the live bot's last
+    cycle of the day would have seen -- earlier intraday entries the live
+    bot might take on a morning headline aren't modeled.
+
+    max_hold_days maps to max_hold_bars (one daily bar per trading day, so
+    3 calendar days of holding is approximated as 3 bars)."""
+    state = news.load_state()
+    hist = news.score_history(state)
+    days = sorted(hist)
+    print(f"News strategy: lexicon score >= {buy_threshold:+.2f} to buy / <= {sell_threshold:+.2f} to sell, "
+          f">= {min_headlines} scored headlines, "
+          f"{'SMA(%d) trend filter' % trend_filter_days if trend_filter_days else 'no trend filter'}, "
+          f"{'chase limit %.1f%%' % (max_chase_pct * 100) if max_chase_pct else 'no chase limit'}.")
+    sl = f"{stop_loss_pct:.1%} stop-loss" if stop_loss_pct else "no stop-loss"
+    tp = f"{take_profit_pct:.1%} take-profit" if take_profit_pct else "no take-profit"
+    mh = f"max hold {max_hold_days} bars" if max_hold_days else "no max hold"
+    print(f"Exits: {sl} / {tp} / {mh}, plus the strategy's own SELL on clearly negative news.")
+    print(f"Costs modeled: {fee_bps:.0f} bps fee + {slippage_bps:.0f} bps slippage per side.")
+    if not days:
+        print("\nNo archived news scores yet (state/news.json). Run `python main.py news` (dry-run is fine) "
+              "on a schedule for a few weeks first -- RSS feeds keep no history, so the bot has to build it.")
+        return
+    print(f"Archive: {len(days)} day{'s' if len(days) != 1 else ''} of scores, {days[0]} to {days[-1]}.")
+    if len(days) < min_archive_days:
+        print(f"WARNING: fewer than {min_archive_days} days archived -- too little to draw any conclusion "
+              "from; this run is a plumbing check, not evidence.")
+    print(f"Walk-forward: {n_windows} sequential out-of-sample window{'s' if n_windows != 1 else ''} per symbol.\n")
+
+    archived_symbols = sorted({s for by_sym in hist.values() for s in by_sym})
+    symbols = [s for s in symbols if s in archived_symbols] or archived_symbols
+    price_data = fetch_history(symbols, period=period)
+    if not price_data:
+        print("No price data for any symbol.")
+        return
+
+    warmup_bars = max(trend_filter_days or 0, 20) + 5
+    min_bars = max(2, (trend_filter_days or 0) + 1)
+    first_day = pd.Timestamp(days[0])
+    last_day = pd.Timestamp(days[-1])
+    all_closed = []
+    for sym, df in price_data.items():
+        factory = lambda sym=sym: NewsSentiment(buy_threshold, sell_threshold, min_headlines,
+                                                trend_filter=trend_filter_days, max_chase_pct=max_chase_pct,
+                                                score_history=hist, backtest_symbol=sym)
+        naive_index = df.index.tz_localize(None) if df.index.tz is not None else df.index
+        start_pos = max(0, int((naive_index < first_day).sum()) - warmup_bars)
+        df = df[(naive_index <= last_day + pd.Timedelta(days=1))].iloc[start_pos:]
+        try:
+            windows = walk_forward(factory, df, n_windows, fee_bps, slippage_bps, min_bars=min_bars,
+                                    stop_loss_pct=stop_loss_pct, take_profit_pct=take_profit_pct,
+                                    max_hold_bars=max_hold_days)
+        except ValueError as exc:
+            print(f"{sym}: {exc}")
+            continue
+        closed = [t for w in windows if w for t in w["trades"] if not t.get("open_at_end")]
+        all_closed.extend(closed)
+        if not closed:
+            continue
+        print(f"=== {sym} ===")
+        print(f"{'window':>6} {'period':<23} {'Return':>8} {'MaxDD':>8} {'WinRate':>8} {'Trades':>7}")
+        for w in windows:
+            if not w:
+                continue
+            span = f"{w['start'].date()} to {w['end'].date()}"
+            print(f"{w['window']:>6} {span:<23} {_pct(w['total_return']):>8} {_pct(w['max_drawdown']):>8} "
+                  f"{_pct(w['win_rate']):>8} {w['closed_trades']:>7}")
+        for t in closed:
+            print(f"      {t['entry_date'].date()} -> {t['exit_date'].date()}  {_pct(t['pnl_pct']):>7}  "
+                  f"{t['exit_reason']:<11} {t.get('entry_reason') or ''}")
+        print()
+
+    if not all_closed:
+        print("No completed trades over the archived period (symbols without any trade are not listed).")
+        return
+    wins = [t for t in all_closed if t["pnl_pct"] > 0]
+    avg = sum(t["pnl_pct"] for t in all_closed) / len(all_closed)
+    by_exit: dict[str, list] = {}
+    for t in all_closed:
+        by_exit.setdefault(t["exit_reason"], []).append(t["pnl_pct"])
+    print(f"All symbols: {len(all_closed)} closed trades, win rate {len(wins) / len(all_closed):.1%}, "
+          f"avg {_pct(avg)} per trade.")
+    for reason, pnls in sorted(by_exit.items()):
+        print(f"  {reason:<11} {len(pnls):>4} trades, avg {_pct(sum(pnls) / len(pnls))}")

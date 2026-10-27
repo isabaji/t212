@@ -4,15 +4,24 @@
   python main.py account             # show cash and open positions
   python main.py backtest            # walk-forward backtest the swing strategy
   python main.py backtest --daytrade # walk-forward backtest the day-trade strategy
+  python main.py backtest --news     # replay archived news scores vs prices (needs `news` to have run a while)
   python main.py run                 # run one trading cycle (respects DRY_RUN)
+  python main.py daytrade            # run one day-trading cycle (respects DRY_RUN)
+  python main.py news                # run one news-driven cycle (respects DRY_RUN)
   python main.py test-order          # place one small manual order (respects DRY_RUN)
 """
 
 import argparse
 import logging
 
-from t212bot.backtest import DEFAULT_FEE_BPS, DEFAULT_SLIPPAGE_BPS, print_backtest, print_daytrade_backtest
-from t212bot.bot import run_cycle, run_day_trade_cycle
+from t212bot.backtest import (
+    DEFAULT_FEE_BPS,
+    DEFAULT_SLIPPAGE_BPS,
+    print_backtest,
+    print_daytrade_backtest,
+    print_news_backtest,
+)
+from t212bot.bot import run_cycle, run_day_trade_cycle, run_news_cycle
 from t212bot.client import Trading212Client
 from t212bot.config import Config
 from t212bot.strategy import (
@@ -20,6 +29,7 @@ from t212bot.strategy import (
     GapFillReversal,
     LongTermTrendConfluence,
     MeanReversionPullback,
+    NewsSentiment,
     OpeningRangeConfluence,
     SMACrossover,
 )
@@ -47,7 +57,7 @@ def cmd_account(cfg: Config) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Trading212 algorithmic trading bot")
-    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade", "test-order"])
+    parser.add_argument("command", choices=["account", "backtest", "run", "daytrade", "news", "test-order"])
     parser.add_argument("--symbol", default="AAPL", help="test-order command only: Yahoo symbol to buy")
     parser.add_argument("--qty", type=float, default=0.01,
                          help="test-order command only: share quantity to buy (small, fractional)")
@@ -127,6 +137,15 @@ def main() -> None:
                               "intraday pull (off by default)")
     parser.add_argument("--daytrade", action="store_true",
                          help="backtest command only: backtest the day-trade strategy instead of swing")
+    parser.add_argument("--news", action="store_true",
+                         help="backtest command only: replay the news strategy over the per-day scores "
+                              "archived in state/news.json by `python main.py news` (RSS feeds keep no "
+                              "history, so only the period the news bot has actually run for can be "
+                              "tested). Thresholds/exits come from the NEWS_* env vars; --stop-loss-pct/"
+                              "--take-profit-pct/--windows override them for the run")
+    parser.add_argument("--max-hold-days", type=int, default=None,
+                         help="backtest --news only: force-exit after this many daily bars (default: "
+                              "NEWS_MAX_HOLD_DAYS config value; 0 disables)")
     parser.add_argument("--days", type=int, default=60,
                          help="backtest --daytrade only: calendar days of intraday history to fetch "
                               "(default 60)")
@@ -186,10 +205,28 @@ def main() -> None:
 
     cfg = Config()
 
+    def news_strategy() -> NewsSentiment:
+        return NewsSentiment(buy_threshold=cfg.news_buy_threshold, sell_threshold=cfg.news_sell_threshold,
+                             min_headlines=cfg.news_min_headlines,
+                             trend_filter=cfg.news_trend_filter_days or None,
+                             max_chase_pct=cfg.news_max_chase_pct or None)
+
     if args.command == "backtest":
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()] if args.symbols \
             else cfg.watchlist
-        if args.daytrade:
+        if args.news:
+            max_hold = args.max_hold_days if args.max_hold_days is not None else cfg.news_max_hold_days
+            print_news_backtest(symbols, args.windows or 1, args.fee_bps, args.slippage_bps,
+                                buy_threshold=cfg.news_buy_threshold, sell_threshold=cfg.news_sell_threshold,
+                                min_headlines=cfg.news_min_headlines,
+                                trend_filter_days=cfg.news_trend_filter_days or None,
+                                max_chase_pct=cfg.news_max_chase_pct or None,
+                                stop_loss_pct=(args.stop_loss_pct if args.stop_loss_pct is not None
+                                               else cfg.news_stop_loss_pct or None),
+                                take_profit_pct=(args.take_profit_pct if args.take_profit_pct is not None
+                                                 else cfg.news_take_profit_pct or None),
+                                max_hold_days=max_hold or None)
+        elif args.daytrade:
             confirm_bars = args.confirm_bars if args.confirm_bars is not None else cfg.daytrade_confirm_bars
             rsi_buy_range = None
             if args.rsi_buy_min is not None or args.rsi_buy_max is not None:
@@ -266,6 +303,15 @@ def main() -> None:
             GapFillReversal(),
         ], min_votes=2, required=[orb])
         run_day_trade_cycle(cfg, strategy)
+    elif args.command == "news":
+        # Third strategy: free headline feed (Yahoo Finance RSS) scored by a
+        # finance lexicon, traded as a few-day post-news drift with price
+        # confirmation -- see NewsSentiment in t212bot/strategy.py and
+        # run_news_cycle in t212bot/bot.py. Unvalidated at the time of
+        # writing (no free headline history to backtest against); run it
+        # dry-run on a schedule to build state/news.json, then
+        # `backtest --news` before ever arming NEWS_DRY_RUN=false.
+        run_news_cycle(cfg, news_strategy())
     elif args.command == "test-order":
         place_test_order(cfg, args.symbol, args.qty)
 

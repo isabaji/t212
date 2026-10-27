@@ -1072,3 +1072,154 @@ class EnsembleVote(Strategy):
             else:
                 result[sym] = SignalResult(Signal.HOLD)
         return result
+
+
+class NewsSentiment(Strategy):
+    """News-driven swing strategy: buy a stock whose recent headlines are
+    clearly and broadly positive AND whose price is already confirming it;
+    sell when the headlines turn clearly negative. Runs on daily bars plus
+    per-symbol headline scores from t212bot/news.py (free Yahoo Finance RSS,
+    scored by a deterministic finance lexicon -- see that module for why
+    not an LLM, and what it can and can't read).
+
+    The thesis is post-news *drift*, not the first reaction: the initial
+    jump on a guidance raise or earnings beat is gone before any free RSS
+    poll sees it, but the follow-through over the next few sessions is
+    what this tries to catch -- which is why entries require the price to
+    have already moved the same way the news says (require_price_confirmation)
+    and why the live cycle holds for at most a few days (news_max_hold_days
+    in bot.py) with a stop/take-profit, rather than waiting for the news to
+    turn. Untested on real data at the time of writing: RSS feeds hold no
+    history, so there was nothing to backtest against until the bot has
+    paper-traded for a while and built up state/news.json -- see
+    backtest.print_news_backtest. Treat every default below as a starting
+    point to be checked against that archive, not a tuned value.
+
+    Gates, all of which must pass for a BUY:
+    - score >= buy_threshold with at least min_headlines headlines the
+      lexicon could score, and at least min_pos_frac of those positive
+      (broad agreement, not one strong story averaging out several mild
+      ones).
+    - "Fresh" news: the most recent archived day before this one was NOT
+      already a BUY-grade score for this symbol. A stock that's been
+      "good news" for days is no longer a news event, it's a trend -- and
+      the swing bot already trades trends. Also stops the bot re-buying
+      the same story every day after a max-hold exit.
+    - Price confirmation: today's close is above yesterday's (the market
+      agrees the news is good) and above its trend_filter-day SMA (not
+      buying good news into a downtrend, where it's usually a relief
+      bounce to sell into).
+    - Anti-chase: today's move is below max_chase_pct. If the stock has
+      already gapped 8% on the story, the drift this is after is mostly
+      priced in and the downside of a fade is larger (HOLD, reason
+      "chased").
+
+    SELL is a hair trigger, as everywhere else here: score <= sell_threshold
+    on min_headlines scored headlines, regardless of price -- bad news on a
+    position held *for* its news is the thesis failing.
+
+    strength: average of three 0..1 sub-scores -- how far the score clears
+    buy_threshold (scaled so strength_norm_score maps to 1.0), headline
+    count relative to 2x min_headlines, and today's move relative to
+    max_chase_pct. A barely-qualifying setup sizes small.
+
+    score_history: {"YYYY-MM-DD": {symbol: NewsScore}} -- the archive the
+    backtest replays, keyed by the date of each bar; also where the
+    live cycle's "fresh news" check looks for yesterday. set_news() gives
+    the live cycle's just-fetched scores priority over the archive for
+    today's own reading.
+
+    backtest_symbol: the backtest engine runs one symbol at a time under a
+    placeholder key (see backtest._signal_series), so a replaying instance
+    is told here which symbol's archive entries to read. None (live) uses
+    each symbol's own key in `prices`.
+    """
+
+    def __init__(self, buy_threshold: float = 0.35, sell_threshold: float = -0.35,
+                 min_headlines: int = 3, min_pos_frac: float = 0.6, trend_filter: int | None = 20,
+                 max_chase_pct: float | None = 0.05, require_price_confirmation: bool = True,
+                 strength_norm_score: float = 0.8, fresh_window_days: int = 3,
+                 score_history: dict | None = None, backtest_symbol: str | None = None):
+        if buy_threshold <= 0 or sell_threshold >= 0:
+            raise ValueError("buy_threshold must be > 0 and sell_threshold < 0")
+        self.buy_threshold = buy_threshold
+        self.sell_threshold = sell_threshold
+        self.min_headlines = min_headlines
+        self.min_pos_frac = min_pos_frac
+        self.trend_filter = trend_filter
+        self.max_chase_pct = max_chase_pct
+        self.require_price_confirmation = require_price_confirmation
+        self.strength_norm_score = strength_norm_score
+        self.fresh_window_days = fresh_window_days
+        self.score_history = dict(score_history or {})
+        self.backtest_symbol = backtest_symbol
+        self.live_scores: dict | None = None
+
+    def set_news(self, scores: dict, history: dict | None = None) -> None:
+        """Live cycle: today's fresh per-symbol NewsScore map, plus (optionally)
+        the archive for the fresh-news lookback."""
+        self.live_scores = scores
+        if history is not None:
+            self.score_history = dict(history)
+
+    def _score_for(self, sym: str, day: str):
+        if self.live_scores is not None:
+            return self.live_scores.get(sym)
+        return self.score_history.get(day, {}).get(sym)
+
+    def _previous_score(self, sym: str, day: str):
+        """Most recent archived score for sym strictly before `day`, if it's
+        within fresh_window_days (calendar) -- older is treated as no prior news."""
+        day_ts = pd.Timestamp(day)
+        best_day = None
+        for d in self.score_history:
+            if d < day and (best_day is None or d > best_day) and sym in self.score_history[d]:
+                best_day = d
+        if best_day is None or (day_ts - pd.Timestamp(best_day)).days > self.fresh_window_days:
+            return None
+        return self.score_history[best_day][sym]
+
+    def generate_signals(self, prices: dict[str, pd.DataFrame],
+                          confirm_prices: dict[str, pd.DataFrame] | None = None,
+                          daily_prices: dict[str, pd.DataFrame] | None = None) -> dict[str, SignalResult]:
+        signals: dict[str, SignalResult] = {}
+        min_bars = max(2, (self.trend_filter or 0) + 1)
+        for sym, df in prices.items():
+            close = df["Close"]
+            if len(close) < min_bars:
+                signals[sym] = SignalResult(Signal.HOLD)
+                continue
+            day = pd.Timestamp(df.index[-1]).strftime("%Y-%m-%d")
+            lookup_sym = self.backtest_symbol or sym
+            ns = self._score_for(lookup_sym, day)
+            if ns is None or ns.n_scored < self.min_headlines:
+                signals[sym] = SignalResult(Signal.HOLD)
+                continue
+            if ns.score <= self.sell_threshold:
+                signals[sym] = SignalResult(Signal.SELL, reason=f"news:{ns.n_scored}:{ns.score:+.2f}")
+                continue
+            if ns.score < self.buy_threshold or ns.pos_frac < self.min_pos_frac:
+                signals[sym] = SignalResult(Signal.HOLD)
+                continue
+            prev = self._previous_score(lookup_sym, day)
+            if prev is not None and prev.n_scored >= self.min_headlines and prev.score >= self.buy_threshold:
+                signals[sym] = SignalResult(Signal.HOLD, reason="stale_news")
+                continue
+            day_move = float(close.iloc[-1] / close.iloc[-2] - 1)
+            if self.max_chase_pct is not None and day_move > self.max_chase_pct:
+                signals[sym] = SignalResult(Signal.HOLD, reason="chased")
+                continue
+            if self.require_price_confirmation and day_move <= 0:
+                signals[sym] = SignalResult(Signal.HOLD, reason="unconfirmed")
+                continue
+            if self.trend_filter:
+                sma = close.rolling(self.trend_filter).mean().iloc[-1]
+                if close.iloc[-1] <= sma:
+                    signals[sym] = SignalResult(Signal.HOLD, reason="downtrend")
+                    continue
+            score_part = (ns.score - self.buy_threshold) / max(1e-9, self.strength_norm_score - self.buy_threshold)
+            count_part = ns.n_scored / (2 * self.min_headlines)
+            move_part = day_move / self.max_chase_pct if self.max_chase_pct else 1.0
+            strength = sum(max(0.0, min(1.0, p)) for p in (score_part, count_part, move_part)) / 3
+            signals[sym] = SignalResult(Signal.BUY, strength, reason=f"news:{ns.n_scored}:{ns.score:+.2f}")
+        return signals

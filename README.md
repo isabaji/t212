@@ -26,10 +26,12 @@ is split into three layers:
 1. **Data** — the swing strategy's daily bars come from Yahoo Finance
    (`yfinance`); the day-trade strategy's intraday bars come from Alpaca's
    free market data API instead (real-time IEX feed, 5-minute bars by
-   default, configurable — see below for why).
+   default, configurable — see below for why). The news strategy adds
+   headlines from Yahoo Finance's free per-ticker RSS feed (no key).
 2. **Strategy** — a pluggable class turns price history into BUY/SELL/HOLD signals.
-   Two are included: a daily SMA-crossover (swing trading) and an intraday
-   opening-range breakout (day trading) — see below.
+   Three are included: a daily SMA-crossover (swing trading), an intraday
+   opening-range ensemble (day trading), and a headline-sentiment strategy
+   (news trading) — see below.
 3. **Risk** — position sizing, max open positions, and a cash buffer are enforced
    before any order is sent. A daily profit-target/loss-limit sits alongside this
    (see below) — it's a stop mechanism, not a return guarantee.
@@ -72,6 +74,12 @@ Key settings in `.env`:
 | `DAYTRADE_CONFIRM_BARS` | `3` | Backtest only (`--strategy orb`): require this many trailing 1-min closes to hold above the breakout level before buying — `0` disables it. Not used by the live bot, which always runs the 3-way ensemble — see below |
 | `DAYTRADE_ENTRY_DELAY_MINUTES` | `25` | Day-trade bot only: minutes after the cron window opens (13:00 UTC) before the bot will open new positions — analysis/signals still run from the window's start, this only delays entries, never exits — `0` disables it |
 | `DAYTRADE_STOP_LOSS_PCT` / `DAYTRADE_TAKE_PROFIT_PCT` | `0.01` / `0.02` | Day-trade bot only: force-exit a position if the latest bar's Low/High crosses this far from the actual average fill price — `0` disables either side independently |
+| `NEWS_BUY_THRESHOLD` / `NEWS_SELL_THRESHOLD` | `0.35` / `-0.35` | News bot only: headline score (−1..+1) at or above which to buy / at or below which to sell — see "News trading" below |
+| `NEWS_MIN_HEADLINES` | `3` | News bot only: headlines the lexicon could score before a symbol's score counts at all |
+| `NEWS_HALF_LIFE_HOURS` / `NEWS_MAX_AGE_HOURS` | `12` / `48` | News bot only: a headline's weight halves every half-life; older than max-age is ignored |
+| `NEWS_MAX_HOLD_DAYS` | `3` | News bot only: force-exit a news position after this many calendar days |
+| `NEWS_STOP_LOSS_PCT` / `NEWS_TAKE_PROFIT_PCT` | `0.03` / `0.06` | News bot only: force-exit if the day's Low/High crosses this far from the real average fill — `0` disables either side |
+| `NEWS_MAX_CHASE_PCT` / `NEWS_TREND_FILTER_DAYS` | `0.05` / `20` | News bot only: skip a buy if today's move is already past the chase limit, or price is below its N-day SMA — `0` disables either |
 | `WATCHLIST` | `AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE` | Symbols the strategy scans (30 large-caps across 9 sectors by default) — same tickers work against both Yahoo and Alpaca for US equities |
 | `DAILY_PROFIT_TARGET_PCT` | `0.0075` | Stop opening new positions once today's realized gain hits this fraction of account value |
 | `DAILY_LOSS_LIMIT_PCT` | `0.01` | Stop opening new positions once today's realized loss hits this fraction of account value |
@@ -328,8 +336,10 @@ python main.py backtest               # walk-forward backtest the swing strategy
 python main.py backtest --daytrade    # walk-forward backtest the day-trade strategy
 python main.py backtest --daytrade --confirm-bars 0     # ...and again with the confirmation gate off, to compare
 python main.py backtest --windows 6 --slippage-bps 10   # tune the assumptions
+python main.py backtest --news        # replay archived news scores vs prices (see "News trading")
 python main.py run                    # run one swing-trading cycle (dry-run by default)
 python main.py daytrade               # run one day-trading cycle (dry-run by default)
+python main.py news                   # run one news-driven cycle (dry-run by default)
 ```
 
 When you're happy with dry-run output, set `DRY_RUN=false` (still on `demo`) and
@@ -341,14 +351,20 @@ The bot is intentionally stateless — one invocation = one cycle. You have two 
 
 **Option A — GitHub Actions (recommended, no server needed):**
 
-Two workflows are already set up:
+Three workflows are already set up:
 
 - `.github/workflows/trading-bot.yml` — swing trading, every 15 minutes during
   US market hours (`python main.py run`).
 - `.github/workflows/trading-bot-daytrade.yml` — day trading, every 5 minutes
   during a padded market-hours window (`python main.py daytrade`).
+- `.github/workflows/trading-bot-news.yml` — news trading (`python main.py
+  news`). Its dry-run switch is the separate `NEWS_DRY_RUN` secret; no extra
+  API key is needed. **Ships without an active schedule**: it runs only via
+  **Run workflow** or a `repository_dispatch` of type `external-cron-news`
+  (e.g. from cron-job.org) until you uncomment the `schedule:` block in the
+  file (every 30 minutes during market hours).
 
-They're independent — enable one, both, or neither. To turn them on:
+They're independent — enable any subset. To turn them on:
 
 1. On GitHub, go to this repo → **Settings → Secrets and variables → Actions**.
 2. Under **Secrets**, click **New repository secret** and add two secrets:
@@ -359,13 +375,14 @@ They're independent — enable one, both, or neither. To turn them on:
      funding needed — generate one at [app.alpaca.markets](https://app.alpaca.markets))
    - Name: `ALPACA_API_SECRET` — Value: the matching Alpaca API secret
 4. (Optional) **Also under Secrets** (not Variables — see the note below), add
-   any of `T212_ENV`, `DRY_RUN`, `DAYTRADE_DRY_RUN`, `WATCHLIST`,
-   `DAYTRADE_WATCHLIST`, `DAYTRADE_BAR_MINUTES`, `DAYTRADE_STOP_LOSS_PCT`,
-   `DAYTRADE_TAKE_PROFIT_PCT`, `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`,
-   `CASH_BUFFER_PCT` to override the defaults — see the env var table above.
-   `DRY_RUN` and `DAYTRADE_DRY_RUN` are separate on purpose, so you can arm one
-   mode without arming the other. Leave everything unset to start safely in
-   demo/dry-run mode.
+   any of `T212_ENV`, `DRY_RUN`, `DAYTRADE_DRY_RUN`, `NEWS_DRY_RUN`, `WATCHLIST`,
+   `DAYTRADE_WATCHLIST`, `NEWS_WATCHLIST`, `DAYTRADE_BAR_MINUTES`,
+   `DAYTRADE_STOP_LOSS_PCT`, `DAYTRADE_TAKE_PROFIT_PCT`, any `NEWS_*` knob,
+   `MAX_POSITION_PCT`, `MAX_OPEN_POSITIONS`, `CASH_BUFFER_PCT` to override the
+   defaults — see the env var table above. `DRY_RUN`, `DAYTRADE_DRY_RUN` and
+   `NEWS_DRY_RUN` are separate on purpose, so you can arm one mode without
+   arming the others. Leave everything unset to start safely in demo/dry-run
+   mode.
 5. Go to the **Actions** tab → pick a workflow → **Run workflow** to trigger
    it manually and check the logs, or just wait for the schedule.
 
@@ -392,6 +409,7 @@ No terminal or local Python install required — GitHub runs it for you.
 ```cron
 */15 13-21 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py run       >> swing.log 2>&1
 */5  13-20 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py daytrade  >> daytrade.log 2>&1
+*/30 13-20 * * 1-5  cd /path/to/t212 && .venv/bin/python main.py news      >> news.log 2>&1
 ```
 
 ## Day trading: the 3-way ensemble, and its limits
@@ -533,10 +551,69 @@ strategies for comparison with `--strategy orb`, `mean_reversion`, or
   (e.g. the US Pattern Day Trader rule, which shouldn't apply to a Trading212
   account but wasn't something I could verify against your specific account).
 
+## News trading: headline sentiment with price confirmation
+
+`python main.py news` is the third strategy. Each cycle it pulls the latest
+headlines for every watchlist symbol from **Yahoo Finance's free per-ticker RSS
+feed** (no API key, no account; Google News RSS is the per-symbol fallback if
+Yahoo errors), scores each headline with a finance-specific word/phrase
+lexicon ("raises guidance" +1.0, "misses estimates" −0.9, "downgraded to sell"
+−0.9, generic "rises"/"falls" ±0.3, with negation handling and listicle/"should
+you buy?" filler down-weighted), and combines them into one recency-weighted
+score per symbol between −1 and +1 (`t212bot/news.py`).
+
+`NewsSentiment` (`t212bot/strategy.py`) then **buys** only when all of these
+hold, and **sells** a position it opened as soon as the score turns clearly
+negative:
+
+- score ≥ `NEWS_BUY_THRESHOLD` on at least `NEWS_MIN_HEADLINES` scorable
+  headlines, at least 60% of them positive — broad agreement, not one story;
+- the news is *fresh*: yesterday's score for that symbol wasn't already
+  buy-grade (a stock that's been "good news" for days is a trend, which the
+  swing bot already trades — and this also stops re-buying the same story
+  every day after an exit);
+- the price confirms it: up on the day and above its 20-day SMA, but **not**
+  up more than `NEWS_MAX_CHASE_PCT` already (if it's gapped 8% on the story,
+  the move this is after has mostly happened).
+
+Positions it opens are closed by whichever comes first: a `NEWS_STOP_LOSS_PCT`/
+`NEWS_TAKE_PROFIT_PCT` touch on the day's Low/High, `NEWS_MAX_HOLD_DAYS`
+calendar days, or the SELL signal. It only ever manages positions it opened
+itself (`state/position_ownership.json`, owner `news`), same as the day-trade
+bot. Everything else — sizing by signal strength and ATR, sector cap, daily
+target/loss limit, drawdown pause, losing-streak cooldown — is the shared
+machinery the other two bots use.
+
+**What it is and isn't.** It's a poll of a free feed every 30 minutes, not a
+news wire: anyone paying for low-latency news has traded the headline long
+before this bot sees it, so the thesis is the slower few-day *drift* after
+clearly good news with price agreeing, not the first seconds of the reaction.
+The lexicon is deliberately crude and deterministic (same headline → same
+score, every time, which a reproducible backtest needs); an LLM scorer could
+replace `score_headline()` later without touching anything downstream.
+
+**It has no backtest evidence yet, and here's why.** Free RSS feeds hold no
+history — only the latest ~20 headlines per ticker — so there was nothing to
+replay when it was written. Instead, every cycle archives that day's
+per-symbol scores to `state/news.json` (scores, counts and dates only — no
+prices or dollar figures, this repo is public), and `python main.py backtest
+--news` replays that archive against daily prices through the same
+walk-forward engine as the swing backtest, with the same stop/take-profit/
+max-hold exits. So the intended sequence is: run the workflow **dry-run** for
+a few weeks to build the archive, run `backtest --news`, adjust the `NEWS_*`
+thresholds if the evidence says to, and only then consider `NEWS_DRY_RUN=false`
+(still on `demo`). Until there are at least ~20 archived days the backtest
+says so and should be read as a plumbing check, not a result. Every default
+in the `NEWS_*` table above is a starting point, not a tuned value.
+
 ## Extending
 
 - **New strategy:** subclass `Strategy` in `t212bot/strategy.py` and implement
-  `generate_signals()`. Wire it up in `main.py`.
+  `generate_signals()`. Wire it up in `main.py`. A strategy that needs a
+  non-price input (like `NewsSentiment`'s headline scores) gets it via its own
+  setter called from its cycle in `t212bot/bot.py` — the `generate_signals()`
+  signature stays price-only so the backtest engine can drive every strategy
+  the same way.
 - **Ticker mapping:** Trading212 uses tickers like `AAPL_US_EQ`; Yahoo uses `AAPL`.
   `t212bot/data.py` maps between them — extend `YAHOO_TO_T212` for non-US listings.
 

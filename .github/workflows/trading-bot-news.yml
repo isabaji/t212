@@ -1,0 +1,110 @@
+name: Trading212 News Bot
+
+on:
+  # NOT SCHEDULED YET, on purpose: this strategy was added while the other
+  # two bots were deliberately switched off, so it ships able to run only by
+  # hand (Run workflow) or via an external dispatch. To start paper-trading
+  # it on GitHub's own scheduler, uncomment the two lines below -- every 30
+  # minutes during US market hours (13:00-21:00 UTC covers both EST and
+  # EDT), weekdays. Headlines are polled from a free RSS feed each run, so
+  # this is "check the news every half hour", not a streaming wire -- see
+  # t212bot/news.py. Half-hourly rather than every 5 minutes on purpose: the
+  # strategy trades a multi-day drift on daily bars, not the first seconds
+  # of a reaction, and a free RSS endpoint hit 30 times per run shouldn't
+  # be hammered. Alternatively point cron-job.org at the repository_dispatch
+  # type below, like the other two bots.
+  # schedule:
+  #   - cron: '20,50 13-20 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (log intended orders, do not place them)'
+        type: boolean
+        default: true
+  # External-cron fallback trigger, same arrangement as the other two bots:
+  # GitHub's own `schedule` has proven unreliable, and repository_dispatch
+  # (unlike workflow_dispatch) carries no dry_run input, so DRY_RUN below
+  # falls through to the NEWS_DRY_RUN secret exactly like a native schedule
+  # run would.
+  repository_dispatch:
+    types: [external-cron-news]
+
+jobs:
+  run-news-bot:
+    runs-on: ubuntu-latest
+    # Needed to commit the state files (including the news score archive)
+    # back to the repo.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Run news bot
+        # Config is deliberately stored as Secrets, not Variables, even though
+        # none of it is a credential — this repo is public, and only Secrets
+        # get GitHub's automatic log-masking. Variables print in plain text in
+        # every run's "env:" log block regardless of repo visibility.
+        env:
+          T212_API_KEY: ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+          T212_ENV: ${{ secrets.T212_ENV || 'demo' }}
+          # Separate from the swing/day-trade bots' DRY_RUN so each mode is
+          # armed independently. This strategy has no backtest evidence
+          # behind it until the archive it builds while dry-running has been
+          # replayed (`python main.py backtest --news`) -- leave this unset
+          # until then.
+          DRY_RUN: ${{ github.event.inputs.dry_run || secrets.NEWS_DRY_RUN || 'true' }}
+          I_UNDERSTAND_LIVE_TRADING_RISK: ${{ secrets.I_UNDERSTAND_LIVE_TRADING_RISK || 'no' }}
+          WATCHLIST: ${{ secrets.NEWS_WATCHLIST || secrets.WATCHLIST || 'AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,UNH,HD,XOM,JNJ,PG,DIS,AVGO,CRM,NFLX,NKE,MCD,BAC,MA,PFE,ABBV,CVX,KO,WMT,BA,CAT,NEE' }}
+          # News strategy knobs -- see t212bot/config.py for what each does.
+          NEWS_BUY_THRESHOLD: ${{ secrets.NEWS_BUY_THRESHOLD || '0.35' }}
+          NEWS_SELL_THRESHOLD: ${{ secrets.NEWS_SELL_THRESHOLD || '-0.35' }}
+          NEWS_MIN_HEADLINES: ${{ secrets.NEWS_MIN_HEADLINES || '3' }}
+          NEWS_HALF_LIFE_HOURS: ${{ secrets.NEWS_HALF_LIFE_HOURS || '12' }}
+          NEWS_MAX_AGE_HOURS: ${{ secrets.NEWS_MAX_AGE_HOURS || '48' }}
+          NEWS_MAX_HOLD_DAYS: ${{ secrets.NEWS_MAX_HOLD_DAYS || '3' }}
+          NEWS_STOP_LOSS_PCT: ${{ secrets.NEWS_STOP_LOSS_PCT || '0.03' }}
+          NEWS_TAKE_PROFIT_PCT: ${{ secrets.NEWS_TAKE_PROFIT_PCT || '0.06' }}
+          NEWS_MAX_CHASE_PCT: ${{ secrets.NEWS_MAX_CHASE_PCT || '0.05' }}
+          NEWS_TREND_FILTER_DAYS: ${{ secrets.NEWS_TREND_FILTER_DAYS || '20' }}
+          MAX_POSITION_PCT: ${{ secrets.MAX_POSITION_PCT || '0.35' }}
+          MAX_OPEN_POSITIONS: ${{ secrets.MAX_OPEN_POSITIONS || '10' }}
+          CASH_BUFFER_PCT: ${{ secrets.CASH_BUFFER_PCT || '0.05' }}
+          DAILY_PROFIT_TARGET_PCT: ${{ secrets.DAILY_PROFIT_TARGET_PCT || '0.0075' }}
+          DAILY_LOSS_LIMIT_PCT: ${{ secrets.DAILY_LOSS_LIMIT_PCT || '0.01' }}
+          LOSING_STREAK_LIMIT: ${{ secrets.LOSING_STREAK_LIMIT || '3' }}
+          LOSING_STREAK_COOLDOWN_DAYS: ${{ secrets.LOSING_STREAK_COOLDOWN_DAYS || '5' }}
+          RISK_PER_TRADE_PCT: ${{ secrets.RISK_PER_TRADE_PCT || '0.01' }}
+          ATR_MULTIPLE: ${{ secrets.ATR_MULTIPLE || '2.0' }}
+          ATR_PERIOD: ${{ secrets.ATR_PERIOD || '14' }}
+          MAX_SECTOR_EXPOSURE_PCT: ${{ secrets.MAX_SECTOR_EXPOSURE_PCT || '0.35' }}
+          MAX_PORTFOLIO_DRAWDOWN_PCT: ${{ secrets.MAX_PORTFOLIO_DRAWDOWN_PCT || '0.15' }}
+        run: python main.py news
+
+      - name: Persist bot state (daily target, trade stats, portfolio risk, news score archive)
+        # Percentages/counts/dates/-1..1 scores only, never a dollar figure
+        # — see t212bot/news.py alongside the other state modules. Shared
+        # with the other two workflows, so pushes can race; retry a few
+        # times with a rebase in between rather than failing the job over it.
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain state/ 2>/dev/null)" ]; then
+            git config user.name "t212-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add state/
+            git commit -m "chore: update bot state"
+            for i in 1 2 3; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+              echo "Push attempt $i failed, retrying..."
+              sleep $((i * 3))
+            done
+          else
+            echo "No change to bot state."
+          fi
