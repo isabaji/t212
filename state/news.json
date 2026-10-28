@@ -1,11 +1,11 @@
 {
   "closed": {},
   "positions": {
-    "CHKK_US_EQ": {
-      "entered": "2026-10-27"
+    "DB_US_EQ": {
+      "entered": "2026-10-28"
     },
-    "WYN_US_EQ": {
-      "entered": "2026-10-27"
+    "IEX_US_EQ": {
+      "entered": "2026-10-28"
     }
   },
   "scores": {
@@ -363,6 +363,248 @@
         "pos": 1.0,
         "score": 0.7449,
         "total": 10
+      }
+    },
+    "2026-10-28": {
+      "AAPL": {
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.1059,
+        "total": 14
+      },
+      "ABT": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.5816,
+        "total": 8
+      },
+      "AER": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.7176,
+        "total": 10
+      },
+      "AMZN": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.4239,
+        "total": 8
+      },
+      "APH": {
+        "n": 9,
+        "pos": 1.0,
+        "score": 0.6287,
+        "total": 15
+      },
+      "ASX": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.2072,
+        "total": 5
+      },
+      "AVTR": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5867,
+        "total": 7
+      },
+      "BA": {
+        "n": 8,
+        "pos": 0.125,
+        "score": -0.3165,
+        "total": 18
+      },
+      "BKR": {
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.3654,
+        "total": 17
+      },
+      "BPOP": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.964,
+        "total": 3
+      },
+      "BSX": {
+        "n": 13,
+        "pos": 0.077,
+        "score": -0.5088,
+        "total": 19
+      },
+      "CAKE": {
+        "n": 9,
+        "pos": 1.0,
+        "score": 0.5267,
+        "total": 17
+      },
+      "DB": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5606,
+        "total": 9
+      },
+      "EAT": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.5181,
+        "total": 10
+      },
+      "ENPH": {
+        "n": 11,
+        "pos": 0.091,
+        "score": -0.5632,
+        "total": 20
+      },
+      "EVR": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.7924,
+        "total": 10
+      },
+      "GEV": {
+        "n": 16,
+        "pos": 0.938,
+        "score": 0.4705,
+        "total": 21
+      },
+      "GOOGL": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.3111,
+        "total": 9
+      },
+      "GPI": {
+        "n": 12,
+        "pos": 0.667,
+        "score": 0.1416,
+        "total": 22
+      },
+      "GRMN": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.7203,
+        "total": 13
+      },
+      "HOOD": {
+        "n": 16,
+        "pos": 0.375,
+        "score": -0.32,
+        "total": 21
+      },
+      "IEX": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.7846,
+        "total": 10
+      },
+      "JLL": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.7776,
+        "total": 10
+      },
+      "KEX": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.6013,
+        "total": 9
+      },
+      "KO": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.4402,
+        "total": 13
+      },
+      "LH": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.6216,
+        "total": 12
+      },
+      "MSFT": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.3726,
+        "total": 8
+      },
+      "NWSA": {
+        "n": 8,
+        "pos": 0.625,
+        "score": 0.2697,
+        "total": 16
+      },
+      "ORCL": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.1302,
+        "total": 12
+      },
+      "PAG": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.6328,
+        "total": 5
+      },
+      "PB": {
+        "n": 4,
+        "pos": 0.5,
+        "score": 0.0359,
+        "total": 7
+      },
+      "PSX": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.5001,
+        "total": 11
+      },
+      "SKHY": {
+        "n": 21,
+        "pos": 0.952,
+        "score": 0.5407,
+        "total": 32
+      },
+      "STLA": {
+        "n": 10,
+        "pos": 0.7,
+        "score": 0.3767,
+        "total": 13
+      },
+      "STX": {
+        "n": 11,
+        "pos": 0.727,
+        "score": 0.3653,
+        "total": 16
+      },
+      "TEX": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.7275,
+        "total": 10
+      },
+      "V": {
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.5078,
+        "total": 14
+      },
+      "VRT": {
+        "n": 15,
+        "pos": 1.0,
+        "score": 0.6385,
+        "total": 19
+      },
+      "VZ": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5771,
+        "total": 12
+      },
+      "WING": {
+        "n": 7,
+        "pos": 0.571,
+        "score": 0.1942,
+        "total": 16
       }
     }
   }
