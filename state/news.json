@@ -1,6 +1,9 @@
 {
   "closed": {},
   "positions": {
+    "AER_US_EQ": {
+      "entered": "2026-10-28"
+    },
     "DB_US_EQ": {
       "entered": "2026-10-28"
     },
@@ -368,8 +371,8 @@
     "2026-10-28": {
       "AAPL": {
         "n": 2,
-        "pos": 0.5,
-        "score": -0.1059,
+        "pos": 1.0,
+        "score": 0.2499,
         "total": 14
       },
       "ABT": {
@@ -379,10 +382,10 @@
         "total": 8
       },
       "AER": {
-        "n": 5,
+        "n": 6,
         "pos": 1.0,
-        "score": 0.7176,
-        "total": 10
+        "score": 0.6483,
+        "total": 11
       },
       "AMZN": {
         "n": 3,
@@ -391,10 +394,16 @@
         "total": 8
       },
       "APH": {
-        "n": 9,
+        "n": 10,
         "pos": 1.0,
-        "score": 0.6287,
-        "total": 15
+        "score": 0.5957,
+        "total": 18
+      },
+      "AR": {
+        "n": 1,
+        "pos": 0.0,
+        "score": -0.7163,
+        "total": 8
       },
       "ASX": {
         "n": 4,
@@ -427,22 +436,40 @@
         "total": 3
       },
       "BSX": {
-        "n": 13,
-        "pos": 0.077,
-        "score": -0.5088,
+        "n": 14,
+        "pos": 0.071,
+        "score": -0.5697,
         "total": 19
       },
       "CAKE": {
         "n": 9,
-        "pos": 1.0,
-        "score": 0.5267,
+        "pos": 0.889,
+        "score": 0.3096,
         "total": 17
+      },
+      "CHDN": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.5917,
+        "total": 10
+      },
+      "CMG": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.3889,
+        "total": 20
+      },
+      "DAR": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.7163,
+        "total": 5
       },
       "DB": {
         "n": 5,
         "pos": 1.0,
-        "score": 0.5606,
-        "total": 9
+        "score": 0.616,
+        "total": 14
       },
       "EAT": {
         "n": 6,
@@ -462,41 +489,53 @@
         "score": 0.7924,
         "total": 10
       },
+      "F": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.4194,
+        "total": 5
+      },
+      "FDX": {
+        "n": 8,
+        "pos": 0.875,
+        "score": 0.4891,
+        "total": 11
+      },
       "GEV": {
         "n": 16,
         "pos": 0.938,
-        "score": 0.4705,
-        "total": 21
+        "score": 0.4477,
+        "total": 23
       },
       "GOOGL": {
-        "n": 3,
-        "pos": 1.0,
-        "score": 0.3111,
-        "total": 9
+        "n": 17,
+        "pos": 0.235,
+        "score": -0.3353,
+        "total": 26
       },
       "GPI": {
-        "n": 12,
-        "pos": 0.667,
-        "score": 0.1416,
-        "total": 22
+        "n": 16,
+        "pos": 0.75,
+        "score": 0.2691,
+        "total": 31
       },
       "GRMN": {
         "n": 7,
         "pos": 1.0,
-        "score": 0.7203,
-        "total": 13
+        "score": 0.7205,
+        "total": 16
       },
       "HOOD": {
-        "n": 16,
-        "pos": 0.375,
-        "score": -0.32,
-        "total": 21
+        "n": 11,
+        "pos": 0.091,
+        "score": -0.5045,
+        "total": 18
       },
       "IEX": {
         "n": 5,
         "pos": 1.0,
         "score": 0.7846,
-        "total": 10
+        "total": 11
       },
       "JLL": {
         "n": 4,
@@ -522,23 +561,53 @@
         "score": 0.6216,
         "total": 12
       },
-      "MSFT": {
-        "n": 4,
-        "pos": 1.0,
-        "score": 0.3726,
+      "LITE": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.368,
+        "total": 17
+      },
+      "MGM": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.7163,
         "total": 8
       },
+      "MRVL": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.3684,
+        "total": 15
+      },
+      "MSFT": {
+        "n": 17,
+        "pos": 0.882,
+        "score": 0.4988,
+        "total": 25
+      },
+      "NOW": {
+        "n": 10,
+        "pos": 0.4,
+        "score": -0.3219,
+        "total": 21
+      },
       "NWSA": {
-        "n": 8,
-        "pos": 0.625,
-        "score": 0.2697,
-        "total": 16
+        "n": 11,
+        "pos": 0.818,
+        "score": 0.3857,
+        "total": 20
       },
       "ORCL": {
         "n": 4,
         "pos": 0.75,
         "score": 0.1302,
         "total": 12
+      },
+      "ORLY": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 6
       },
       "PAG": {
         "n": 2,
@@ -552,29 +621,59 @@
         "score": 0.0359,
         "total": 7
       },
+      "PI": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.7761,
+        "total": 7
+      },
+      "POST": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 5
+      },
       "PSX": {
         "n": 7,
         "pos": 0.857,
-        "score": 0.5001,
-        "total": 11
-      },
-      "SKHY": {
-        "n": 21,
-        "pos": 0.952,
-        "score": 0.5407,
-        "total": 32
-      },
-      "STLA": {
-        "n": 10,
-        "pos": 0.7,
-        "score": 0.3767,
+        "score": 0.521,
         "total": 13
       },
-      "STX": {
+      "RJF": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.7127,
+        "total": 7
+      },
+      "SKHY": {
+        "n": 19,
+        "pos": 1.0,
+        "score": 0.5925,
+        "total": 26
+      },
+      "SOFI": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.4985,
+        "total": 15
+      },
+      "STLA": {
         "n": 11,
-        "pos": 0.727,
-        "score": 0.3653,
-        "total": 16
+        "pos": 0.818,
+        "score": 0.4405,
+        "total": 15
+      },
+      "STX": {
+        "n": 10,
+        "pos": 0.8,
+        "score": 0.3971,
+        "total": 15
+      },
+      "TENB": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.2657,
+        "total": 8
       },
       "TEX": {
         "n": 4,
@@ -589,10 +688,10 @@
         "total": 14
       },
       "VRT": {
-        "n": 15,
+        "n": 14,
         "pos": 1.0,
-        "score": 0.6385,
-        "total": 19
+        "score": 0.6085,
+        "total": 18
       },
       "VZ": {
         "n": 5,
@@ -600,11 +699,23 @@
         "score": 0.5771,
         "total": 12
       },
+      "WHD": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 4
+      },
       "WING": {
         "n": 7,
         "pos": 0.571,
         "score": 0.1942,
         "total": 16
+      },
+      "YMM": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.25,
+        "total": 7
       }
     }
   }
