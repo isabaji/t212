@@ -1,16 +1,6 @@
 {
   "closed": {},
-  "positions": {
-    "GILD_US_EQ": {
-      "entered": "2026-10-29"
-    },
-    "GPI_US_EQ": {
-      "entered": "2026-10-29"
-    },
-    "ICE_US_EQ": {
-      "entered": "2026-10-29"
-    }
-  },
+  "positions": {},
   "scores": {
     "2026-10-27": {
       "AAP": {
@@ -1084,6 +1074,248 @@
         "pos": 0.917,
         "score": 0.6147,
         "total": 15
+      }
+    },
+    "2026-10-30": {
+      "ABBV": {
+        "n": 9,
+        "pos": 1.0,
+        "score": 0.4817,
+        "total": 16
+      },
+      "AMZN": {
+        "n": 36,
+        "pos": 0.083,
+        "score": -0.4566,
+        "total": 47
+      },
+      "ASX": {
+        "n": 8,
+        "pos": 1.0,
+        "score": 0.3448,
+        "total": 14
+      },
+      "BFAM": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.0743,
+        "total": 9
+      },
+      "BLDR": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.5721,
+        "total": 12
+      },
+      "CDP": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 7
+      },
+      "CHD": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.8629,
+        "total": 7
+      },
+      "COLM": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.7847,
+        "total": 13
+      },
+      "CVNA": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.439,
+        "total": 14
+      },
+      "CVX": {
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.5943,
+        "total": 17
+      },
+      "DASH": {
+        "n": 3,
+        "pos": 0.667,
+        "score": -0.0254,
+        "total": 12
+      },
+      "DLR": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.4147,
+        "total": 13
+      },
+      "EG": {
+        "n": 7,
+        "pos": 0.286,
+        "score": -0.0617,
+        "total": 16
+      },
+      "EIX": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.0473,
+        "total": 11
+      },
+      "GD": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.6233,
+        "total": 12
+      },
+      "GLPI": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5364,
+        "total": 8
+      },
+      "GOOGL": {
+        "n": 8,
+        "pos": 0.25,
+        "score": -0.2772,
+        "total": 15
+      },
+      "GPI": {
+        "n": 14,
+        "pos": 0.786,
+        "score": 0.356,
+        "total": 23
+      },
+      "INTC": {
+        "n": 40,
+        "pos": 0.025,
+        "score": -0.5071,
+        "total": 49
+      },
+      "LNG": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.3289,
+        "total": 14
+      },
+      "MO": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.5574,
+        "total": 13
+      },
+      "MS": {
+        "n": 7,
+        "pos": 0.714,
+        "score": -0.0754,
+        "total": 14
+      },
+      "MSFT": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.6628,
+        "total": 8
+      },
+      "MSTR": {
+        "n": 6,
+        "pos": 0.333,
+        "score": -0.1859,
+        "total": 12
+      },
+      "NOW": {
+        "n": 6,
+        "pos": 0.0,
+        "score": -0.5613,
+        "total": 17
+      },
+      "NWSA": {
+        "n": 29,
+        "pos": 0.897,
+        "score": 0.5042,
+        "total": 41
+      },
+      "PFGC": {
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.1428,
+        "total": 5
+      },
+      "RBLX": {
+        "n": 11,
+        "pos": 0.182,
+        "score": -0.4816,
+        "total": 18
+      },
+      "RDDT": {
+        "n": 14,
+        "pos": 0.143,
+        "score": -0.4286,
+        "total": 20
+      },
+      "RIVN": {
+        "n": 13,
+        "pos": 0.846,
+        "score": 0.4906,
+        "total": 22
+      },
+      "RMD": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5855,
+        "total": 11
+      },
+      "SBUX": {
+        "n": 11,
+        "pos": 0.818,
+        "score": 0.2881,
+        "total": 21
+      },
+      "SLDE": {
+        "n": 6,
+        "pos": 0.167,
+        "score": -0.3893,
+        "total": 6
+      },
+      "SLGN": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.1002,
+        "total": 11
+      },
+      "SNDK": {
+        "n": 10,
+        "pos": 0.7,
+        "score": 0.1571,
+        "total": 14
+      },
+      "SNDR": {
+        "n": 4,
+        "pos": 0.5,
+        "score": 0.0057,
+        "total": 15
+      },
+      "SYK": {
+        "n": 6,
+        "pos": 0.0,
+        "score": -0.6206,
+        "total": 14
+      },
+      "WFC": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.1663,
+        "total": 13
+      },
+      "XOM": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.389,
+        "total": 13
+      },
+      "YMM": {
+        "n": 6,
+        "pos": 0.667,
+        "score": 0.155,
+        "total": 8
       }
     }
   }
