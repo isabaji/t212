@@ -8,9 +8,9 @@
     "reason": "ok"
   },
   "AAPL": {
-    "checked": "2026-10-28",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Apple",
     "reason": "watchlist"
@@ -42,7 +42,7 @@
   "ABVEF": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Above Food Ingredients Inc",
     "reason": "market cap below minimum"
@@ -79,10 +79,34 @@
     "name": "AerCap",
     "reason": "ok"
   },
+  "ALSMY": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Alstom",
+    "reason": "average dollar volume below minimum"
+  },
+  "ALSN": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Allison Transmission",
+    "reason": "ok"
+  },
+  "AMD": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Advanced Micro Devices",
+    "reason": "ok"
+  },
   "AMZN": {
-    "checked": "2026-10-30",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Amazon",
     "reason": "watchlist"
@@ -122,15 +146,15 @@
   "ASX": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "ASE Technology",
     "reason": "ok"
   },
   "AVGO": {
-    "checked": "2026-10-27",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-27",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Broadcom",
     "reason": "watchlist"
@@ -186,10 +210,18 @@
   "BCAL": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "California BanCorp",
     "reason": "market cap below minimum"
+  },
+  "BCSA": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Blockchain Coinvestors Acquisition Corp I",
+    "reason": "lookup failed: KeyError"
   },
   "BCTF": {
     "checked": "2026-10-29",
@@ -226,7 +258,7 @@
   "BFST": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-29",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Business First Bancshares",
     "reason": "market cap below minimum"
@@ -255,6 +287,22 @@
     "name": "Builders FirstSource",
     "reason": "ok"
   },
+  "BLSH": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Bullish",
+    "reason": "ok"
+  },
+  "BMRN": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "BioMarin Pharmaceutical",
+    "reason": "ok"
+  },
   "BMY": {
     "checked": "2026-10-29",
     "first_seen": "2026-10-29",
@@ -269,6 +317,14 @@
     "last_seen": "2026-10-28",
     "liquid": true,
     "name": "Popular",
+    "reason": "ok"
+  },
+  "BR": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Broadridge Financial Solutions",
     "reason": "ok"
   },
   "BRUN": {
@@ -298,7 +354,7 @@
   "CAAP": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Corp America Airports",
     "reason": "average dollar volume below minimum"
@@ -330,7 +386,7 @@
   "CBGPY": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Close Brothers Group",
     "reason": "market cap below minimum"
@@ -402,15 +458,23 @@
   "CHGA": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Change Agents",
     "reason": "market cap below minimum"
   },
+  "CHH": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Choice Hotels International",
+    "reason": "ok"
+  },
   "CHHE": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "China Health Industries",
     "reason": "market cap below minimum"
@@ -442,7 +506,7 @@
   "CNAF": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Commercial National Financial",
     "reason": "market cap below minimum"
@@ -543,6 +607,14 @@
     "name": "Crocs",
     "reason": "ok"
   },
+  "CRWD": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Crowdstrike",
+    "reason": "ok"
+  },
   "CRWV": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
@@ -618,7 +690,7 @@
   "DB": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Deutsche Bank",
     "reason": "ok"
@@ -639,6 +711,14 @@
     "name": "Drugs Made In America Acquisition",
     "reason": "market cap below minimum"
   },
+  "DNA": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Ginkgo Bioworks",
+    "reason": "market cap below minimum"
+  },
   "DRVN": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
@@ -650,7 +730,7 @@
   "DSGR": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Distribution Solutions",
     "reason": "market cap below minimum"
@@ -674,7 +754,7 @@
   "EGOXF": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Next.e.GO",
     "reason": "market cap below minimum"
@@ -693,6 +773,14 @@
     "last_seen": "2026-10-30",
     "liquid": true,
     "name": "Edison International",
+    "reason": "ok"
+  },
+  "EL": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Estee Lauder",
     "reason": "ok"
   },
   "ENPH": {
@@ -762,7 +850,7 @@
   "FCUV": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Focus Universal",
     "reason": "market cap below minimum"
@@ -790,6 +878,14 @@
     "liquid": true,
     "name": "Fedex Freight",
     "reason": "ok"
+  },
+  "FEIM": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Frequency Electronics",
+    "reason": "market cap below minimum"
   },
   "FFBC": {
     "checked": "2026-10-27",
@@ -912,17 +1008,25 @@
     "reason": "ok"
   },
   "GOOGL": {
-    "checked": "2026-10-30",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Alphabet (Class A)",
     "reason": "watchlist"
   },
+  "GOOS": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Canada Goose",
+    "reason": "market cap below minimum"
+  },
   "GPI": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Group 1 Automotive",
     "reason": "ok"
@@ -938,7 +1042,7 @@
   "GS": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-27",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Goldman Sachs",
     "reason": "ok"
@@ -970,7 +1074,7 @@
   "HERE": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Here Group",
     "reason": "market cap below minimum"
@@ -981,6 +1085,22 @@
     "last_seen": "2026-10-29",
     "liquid": false,
     "name": "Harte Hanks",
+    "reason": "market cap below minimum"
+  },
+  "HIMS": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Hims & Hers Health",
+    "reason": "ok"
+  },
+  "HLMN": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Hillman Solutions",
     "reason": "market cap below minimum"
   },
   "HONA": {
@@ -1018,7 +1138,7 @@
   "HTCO": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "High-Trend International Group",
     "reason": "market cap below minimum"
@@ -1047,6 +1167,14 @@
     "name": "IDACORP",
     "reason": "ok"
   },
+  "IDXX": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "IDEXX Laboratories",
+    "reason": "ok"
+  },
   "IEX": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
@@ -1066,7 +1194,7 @@
   "INO": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Inovio Pharmaceuticals",
     "reason": "market cap below minimum"
@@ -1074,7 +1202,7 @@
   "INTC": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Intel",
     "reason": "ok"
@@ -1090,7 +1218,7 @@
   "ITIC": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Investors Title",
     "reason": "market cap below minimum"
@@ -1130,7 +1258,7 @@
   "JSDA": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Jones Soda",
     "reason": "market cap below minimum"
@@ -1138,7 +1266,7 @@
   "JTKWY": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Just Eat Takeaway.com",
     "reason": "no market-cap/volume data"
@@ -1178,7 +1306,7 @@
   "KXIAY": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Kioxia Holdings",
     "reason": "ok"
@@ -1210,7 +1338,7 @@
   "LITE": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Lumentum",
     "reason": "ok"
@@ -1234,7 +1362,7 @@
   "LPBB": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-27",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Launch Two Acquisition Corp",
     "reason": "market cap below minimum"
@@ -1250,10 +1378,18 @@
   "LRE": {
     "checked": "2026-10-29",
     "first_seen": "2026-10-29",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Lead Real Estate Co",
     "reason": "market cap below minimum"
+  },
+  "LSCC": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Lattice Semiconductor",
+    "reason": "ok"
   },
   "MBGYY": {
     "checked": "2026-10-27",
@@ -1272,9 +1408,9 @@
     "reason": "average dollar volume below minimum"
   },
   "META": {
-    "checked": "2026-10-30",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Meta Platforms",
     "reason": "watchlist"
@@ -1298,7 +1434,7 @@
   "MITQ": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Moving Image Technologies",
     "reason": "market cap below minimum"
@@ -1310,6 +1446,22 @@
     "liquid": false,
     "name": "Merck",
     "reason": "average dollar volume below minimum"
+  },
+  "MLEC": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Moolec Science",
+    "reason": "market cap below minimum"
+  },
+  "MNDY": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Monday.com",
+    "reason": "ok"
   },
   "MNRO": {
     "checked": "2026-10-29",
@@ -1330,7 +1482,7 @@
   "MRVL": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Marvell Technology",
     "reason": "ok"
@@ -1341,6 +1493,14 @@
     "last_seen": "2026-10-30",
     "liquid": true,
     "name": "Morgan Stanley",
+    "reason": "ok"
+  },
+  "MSA": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "MSA Safety",
     "reason": "ok"
   },
   "MSFT": {
@@ -1362,7 +1522,7 @@
   "MSTR": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Strategy",
     "reason": "ok"
@@ -1408,9 +1568,9 @@
     "reason": "ok"
   },
   "NVDA": {
-    "checked": "2026-10-30",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Nvidia",
     "reason": "watchlist"
@@ -1434,7 +1594,7 @@
   "NWSA": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "News Corp",
     "reason": "ok"
@@ -1450,7 +1610,7 @@
   "OPAY": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "OPay",
     "reason": "no market-cap/volume data"
@@ -1458,7 +1618,7 @@
   "ORCL": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Oracle",
     "reason": "ok"
@@ -1474,7 +1634,7 @@
   "OTEX": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-29",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Open Text",
     "reason": "ok"
@@ -1482,7 +1642,7 @@
   "OTLK": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Outlook Therapeutics",
     "reason": "market cap below minimum"
@@ -1551,6 +1711,14 @@
     "name": "Polaris",
     "reason": "ok"
   },
+  "PLTR": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Palantir",
+    "reason": "ok"
+  },
   "PNR": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
@@ -1615,6 +1783,14 @@
     "name": "PayPal",
     "reason": "ok"
   },
+  "PZZA": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Papa John's International",
+    "reason": "market cap below minimum"
+  },
   "RBLX": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
@@ -1658,7 +1834,7 @@
   "RIVN": {
     "checked": "2026-10-29",
     "first_seen": "2026-10-29",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Rivian Automotive",
     "reason": "ok"
@@ -1703,6 +1879,14 @@
     "name": "Rogers",
     "reason": "ok"
   },
+  "RS": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Reliance",
+    "reason": "ok"
+  },
   "RSG": {
     "checked": "2026-10-29",
     "first_seen": "2026-10-29",
@@ -1722,7 +1906,7 @@
   "RYES": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Rise Gold",
     "reason": "market cap below minimum"
@@ -1794,7 +1978,7 @@
   "SLDE": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Slide Insurance Holdings",
     "reason": "ok"
@@ -1818,7 +2002,7 @@
   "SNDK": {
     "checked": "2026-10-29",
     "first_seen": "2026-10-29",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Sandisk",
     "reason": "ok"
@@ -1858,7 +2042,7 @@
   "SPCX": {
     "checked": "2026-10-30",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "SpaceX",
     "reason": "ok"
@@ -1866,7 +2050,7 @@
   "SPRS": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Surge Components",
     "reason": "market cap below minimum"
@@ -1922,7 +2106,7 @@
   "SYBT": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Stock Yards Bancorp",
     "reason": "average dollar volume below minimum"
@@ -1946,7 +2130,7 @@
   "TDCB": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Third Century Bancorp",
     "reason": "market cap below minimum"
@@ -1962,7 +2146,7 @@
   "TETC": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Tech and Energy Transition",
     "reason": "lookup failed: KeyError"
@@ -1984,9 +2168,9 @@
     "reason": "ok"
   },
   "TSLA": {
-    "checked": "2026-10-29",
+    "checked": "2026-11-02",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-29",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Tesla",
     "reason": "watchlist"
@@ -2015,6 +2199,14 @@
     "name": "Under Armour (Class C)",
     "reason": "market cap below minimum"
   },
+  "UNTC": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": false,
+    "name": "Unit Corp",
+    "reason": "market cap below minimum"
+  },
   "UPS": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
@@ -2034,7 +2226,7 @@
   "VALU": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Value Line",
     "reason": "market cap below minimum"
@@ -2061,6 +2253,14 @@
     "last_seen": "2026-10-28",
     "liquid": true,
     "name": "Vertiv",
+    "reason": "ok"
+  },
+  "VRTX": {
+    "checked": "2026-11-02",
+    "first_seen": "2026-11-02",
+    "last_seen": "2026-11-02",
+    "liquid": true,
+    "name": "Vertex Pharmaceuticals",
     "reason": "ok"
   },
   "VZ": {
@@ -2114,7 +2314,7 @@
   "WINSF": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": false,
     "name": "Wins Finance",
     "reason": "market cap below minimum"
@@ -2138,7 +2338,7 @@
   "YMM": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Full Truck Alliance",
     "reason": "ok"
