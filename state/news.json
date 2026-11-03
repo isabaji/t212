@@ -1661,6 +1661,248 @@
         "score": 0.5545,
         "total": 9
       }
+    },
+    "2026-11-03": {
+      "AAPL": {
+        "n": 35,
+        "pos": 0.657,
+        "score": 0.1581,
+        "total": 53
+      },
+      "ADM": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.664,
+        "total": 11
+      },
+      "ALSN": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.6849,
+        "total": 11
+      },
+      "AMD": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.331,
+        "total": 13
+      },
+      "AME": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.7666,
+        "total": 15
+      },
+      "APP": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 6
+      },
+      "ASX": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.4765,
+        "total": 7
+      },
+      "BR": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5629,
+        "total": 7
+      },
+      "C": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.1738,
+        "total": 6
+      },
+      "CLX": {
+        "n": 9,
+        "pos": 0.889,
+        "score": 0.3618,
+        "total": 17
+      },
+      "CRBG": {
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.0237,
+        "total": 7
+      },
+      "CRM": {
+        "n": 11,
+        "pos": 0.818,
+        "score": 0.0581,
+        "total": 17
+      },
+      "CRWD": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.2545,
+        "total": 20
+      },
+      "CVI": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.4981,
+        "total": 11
+      },
+      "DASH": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.3021,
+        "total": 12
+      },
+      "DD": {
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.6061,
+        "total": 15
+      },
+      "ETN": {
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.5111,
+        "total": 15
+      },
+      "EXPD": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.7608,
+        "total": 11
+      },
+      "FISV": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.5793,
+        "total": 14
+      },
+      "FN": {
+        "n": 9,
+        "pos": 1.0,
+        "score": 0.6344,
+        "total": 14
+      },
+      "GOOGL": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.0806,
+        "total": 8
+      },
+      "GPI": {
+        "n": 6,
+        "pos": 0.667,
+        "score": 0.2393,
+        "total": 10
+      },
+      "IRT": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 5
+      },
+      "JPM": {
+        "n": 7,
+        "pos": 0.286,
+        "score": -0.3667,
+        "total": 12
+      },
+      "LITE": {
+        "n": 10,
+        "pos": 0.6,
+        "score": 0.031,
+        "total": 17
+      },
+      "MPC": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.486,
+        "total": 10
+      },
+      "MRVL": {
+        "n": 8,
+        "pos": 0.625,
+        "score": 0.0398,
+        "total": 19
+      },
+      "MZTI": {
+        "n": 3,
+        "pos": 0.0,
+        "score": -0.7277,
+        "total": 9
+      },
+      "NWSA": {
+        "n": 13,
+        "pos": 0.923,
+        "score": 0.6038,
+        "total": 17
+      },
+      "OTEX": {
+        "n": 5,
+        "pos": 0.2,
+        "score": -0.1632,
+        "total": 5
+      },
+      "PFE": {
+        "n": 13,
+        "pos": 0.923,
+        "score": 0.4894,
+        "total": 19
+      },
+      "PLTR": {
+        "n": 16,
+        "pos": 0.875,
+        "score": 0.2845,
+        "total": 26
+      },
+      "RACE": {
+        "n": 14,
+        "pos": 1.0,
+        "score": 0.4801,
+        "total": 22
+      },
+      "SHOP": {
+        "n": 17,
+        "pos": 0.353,
+        "score": -0.3096,
+        "total": 23
+      },
+      "TEVA": {
+        "n": 9,
+        "pos": 0.778,
+        "score": 0.3951,
+        "total": 15
+      },
+      "UPST": {
+        "n": 6,
+        "pos": 0.5,
+        "score": 0.3458,
+        "total": 14
+      },
+      "VSNT": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.7192,
+        "total": 6
+      },
+      "YMM": {
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.5832,
+        "total": 11
+      },
+      "YUM": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.3123,
+        "total": 6
+      },
+      "ZBRA": {
+        "n": 8,
+        "pos": 0.625,
+        "score": 0.203,
+        "total": 12
+      }
     }
   }
 }
