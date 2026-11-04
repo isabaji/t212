@@ -1664,16 +1664,28 @@
     },
     "2026-11-03": {
       "AAPL": {
-        "n": 35,
-        "pos": 0.657,
-        "score": 0.1581,
-        "total": 53
+        "n": 31,
+        "pos": 0.71,
+        "score": 0.1549,
+        "total": 43
       },
       "ADM": {
-        "n": 5,
+        "n": 6,
         "pos": 1.0,
-        "score": 0.664,
-        "total": 11
+        "score": 0.6723,
+        "total": 14
+      },
+      "ADUS": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.0815,
+        "total": 8
+      },
+      "AFG": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.6437,
+        "total": 6
       },
       "ALSN": {
         "n": 5,
@@ -1682,16 +1694,28 @@
         "total": 11
       },
       "AMD": {
-        "n": 4,
-        "pos": 0.75,
-        "score": 0.331,
-        "total": 13
+        "n": 19,
+        "pos": 1.0,
+        "score": 0.5703,
+        "total": 33
       },
       "AME": {
-        "n": 7,
+        "n": 9,
         "pos": 1.0,
-        "score": 0.7666,
+        "score": 0.7606,
+        "total": 18
+      },
+      "AMGN": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.6542,
         "total": 15
+      },
+      "ANET": {
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.4522,
+        "total": 16
       },
       "APP": {
         "n": 0,
@@ -1700,9 +1724,9 @@
         "total": 6
       },
       "ASX": {
-        "n": 6,
+        "n": 5,
         "pos": 1.0,
-        "score": 0.4765,
+        "score": 0.5069,
         "total": 7
       },
       "BR": {
@@ -1736,16 +1760,16 @@
         "total": 17
       },
       "CRWD": {
-        "n": 6,
+        "n": 8,
         "pos": 1.0,
-        "score": 0.2545,
-        "total": 20
+        "score": 0.2721,
+        "total": 21
       },
       "CVI": {
-        "n": 4,
+        "n": 5,
         "pos": 1.0,
-        "score": 0.4981,
-        "total": 11
+        "score": 0.5831,
+        "total": 12
       },
       "DASH": {
         "n": 2,
@@ -1754,22 +1778,34 @@
         "total": 12
       },
       "DD": {
-        "n": 10,
-        "pos": 0.9,
-        "score": 0.6061,
-        "total": 15
+        "n": 12,
+        "pos": 0.917,
+        "score": 0.6387,
+        "total": 17
+      },
+      "DUOL": {
+        "n": 5,
+        "pos": 0.6,
+        "score": -0.0062,
+        "total": 7
       },
       "ETN": {
-        "n": 10,
-        "pos": 0.9,
-        "score": 0.5111,
-        "total": 15
+        "n": 12,
+        "pos": 0.917,
+        "score": 0.5382,
+        "total": 17
       },
       "EXPD": {
         "n": 3,
         "pos": 1.0,
         "score": 0.7608,
         "total": 11
+      },
+      "FBIN": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.1352,
+        "total": 8
       },
       "FISV": {
         "n": 6,
@@ -1783,6 +1819,18 @@
         "score": 0.6344,
         "total": 14
       },
+      "FRSH": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.2154,
+        "total": 4
+      },
+      "GKOS": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 5
+      },
       "GOOGL": {
         "n": 2,
         "pos": 0.5,
@@ -1790,10 +1838,16 @@
         "total": 8
       },
       "GPI": {
-        "n": 6,
-        "pos": 0.667,
-        "score": 0.2393,
-        "total": 10
+        "n": 12,
+        "pos": 0.583,
+        "score": 0.0359,
+        "total": 18
+      },
+      "IFF": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.5605,
+        "total": 7
       },
       "IRT": {
         "n": 2,
@@ -1801,41 +1855,77 @@
         "score": 0.7163,
         "total": 5
       },
+      "JKHY": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.5648,
+        "total": 9
+      },
       "JPM": {
         "n": 7,
         "pos": 0.286,
         "score": -0.3667,
         "total": 12
       },
+      "JXN": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.2403,
+        "total": 7
+      },
+      "KAI": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.6643,
+        "total": 7
+      },
+      "KVUE": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.0966,
+        "total": 11
+      },
       "LITE": {
-        "n": 10,
-        "pos": 0.6,
-        "score": 0.031,
-        "total": 17
+        "n": 9,
+        "pos": 0.556,
+        "score": 0.1011,
+        "total": 15
+      },
+      "LOAR": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.4621,
+        "total": 3
       },
       "MPC": {
-        "n": 5,
+        "n": 4,
         "pos": 1.0,
-        "score": 0.486,
-        "total": 10
+        "score": 0.5237,
+        "total": 9
       },
       "MRVL": {
-        "n": 8,
-        "pos": 0.625,
-        "score": 0.0398,
-        "total": 19
+        "n": 7,
+        "pos": 0.429,
+        "score": -0.0542,
+        "total": 14
       },
       "MZTI": {
         "n": 3,
         "pos": 0.0,
         "score": -0.7277,
-        "total": 9
+        "total": 11
       },
       "NWSA": {
-        "n": 13,
-        "pos": 0.923,
-        "score": 0.6038,
-        "total": 17
+        "n": 15,
+        "pos": 0.933,
+        "score": 0.6301,
+        "total": 21
+      },
+      "ORCL": {
+        "n": 8,
+        "pos": 0.875,
+        "score": 0.4311,
+        "total": 13
       },
       "OTEX": {
         "n": 5,
@@ -1844,34 +1934,58 @@
         "total": 5
       },
       "PFE": {
-        "n": 13,
-        "pos": 0.923,
-        "score": 0.4894,
-        "total": 19
+        "n": 8,
+        "pos": 0.875,
+        "score": 0.4117,
+        "total": 16
       },
       "PLTR": {
-        "n": 16,
-        "pos": 0.875,
-        "score": 0.2845,
-        "total": 26
+        "n": 12,
+        "pos": 0.917,
+        "score": 0.2731,
+        "total": 20
+      },
+      "PRU": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.0706,
+        "total": 5
       },
       "RACE": {
         "n": 14,
         "pos": 1.0,
-        "score": 0.4801,
-        "total": 22
+        "score": 0.5083,
+        "total": 24
+      },
+      "RAMP": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 5
       },
       "SHOP": {
         "n": 17,
         "pos": 0.353,
-        "score": -0.3096,
+        "score": -0.2692,
         "total": 23
       },
+      "SWKS": {
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.1127,
+        "total": 8
+      },
       "TEVA": {
-        "n": 9,
-        "pos": 0.778,
-        "score": 0.3951,
-        "total": 15
+        "n": 10,
+        "pos": 0.8,
+        "score": 0.4106,
+        "total": 17
+      },
+      "UFPT": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.4914,
+        "total": 5
       },
       "UPST": {
         "n": 6,
@@ -1886,10 +2000,10 @@
         "total": 6
       },
       "YMM": {
-        "n": 10,
+        "n": 7,
         "pos": 1.0,
-        "score": 0.5832,
-        "total": 11
+        "score": 0.6024,
+        "total": 8
       },
       "YUM": {
         "n": 3,
