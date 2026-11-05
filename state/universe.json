@@ -79,6 +79,14 @@
     "name": "Accendra Health",
     "reason": "market cap below minimum"
   },
+  "ACHC": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Acadia Healthcare Co",
+    "reason": "ok"
+  },
   "ADBE": {
     "checked": "2026-11-04",
     "first_seen": "2026-11-04",
@@ -149,6 +157,22 @@
     "last_seen": "2026-11-03",
     "liquid": true,
     "name": "Allison Transmission",
+    "reason": "ok"
+  },
+  "AMC": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "AMC Entertainment",
+    "reason": "ok"
+  },
+  "AMCR": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Amcor",
     "reason": "ok"
   },
   "AMD": {
@@ -242,7 +266,7 @@
   "APP": {
     "checked": "2026-11-03",
     "first_seen": "2026-11-03",
-    "last_seen": "2026-11-03",
+    "last_seen": "2026-11-04",
     "liquid": true,
     "name": "AppLovin",
     "reason": "ok"
@@ -450,7 +474,7 @@
   "BLSH": {
     "checked": "2026-11-02",
     "first_seen": "2026-11-02",
-    "last_seen": "2026-11-02",
+    "last_seen": "2026-11-04",
     "liquid": true,
     "name": "Bullish",
     "reason": "ok"
@@ -800,9 +824,9 @@
     "reason": "watchlist"
   },
   "CRMT": {
-    "checked": "2026-10-27",
+    "checked": "2026-11-04",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-29",
+    "last_seen": "2026-11-04",
     "liquid": false,
     "name": "America's Car-Mart",
     "reason": "market cap below minimum"
@@ -1095,6 +1119,14 @@
     "name": "Expeditors International of Washington",
     "reason": "ok"
   },
+  "EXPE": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Expedia",
+    "reason": "ok"
+  },
   "F": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
@@ -1181,6 +1213,22 @@
     "last_seen": "2026-10-27",
     "liquid": true,
     "name": "First Financial Bancorp",
+    "reason": "ok"
+  },
+  "FICO": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Fair Isaac",
+    "reason": "ok"
+  },
+  "FIG": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Figma",
     "reason": "ok"
   },
   "FISV": {
@@ -1831,6 +1879,14 @@
     "name": "Monarch Casino & Resort",
     "reason": "average dollar volume below minimum"
   },
+  "MELI": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "MercadoLibre",
+    "reason": "ok"
+  },
   "META": {
     "checked": "2026-11-02",
     "first_seen": "2026-10-27",
@@ -1920,9 +1976,9 @@
     "reason": "market cap below minimum"
   },
   "MRVL": {
-    "checked": "2026-10-28",
+    "checked": "2026-11-04",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-11-03",
+    "last_seen": "2026-11-04",
     "liquid": true,
     "name": "Marvell Technology",
     "reason": "ok"
@@ -1957,6 +2013,14 @@
     "last_seen": "2026-10-30",
     "liquid": true,
     "name": "MSG Rangers",
+    "reason": "ok"
+  },
+  "MSI": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Motorola Solutions",
     "reason": "ok"
   },
   "MSTR": {
@@ -2159,6 +2223,14 @@
     "name": "Performance Food",
     "reason": "ok"
   },
+  "PGNY": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Progyny",
+    "reason": "ok"
+  },
   "PI": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
@@ -2197,6 +2269,14 @@
     "last_seen": "2026-11-04",
     "liquid": true,
     "name": "Post Holdings",
+    "reason": "ok"
+  },
+  "PR": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Permian Resources",
     "reason": "ok"
   },
   "PRG": {
@@ -2262,6 +2342,14 @@
     "liquid": false,
     "name": "Papa John's International",
     "reason": "market cap below minimum"
+  },
+  "QCOM": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Qualcomm",
+    "reason": "ok"
   },
   "RACE": {
     "checked": "2026-11-03",
@@ -2367,6 +2455,14 @@
     "name": "Rogers",
     "reason": "ok"
   },
+  "ROOT": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": false,
+    "name": "Root",
+    "reason": "market cap below minimum"
+  },
   "RS": {
     "checked": "2026-11-02",
     "first_seen": "2026-11-02",
@@ -2381,6 +2477,14 @@
     "last_seen": "2026-10-29",
     "liquid": true,
     "name": "Republic Services",
+    "reason": "ok"
+  },
+  "RUN": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Sunrun",
     "reason": "ok"
   },
   "RUSHA": {
@@ -2530,7 +2634,7 @@
   "SNDK": {
     "checked": "2026-10-29",
     "first_seen": "2026-10-29",
-    "last_seen": "2026-11-02",
+    "last_seen": "2026-11-04",
     "liquid": true,
     "name": "Sandisk",
     "reason": "ok"
@@ -2582,6 +2686,14 @@
     "liquid": false,
     "name": "Surge Components",
     "reason": "market cap below minimum"
+  },
+  "STE": {
+    "checked": "2026-11-04",
+    "first_seen": "2026-11-04",
+    "last_seen": "2026-11-04",
+    "liquid": true,
+    "name": "Steris",
+    "reason": "ok"
   },
   "STGW": {
     "checked": "2026-10-29",
@@ -2728,9 +2840,9 @@
     "reason": "market cap below minimum"
   },
   "TSLA": {
-    "checked": "2026-11-02",
+    "checked": "2026-11-04",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-11-02",
+    "last_seen": "2026-11-04",
     "liquid": true,
     "name": "Tesla",
     "reason": "watchlist"

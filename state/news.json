@@ -1,13 +1,6 @@
 {
   "closed": {},
-  "positions": {
-    "ARCB_US_EQ": {
-      "entered": "2026-11-04"
-    },
-    "KHC_US_EQ": {
-      "entered": "2026-11-04"
-    }
-  },
+  "positions": {},
   "scores": {
     "2026-10-27": {
       "AAP": {
@@ -2027,40 +2020,64 @@
     },
     "2026-11-04": {
       "AAPL": {
-        "n": 12,
-        "pos": 0.833,
-        "score": 0.4827,
-        "total": 20
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.59,
+        "total": 17
+      },
+      "ACHC": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.6588,
+        "total": 6
       },
       "ADBE": {
-        "n": 7,
-        "pos": 0.143,
-        "score": -0.5461,
-        "total": 15
+        "n": 6,
+        "pos": 0.0,
+        "score": -0.562,
+        "total": 14
+      },
+      "AMC": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5501,
+        "total": 13
+      },
+      "AMCR": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.4472,
+        "total": 6
       },
       "AMD": {
-        "n": 22,
-        "pos": 0.955,
-        "score": 0.563,
-        "total": 33
+        "n": 16,
+        "pos": 0.938,
+        "score": 0.3749,
+        "total": 25
       },
       "AME": {
-        "n": 8,
+        "n": 9,
         "pos": 1.0,
-        "score": 0.6122,
-        "total": 16
+        "score": 0.5074,
+        "total": 17
       },
       "AMGN": {
-        "n": 12,
+        "n": 6,
         "pos": 1.0,
-        "score": 0.614,
-        "total": 20
+        "score": 0.6042,
+        "total": 13
       },
       "ANET": {
         "n": 11,
         "pos": 1.0,
         "score": 0.5272,
         "total": 16
+      },
+      "APP": {
+        "n": 9,
+        "pos": 0.889,
+        "score": 0.357,
+        "total": 17
       },
       "ARCB": {
         "n": 4,
@@ -2098,6 +2115,12 @@
         "score": 0.3112,
         "total": 18
       },
+      "BLSH": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.5824,
+        "total": 6
+      },
       "CRM": {
         "n": 4,
         "pos": 1.0,
@@ -2111,22 +2134,40 @@
         "total": 4
       },
       "CVS": {
-        "n": 12,
-        "pos": 0.583,
-        "score": 0.1336,
-        "total": 24
+        "n": 11,
+        "pos": 0.727,
+        "score": 0.2919,
+        "total": 20
       },
       "DUOL": {
-        "n": 14,
-        "pos": 0.857,
-        "score": 0.5047,
-        "total": 22
+        "n": 12,
+        "pos": 0.833,
+        "score": 0.4542,
+        "total": 19
+      },
+      "EXPE": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.4713,
+        "total": 13
       },
       "FBIN": {
         "n": 4,
         "pos": 0.25,
         "score": -0.333,
         "total": 9
+      },
+      "FICO": {
+        "n": 5,
+        "pos": 0.4,
+        "score": -0.056,
+        "total": 11
+      },
+      "FIG": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.1516,
+        "total": 6
       },
       "FISV": {
         "n": 7,
@@ -2135,22 +2176,22 @@
         "total": 16
       },
       "FLUT": {
-        "n": 6,
-        "pos": 0.333,
-        "score": -0.2531,
-        "total": 12
-      },
-      "GOOGL": {
-        "n": 5,
-        "pos": 0.6,
-        "score": -0.0836,
+        "n": 8,
+        "pos": 0.375,
+        "score": -0.2168,
         "total": 15
       },
+      "GOOGL": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.1149,
+        "total": 10
+      },
       "GPI": {
-        "n": 11,
-        "pos": 0.636,
-        "score": 0.2175,
-        "total": 16
+        "n": 9,
+        "pos": 0.778,
+        "score": 0.3386,
+        "total": 13
       },
       "KAI": {
         "n": 7,
@@ -2160,21 +2201,39 @@
       },
       "KHC": {
         "n": 8,
-        "pos": 0.75,
-        "score": 0.4163,
-        "total": 19
+        "pos": 0.875,
+        "score": 0.5402,
+        "total": 20
       },
       "MCD": {
-        "n": 10,
-        "pos": 0.8,
-        "score": 0.3766,
+        "n": 9,
+        "pos": 0.778,
+        "score": 0.3517,
         "total": 17
       },
-      "MSFT": {
+      "MELI": {
+        "n": 5,
+        "pos": 0.4,
+        "score": -0.1283,
+        "total": 12
+      },
+      "MRVL": {
         "n": 7,
+        "pos": 0.286,
+        "score": -0.2013,
+        "total": 14
+      },
+      "MSFT": {
+        "n": 4,
         "pos": 1.0,
-        "score": 0.5484,
-        "total": 10
+        "score": 0.6489,
+        "total": 8
+      },
+      "MSI": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.5428,
+        "total": 7
       },
       "NVDA": {
         "n": 4,
@@ -2183,22 +2242,28 @@
         "total": 8
       },
       "NVO": {
-        "n": 12,
-        "pos": 0.75,
-        "score": 0.2961,
-        "total": 14
+        "n": 10,
+        "pos": 0.8,
+        "score": 0.305,
+        "total": 13
       },
       "NWSA": {
-        "n": 25,
-        "pos": 0.68,
-        "score": 0.2381,
-        "total": 35
+        "n": 24,
+        "pos": 0.75,
+        "score": 0.3174,
+        "total": 34
       },
       "NYT": {
-        "n": 1,
+        "n": 3,
         "pos": 1.0,
-        "score": 0.8854,
-        "total": 10
+        "score": 0.6263,
+        "total": 12
+      },
+      "PGNY": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.5322,
+        "total": 5
       },
       "PLTR": {
         "n": 9,
@@ -2207,22 +2272,40 @@
         "total": 20
       },
       "POST": {
-        "n": 4,
-        "pos": 0.75,
-        "score": 0.1863,
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.0443,
         "total": 6
+      },
+      "PR": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.4053,
+        "total": 5
+      },
+      "QCOM": {
+        "n": 14,
+        "pos": 0.214,
+        "score": -0.2884,
+        "total": 20
+      },
+      "RUN": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.5337,
+        "total": 9
       },
       "SCCO": {
         "n": 3,
         "pos": 1.0,
         "score": 0.4028,
-        "total": 4
+        "total": 3
       },
       "SLDE": {
-        "n": 5,
-        "pos": 0.4,
-        "score": -0.0419,
-        "total": 5
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.2073,
+        "total": 4
       },
       "SMCI": {
         "n": 5,
@@ -2230,11 +2313,23 @@
         "score": 0.2649,
         "total": 8
       },
+      "SNDK": {
+        "n": 5,
+        "pos": 0.4,
+        "score": -0.0543,
+        "total": 10
+      },
       "SPCX": {
         "n": 4,
-        "pos": 0.0,
-        "score": -0.4852,
-        "total": 11
+        "pos": 0.5,
+        "score": 0.0738,
+        "total": 12
+      },
+      "STE": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.2128,
+        "total": 7
       },
       "SWKS": {
         "n": 8,
@@ -2248,17 +2343,23 @@
         "score": 0.715,
         "total": 7
       },
+      "TSLA": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.3744,
+        "total": 11
+      },
       "UBER": {
         "n": 9,
         "pos": 0.667,
-        "score": 0.1568,
-        "total": 19
+        "score": 0.129,
+        "total": 16
       },
       "YMM": {
-        "n": 10,
-        "pos": 1.0,
-        "score": 0.6688,
-        "total": 10
+        "n": 9,
+        "pos": 0.889,
+        "score": 0.5929,
+        "total": 11
       },
       "ZBH": {
         "n": 7,
