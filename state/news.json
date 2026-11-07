@@ -2707,17 +2707,29 @@
       }
     },
     "2026-11-06": {
+      "AAP": {
+        "n": 5,
+        "pos": 0.6,
+        "score": -0.0079,
+        "total": 11
+      },
       "AAPL": {
         "n": 4,
         "pos": 0.75,
-        "score": 0.2195,
-        "total": 10
+        "score": 0.3142,
+        "total": 9
       },
       "ABNB": {
         "n": 15,
         "pos": 0.867,
         "score": 0.4895,
         "total": 19
+      },
+      "ACHR": {
+        "n": 1,
+        "pos": 0.0,
+        "score": -0.0997,
+        "total": 8
       },
       "ACMR": {
         "n": 3,
@@ -2727,9 +2739,15 @@
       },
       "AMD": {
         "n": 9,
-        "pos": 0.889,
-        "score": 0.3666,
+        "pos": 0.667,
+        "score": 0.2164,
         "total": 12
+      },
+      "AME": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.2668,
+        "total": 4
       },
       "ANET": {
         "n": 8,
@@ -2737,11 +2755,17 @@
         "score": 0.0311,
         "total": 15
       },
-      "ATMU": {
+      "ASX": {
         "n": 4,
+        "pos": 0.5,
+        "score": 0.0169,
+        "total": 6
+      },
+      "ATMU": {
+        "n": 3,
         "pos": 1.0,
-        "score": 0.6853,
-        "total": 11
+        "score": 0.7603,
+        "total": 10
       },
       "AVGO": {
         "n": 10,
@@ -2755,6 +2779,24 @@
         "pos": 0.333,
         "score": -0.0117,
         "total": 11
+      },
+      "C": {
+        "n": 7,
+        "pos": 0.571,
+        "score": -0.0468,
+        "total": 13
+      },
+      "CHTR": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.1689,
+        "total": 9
+      },
+      "CL": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.0592,
+        "total": 6
       },
       "CLMT": {
         "n": 2,
@@ -2781,10 +2823,10 @@
         "total": 9
       },
       "DKNG": {
-        "n": 9,
+        "n": 8,
         "pos": 0.0,
-        "score": -0.6209,
-        "total": 17
+        "score": -0.5526,
+        "total": 15
       },
       "ESNT": {
         "n": 1,
@@ -2792,47 +2834,84 @@
         "score": 0.664,
         "total": 5
       },
+      "GOOGL": {
+        "n": 4,
+        "pos": 0.5,
+        "score": 0.0465,
+        "total": 9
+      },
       "GPI": {
         "n": 9,
-        "pos": 0.889,
-        "score": 0.3365,
-        "total": 12
+        "pos": 0.667,
+        "score": 0.0335,
+        "total": 14
       },
       "HUM": {
-        "n": 8,
+        "n": 9,
         "pos": 1.0,
-        "score": 0.5787,
+        "score": 0.5323,
         "total": 15
       },
+      "ICE": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 3
+      },
+      "INGR": {
+        "n": 4,
+        "pos": 0.0,
+        "score": -0.6033,
+        "total": 9
+      },
       "IONQ": {
-        "n": 13,
-        "pos": 0.923,
-        "score": 0.5727,
-        "total": 22
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.5736,
+        "total": 17
       },
       "IREN": {
-        "n": 12,
-        "pos": 0.75,
-        "score": 0.2037,
+        "n": 11,
+        "pos": 0.636,
+        "score": 0.2368,
         "total": 14
       },
       "JNJ": {
-        "n": 9,
+        "n": 10,
         "pos": 1.0,
-        "score": 0.682,
-        "total": 12
+        "score": 0.7128,
+        "total": 13
+      },
+      "KTB": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.3346,
+        "total": 13
       },
       "MRNA": {
-        "n": 16,
-        "pos": 0.938,
-        "score": 0.5969,
-        "total": 25
+        "n": 14,
+        "pos": 0.929,
+        "score": 0.5567,
+        "total": 23
+      },
+      "MSFT": {
+        "n": 10,
+        "pos": 0.6,
+        "score": 0.1224,
+        "src": "peers:AAPL+NVDA",
+        "total": 10
+      },
+      "MU": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.6044,
+        "total": 2
       },
       "NET": {
-        "n": 11,
-        "pos": 0.818,
-        "score": 0.4836,
-        "total": 18
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.5463,
+        "total": 16
       },
       "NKE": {
         "n": 9,
@@ -2842,15 +2921,15 @@
       },
       "NVDA": {
         "n": 6,
-        "pos": 0.333,
-        "score": 0.1052,
-        "total": 10
+        "pos": 0.5,
+        "score": 0.1985,
+        "total": 12
       },
       "NWSA": {
         "n": 25,
         "pos": 0.92,
-        "score": 0.5482,
-        "total": 43
+        "score": 0.5355,
+        "total": 42
       },
       "OPCH": {
         "n": 2,
@@ -2861,8 +2940,14 @@
       "OTEX": {
         "n": 3,
         "pos": 0.667,
-        "score": 0.2403,
-        "total": 8
+        "score": 0.2401,
+        "total": 7
+      },
+      "POST": {
+        "n": 1,
+        "pos": 0.0,
+        "score": -0.1974,
+        "total": 3
       },
       "QCOM": {
         "n": 3,
@@ -2888,6 +2973,12 @@
         "score": -0.0966,
         "total": 8
       },
+      "SHO": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2921,
+        "total": 5
+      },
       "SKHY": {
         "n": 4,
         "pos": 0.25,
@@ -2901,40 +2992,52 @@
         "total": 14
       },
       "SPCX": {
-        "n": 3,
-        "pos": 0.0,
-        "score": -0.3839,
-        "total": 9
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.0233,
+        "total": 10
+      },
+      "TM": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.4916,
+        "total": 12
       },
       "TSLA": {
-        "n": 6,
-        "pos": 0.5,
-        "score": 0.0792,
-        "total": 17
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 18
       },
       "U": {
         "n": 3,
         "pos": 1.0,
         "score": 0.7281,
-        "total": 8
+        "total": 9
       },
       "UTZ": {
         "n": 2,
         "pos": 0.0,
         "score": -0.6445,
-        "total": 5
+        "total": 6
+      },
+      "VRT": {
+        "n": 7,
+        "pos": 0.429,
+        "score": 0.0636,
+        "total": 8
       },
       "VST": {
         "n": 5,
-        "pos": 0.8,
-        "score": 0.6694,
-        "total": 12
+        "pos": 1.0,
+        "score": 0.6266,
+        "total": 13
       },
       "YMM": {
-        "n": 3,
-        "pos": 0.667,
-        "score": 0.3269,
-        "total": 4
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7348,
+        "total": 3
       }
     }
   }

@@ -1,8 +1,8 @@
 {
   "AAP": {
-    "checked": "2026-10-27",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-10-27",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Advance Auto Parts",
     "reason": "ok"
@@ -111,6 +111,14 @@
     "name": "Acadia Healthcare Co",
     "reason": "ok"
   },
+  "ACHR": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Archer Aviation",
+    "reason": "ok"
+  },
   "ACMR": {
     "checked": "2026-11-06",
     "first_seen": "2026-11-06",
@@ -126,6 +134,14 @@
     "liquid": false,
     "name": "ACNB",
     "reason": "market cap below minimum"
+  },
+  "AD": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": false,
+    "name": "Array Digital Infrastructure",
+    "reason": "average dollar volume below minimum"
   },
   "ADBE": {
     "checked": "2026-11-04",
@@ -226,7 +242,7 @@
   "AME": {
     "checked": "2026-11-03",
     "first_seen": "2026-11-03",
-    "last_seen": "2026-11-04",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "AMETEK",
     "reason": "ok"
@@ -386,7 +402,7 @@
   "ASX": {
     "checked": "2026-11-04",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-11-05",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "ASE Technology",
     "reason": "ok"
@@ -682,7 +698,7 @@
   "C": {
     "checked": "2026-11-03",
     "first_seen": "2026-11-03",
-    "last_seen": "2026-11-03",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Citigroup",
     "reason": "ok"
@@ -738,7 +754,7 @@
   "CBGPY": {
     "checked": "2026-11-03",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-11-03",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Close Brothers Group",
     "reason": "market cap below minimum"
@@ -824,9 +840,9 @@
     "reason": "ok"
   },
   "CHGA": {
-    "checked": "2026-10-30",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-30",
-    "last_seen": "2026-11-02",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Change Agents",
     "reason": "market cap below minimum"
@@ -847,12 +863,28 @@
     "name": "China Health Industries",
     "reason": "market cap below minimum"
   },
+  "CHTR": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Charter Communications",
+    "reason": "ok"
+  },
   "CINF": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
     "last_seen": "2026-10-27",
     "liquid": true,
     "name": "Cincinnati Financial",
+    "reason": "ok"
+  },
+  "CL": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Colgate-Palmolive",
     "reason": "ok"
   },
   "CLMT": {
@@ -1106,7 +1138,7 @@
   "CVR": {
     "checked": "2026-11-03",
     "first_seen": "2026-11-03",
-    "last_seen": "2026-11-03",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Chicago Rivet & Machine",
     "reason": "market cap below minimum"
@@ -1688,9 +1720,9 @@
     "reason": "ok"
   },
   "GOOGL": {
-    "checked": "2026-11-04",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-11-04",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Alphabet (Class A)",
     "reason": "watchlist"
@@ -1698,7 +1730,7 @@
   "GOOS": {
     "checked": "2026-11-02",
     "first_seen": "2026-11-02",
-    "last_seen": "2026-11-05",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Canada Goose",
     "reason": "market cap below minimum"
@@ -1880,9 +1912,9 @@
     "reason": "ok"
   },
   "ICE": {
-    "checked": "2026-10-29",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-29",
-    "last_seen": "2026-10-30",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Intercontinental Exchange",
     "reason": "ok"
@@ -1933,6 +1965,14 @@
     "last_seen": "2026-11-05",
     "liquid": true,
     "name": "IMAX",
+    "reason": "ok"
+  },
+  "INGR": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Ingredion",
     "reason": "ok"
   },
   "INNV": {
@@ -2103,6 +2143,14 @@
     "name": "Kadant",
     "reason": "ok"
   },
+  "KEP": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": false,
+    "name": "Korea Electric Power",
+    "reason": "average dollar volume below minimum"
+  },
   "KEX": {
     "checked": "2026-10-28",
     "first_seen": "2026-10-28",
@@ -2138,7 +2186,7 @@
   "KTB": {
     "checked": "2026-11-05",
     "first_seen": "2026-11-05",
-    "last_seen": "2026-11-05",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Kontoor Brands",
     "reason": "ok"
@@ -2166,6 +2214,14 @@
     "liquid": true,
     "name": "Lear",
     "reason": "ok"
+  },
+  "LGCY": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": false,
+    "name": "Legacy Education",
+    "reason": "market cap below minimum"
   },
   "LH": {
     "checked": "2026-10-28",
@@ -2330,7 +2386,7 @@
   "MICR": {
     "checked": "2026-11-05",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-11-05",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Micron Solutions",
     "reason": "market cap below minimum"
@@ -2440,9 +2496,9 @@
     "reason": "ok"
   },
   "MSFT": {
-    "checked": "2026-11-04",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-11-04",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Microsoft",
     "reason": "watchlist"
@@ -2469,6 +2525,14 @@
     "last_seen": "2026-11-02",
     "liquid": true,
     "name": "Strategy",
+    "reason": "ok"
+  },
+  "MU": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Micron Technology",
     "reason": "ok"
   },
   "MUR": {
@@ -2746,7 +2810,7 @@
   "POST": {
     "checked": "2026-11-04",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-11-05",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Post Holdings",
     "reason": "ok"
@@ -3103,6 +3167,14 @@
     "name": "Sharp",
     "reason": "average dollar volume below minimum"
   },
+  "SHO": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Sunstone Hotel Investors",
+    "reason": "ok"
+  },
   "SHOP": {
     "checked": "2026-11-03",
     "first_seen": "2026-11-03",
@@ -3200,9 +3272,9 @@
     "reason": "ok"
   },
   "SNFCA": {
-    "checked": "2026-10-29",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-29",
-    "last_seen": "2026-11-04",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Security National Financial",
     "reason": "market cap below minimum"
@@ -3383,6 +3455,14 @@
     "name": "Timken",
     "reason": "ok"
   },
+  "TM": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": true,
+    "name": "Toyota Motor",
+    "reason": "ok"
+  },
   "TNL": {
     "checked": "2026-10-27",
     "first_seen": "2026-10-27",
@@ -3522,7 +3602,7 @@
   "VALU": {
     "checked": "2026-11-05",
     "first_seen": "2026-10-27",
-    "last_seen": "2026-11-05",
+    "last_seen": "2026-11-06",
     "liquid": false,
     "name": "Value Line",
     "reason": "market cap below minimum"
@@ -3544,9 +3624,9 @@
     "reason": "market cap below minimum"
   },
   "VRT": {
-    "checked": "2026-10-28",
+    "checked": "2026-11-06",
     "first_seen": "2026-10-28",
-    "last_seen": "2026-10-28",
+    "last_seen": "2026-11-06",
     "liquid": true,
     "name": "Vertiv",
     "reason": "ok"
@@ -3639,12 +3719,28 @@
     "name": "Wins Finance",
     "reason": "market cap below minimum"
   },
+  "WKC": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": false,
+    "name": "World Kinect",
+    "reason": "market cap below minimum"
+  },
   "WOK": {
     "checked": "2026-11-06",
     "first_seen": "2026-11-06",
     "last_seen": "2026-11-06",
     "liquid": false,
     "name": "WORK Medical Technology",
+    "reason": "market cap below minimum"
+  },
+  "WRAP": {
+    "checked": "2026-11-06",
+    "first_seen": "2026-11-06",
+    "last_seen": "2026-11-06",
+    "liquid": false,
+    "name": "Wrap Technologies",
     "reason": "market cap below minimum"
   },
   "WVE": {
