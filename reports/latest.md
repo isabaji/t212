@@ -1,4 +1,4 @@
-# Bot report — 7 days to 2026-11-01
+# Bot report — 7 days to 2026-11-08
 
 ## Trades (last 7 days)
 
@@ -21,21 +21,21 @@
 
 ## News archive
 
-- 4 days archived (2026-10-27 → 2026-10-30), 4 in this period
-- buy-grade symbol-days this period: 112 (NWSA×4, KO×2, SOFI×2, V×2, YMM×2, BKR×2, FDX×2, MSFT×2)
-- sell-grade symbol-days this period: 16 (GOOGL×2, INTC×2, SYK×2, XYL×1, BSX×1, ENPH×1, HOOD×1, BYD×1)
-- latest day (2026-10-30): most negative SYK -0.62, INTC -0.56, NOW -0.56; most positive CHD +0.86, COLM +0.78, REGN +0.66
-- score sources this period: own 235
+- 9 days archived (2026-10-27 → 2026-11-06), 5 in this period
+- buy-grade symbol-days this period: 104 (BLSH×3, YMM×3, AMD×3, NWSA×3, AAPL×2, AME×2, AMGN×2, ANET×2)
+- sell-grade symbol-days this period: 12 (DKNG×2, HIMS×1, INTC×1, JPM×1, MZTI×1, ADBE×1, NVDA×1, SNDK×1)
+- latest day (2026-11-06): most negative INGR -0.60, DKNG -0.55, SKHY -0.19; most positive ATMU +0.76, U +0.73, JNJ +0.71
+- score sources this period: own 266, peers:AAPL+NVDA 2
 
 ## Discovered universe
 
-- 269 names seen all-time, 269 in this period, 173 eligible to trade
-- not eligible: market cap below minimum ×81, average dollar volume below minimum ×11, no market-cap/volume data ×2, lookup failed: KeyError ×2
-- newest: ABBV (AbbVie, 2026-10-30), ABR (Arbor Realty Trust, 2026-10-30), ACH (Accendra Health, 2026-10-30), AN (AutoNation, 2026-10-30), ANVS (Annovis Bio, 2026-10-30), BFAM (Bright Horizons Family Solutions, 2026-10-30), BLDR (Builders FirstSource, 2026-10-30), CDP (COPT Defense Properties, 2026-10-30), CHD (Church & Dwight Co, 2026-10-30), CHGA (Change Agents, 2026-10-30)
+- 476 names seen all-time, 295 in this period, 179 eligible to trade
+- not eligible: market cap below minimum ×96, average dollar volume below minimum ×13, lookup failed: KeyError ×5, no market-cap/volume data ×2
+- newest: ABLV (Able View Global, 2026-11-06), ACHR (Archer Aviation, 2026-11-06), ACMR (ACM Research, 2026-11-06), ACNB (ACNB, 2026-11-06), AD (Array Digital Infrastructure, 2026-11-06), ARRY (Array Technologies, 2026-11-06), ATMU (Atmus Filtration Technologies, 2026-11-06), BLMN (Bloomin' Brands, 2026-11-06), CHTR (Charter Communications, 2026-11-06), CL (Colgate-Palmolive, 2026-11-06)
 
 ## Earnings in the next 7 days
 
-- AAPL (2026-11-02), PFE (2026-11-03), CRCL (2026-11-04), NWSA (2026-11-04), PFGC (2026-11-04), AAP (2026-11-05), GIL (2026-11-05), LITE (2026-11-05), OTEX (2026-11-05), PURR (2026-11-05)
+- ACHR (2026-11-09), HIMS (2026-11-09), MNDY (2026-11-09), CRWV (2026-11-10), RGTI (2026-11-10)
 
 ## Cycle log
 
