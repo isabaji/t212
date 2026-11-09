@@ -3039,6 +3039,224 @@
         "score": 0.7348,
         "total": 3
       }
+    },
+    "2026-11-09": {
+      "AAON": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.4713,
+        "total": 7
+      },
+      "ACHR": {
+        "n": 3,
+        "pos": 0.667,
+        "score": -0.1082,
+        "total": 6
+      },
+      "AMD": {
+        "n": 8,
+        "pos": 0.75,
+        "score": 0.3271,
+        "total": 16
+      },
+      "AMG": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.5967,
+        "total": 10
+      },
+      "AMZN": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5483,
+        "total": 7
+      },
+      "ANET": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.1369,
+        "total": 10
+      },
+      "BA": {
+        "n": 6,
+        "pos": 0.0,
+        "score": -0.2283,
+        "total": 16
+      },
+      "BE": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.3536,
+        "total": 10
+      },
+      "BLSH": {
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.5979,
+        "total": 10
+      },
+      "CEG": {
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.6516,
+        "total": 15
+      },
+      "COHR": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5895,
+        "total": 8
+      },
+      "CWST": {
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.1619,
+        "total": 5
+      },
+      "FCPT": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.6135,
+        "total": 3
+      },
+      "GOOGL": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.5908,
+        "total": 17
+      },
+      "GPI": {
+        "n": 6,
+        "pos": 0.667,
+        "score": 0.0484,
+        "total": 14
+      },
+      "HIMS": {
+        "n": 7,
+        "pos": 0.143,
+        "score": -0.4556,
+        "total": 9
+      },
+      "HRB": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.4621,
+        "total": 3
+      },
+      "IONQ": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.3031,
+        "total": 11
+      },
+      "KGS": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.8362,
+        "total": 6
+      },
+      "MNDY": {
+        "n": 10,
+        "pos": 0.6,
+        "score": -0.0063,
+        "total": 21
+      },
+      "MS": {
+        "n": 7,
+        "pos": 0.714,
+        "score": 0.1477,
+        "total": 17
+      },
+      "NVDA": {
+        "n": 19,
+        "pos": 0.263,
+        "score": -0.2165,
+        "total": 31
+      },
+      "NWSA": {
+        "n": 26,
+        "pos": 1.0,
+        "score": 0.599,
+        "total": 38
+      },
+      "ORCL": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.3224,
+        "total": 7
+      },
+      "OXY": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.618,
+        "total": 7
+      },
+      "PLUG": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.3491,
+        "total": 8
+      },
+      "RBA": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7039,
+        "total": 7
+      },
+      "RKLB": {
+        "n": 6,
+        "pos": 0.5,
+        "score": 0.2711,
+        "total": 14
+      },
+      "SKYD": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.0131,
+        "total": 8
+      },
+      "STX": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5196,
+        "total": 7
+      },
+      "TSLA": {
+        "n": 7,
+        "pos": 0.714,
+        "score": 0.1994,
+        "total": 15
+      },
+      "TTD": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.6195,
+        "total": 11
+      },
+      "UBER": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.2877,
+        "total": 16
+      },
+      "VRT": {
+        "n": 1,
+        "pos": 0.0,
+        "score": -0.1974,
+        "total": 4
+      },
+      "YMM": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.4797,
+        "total": 6
+      },
+      "ZETA": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.5073,
+        "total": 4
+      }
     }
   }
 }
