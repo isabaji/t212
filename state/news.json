@@ -3257,6 +3257,212 @@
         "score": 0.5073,
         "total": 4
       }
+    },
+    "2026-11-10": {
+      "AAPL": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.2221,
+        "total": 9
+      },
+      "ACHR": {
+        "n": 8,
+        "pos": 0.5,
+        "score": -0.1564,
+        "total": 16
+      },
+      "ADBE": {
+        "n": 6,
+        "pos": 0.667,
+        "score": 0.1925,
+        "total": 15
+      },
+      "ALH": {
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.4977,
+        "total": 9
+      },
+      "AMD": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.208,
+        "total": 7
+      },
+      "AMZN": {
+        "n": 9,
+        "pos": 1.0,
+        "score": 0.2424,
+        "total": 12
+      },
+      "APP": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.1964,
+        "total": 11
+      },
+      "BDC": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.0,
+        "total": 3
+      },
+      "BLSH": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.5969,
+        "total": 4
+      },
+      "C": {
+        "n": 7,
+        "pos": 0.714,
+        "score": 0.1057,
+        "total": 16
+      },
+      "DB": {
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.1121,
+        "total": 7
+      },
+      "EXE": {
+        "n": 3,
+        "pos": 0.667,
+        "score": -0.0162,
+        "total": 4
+      },
+      "FICO": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.664,
+        "total": 5
+      },
+      "GOOGL": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2446,
+        "total": 10
+      },
+      "GPI": {
+        "n": 12,
+        "pos": 0.583,
+        "score": 0.1222,
+        "total": 17
+      },
+      "GS": {
+        "n": 8,
+        "pos": 0.75,
+        "score": 0.0225,
+        "total": 19
+      },
+      "HMC": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.5747,
+        "total": 12
+      },
+      "IFNNY": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.6608,
+        "total": 9
+      },
+      "JNJ": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.3077,
+        "total": 9
+      },
+      "MSFT": {
+        "n": 8,
+        "pos": 0.125,
+        "score": -0.3938,
+        "total": 12
+      },
+      "NVDA": {
+        "n": 16,
+        "pos": 0.25,
+        "score": -0.2519,
+        "total": 32
+      },
+      "NWSA": {
+        "n": 20,
+        "pos": 0.95,
+        "score": 0.5502,
+        "total": 30
+      },
+      "ONTO": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.417,
+        "total": 11
+      },
+      "ORCL": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.3799,
+        "total": 12
+      },
+      "RIOT": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.6263,
+        "total": 8
+      },
+      "RKLB": {
+        "n": 8,
+        "pos": 0.75,
+        "score": 0.1465,
+        "total": 21
+      },
+      "SKYD": {
+        "n": 5,
+        "pos": 0.2,
+        "score": -0.3428,
+        "total": 13
+      },
+      "SLDE": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.229,
+        "total": 4
+      },
+      "SPCX": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.2261,
+        "total": 13
+      },
+      "TDG": {
+        "n": 7,
+        "pos": 0.714,
+        "score": 0.2926,
+        "total": 13
+      },
+      "TTD": {
+        "n": 14,
+        "pos": 0.786,
+        "score": 0.2113,
+        "total": 20
+      },
+      "VG": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.3346,
+        "total": 10
+      },
+      "VOD": {
+        "n": 9,
+        "pos": 0.667,
+        "score": 0.1988,
+        "total": 12
+      },
+      "YMM": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.8378,
+        "total": 5
+      }
     }
   }
 }
