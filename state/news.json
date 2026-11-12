@@ -3546,32 +3546,50 @@
       "AAPL": {
         "n": 6,
         "pos": 0.833,
-        "score": 0.2965,
+        "score": 0.3318,
         "total": 11
       },
       "ABT": {
         "n": 3,
         "pos": 0.667,
         "score": 0.0955,
-        "total": 6
+        "total": 7
+      },
+      "AFG": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2377,
+        "total": 2
+      },
+      "AMD": {
+        "n": 7,
+        "pos": 0.429,
+        "score": -0.0419,
+        "total": 10
       },
       "AMZN": {
-        "n": 1,
-        "pos": 1.0,
-        "score": 0.2913,
-        "total": 11
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 9
       },
       "ASX": {
-        "n": 3,
+        "n": 4,
         "pos": 1.0,
-        "score": 0.664,
-        "total": 5
+        "score": 0.7333,
+        "total": 6
       },
       "BE": {
-        "n": 6,
-        "pos": 0.833,
-        "score": 0.4779,
-        "total": 14
+        "n": 9,
+        "pos": 0.778,
+        "score": 0.2381,
+        "total": 17
+      },
+      "BLSH": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.4917,
+        "total": 5
       },
       "C": {
         "n": 3,
@@ -3579,22 +3597,28 @@
         "score": 0.438,
         "total": 6
       },
+      "CRM": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.3445,
+        "total": 8
+      },
       "CRWV": {
-        "n": 42,
-        "pos": 0.905,
-        "score": 0.4826,
-        "total": 50
+        "n": 30,
+        "pos": 0.967,
+        "score": 0.5382,
+        "total": 44
       },
       "DB": {
         "n": 8,
         "pos": 0.625,
         "score": 0.3022,
-        "total": 13
+        "total": 12
       },
       "FICO": {
-        "n": 1,
-        "pos": 1.0,
-        "score": 0.1813,
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
         "total": 4
       },
       "GOOGL": {
@@ -3605,9 +3629,9 @@
       },
       "GPI": {
         "n": 9,
-        "pos": 0.667,
-        "score": 0.0516,
-        "total": 26
+        "pos": 1.0,
+        "score": 0.3902,
+        "total": 23
       },
       "GS": {
         "n": 5,
@@ -3615,17 +3639,29 @@
         "score": 0.092,
         "total": 14
       },
+      "HIMS": {
+        "n": 10,
+        "pos": 0.2,
+        "score": -0.3334,
+        "total": 18
+      },
       "ICE": {
         "n": 0,
         "pos": 0.0,
         "score": 0.0,
-        "total": 4
+        "total": 6
+      },
+      "IFNNY": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.3925,
+        "total": 8
       },
       "INTC": {
-        "n": 2,
+        "n": 4,
         "pos": 0.5,
-        "score": 0.3739,
-        "total": 8
+        "score": 0.2463,
+        "total": 7
       },
       "IRM": {
         "n": 2,
@@ -3635,8 +3671,8 @@
       },
       "META": {
         "n": 1,
-        "pos": 1.0,
-        "score": 0.1813,
+        "pos": 0.0,
+        "score": -0.537,
         "total": 8
       },
       "MS": {
@@ -3652,22 +3688,28 @@
         "total": 12
       },
       "MSTR": {
-        "n": 5,
-        "pos": 0.6,
-        "score": 0.3506,
-        "total": 13
+        "n": 6,
+        "pos": 0.5,
+        "score": 0.2016,
+        "total": 16
+      },
+      "NBIS": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.4321,
+        "total": 9
       },
       "NVDA": {
-        "n": 12,
-        "pos": 0.75,
-        "score": 0.1898,
-        "total": 24
+        "n": 18,
+        "pos": 0.389,
+        "score": -0.1262,
+        "total": 40
       },
       "NWSA": {
-        "n": 19,
-        "pos": 0.895,
-        "score": 0.347,
-        "total": 34
+        "n": 20,
+        "pos": 0.85,
+        "score": 0.3109,
+        "total": 32
       },
       "ORCL": {
         "n": 7,
@@ -3676,28 +3718,58 @@
         "total": 13
       },
       "OTEX": {
-        "n": 3,
+        "n": 1,
         "pos": 1.0,
-        "score": 0.5866,
-        "total": 5
-      },
-      "POST": {
-        "n": 3,
-        "pos": 0.333,
-        "score": -0.2934,
+        "score": 0.537,
         "total": 4
       },
+      "PNFP": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.3736,
+        "total": 3
+      },
+      "POR": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.1974,
+        "total": 4
+      },
+      "POST": {
+        "n": 5,
+        "pos": 0.2,
+        "score": -0.0325,
+        "total": 6
+      },
       "RGTI": {
+        "n": 10,
+        "pos": 0.4,
+        "score": -0.2841,
+        "total": 20
+      },
+      "RKLB": {
         "n": 11,
-        "pos": 0.364,
-        "score": -0.2484,
-        "total": 19
+        "pos": 0.727,
+        "score": 0.1615,
+        "total": 16
       },
       "SLDE": {
         "n": 4,
-        "pos": 0.25,
-        "score": -0.2599,
+        "pos": 0.0,
+        "score": -0.5419,
         "total": 4
+      },
+      "SMR": {
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.0238,
+        "total": 4
+      },
+      "SNDK": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.1708,
+        "total": 10
       },
       "TSEM": {
         "n": 1,
@@ -3717,11 +3789,17 @@
         "score": -0.0388,
         "total": 9
       },
+      "VST": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2702,
+        "total": 7
+      },
       "YMM": {
-        "n": 7,
-        "pos": 0.857,
-        "score": 0.6277,
-        "total": 10
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.3252,
+        "total": 6
       }
     }
   }
