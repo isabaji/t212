@@ -3801,6 +3801,188 @@
         "score": 0.3252,
         "total": 6
       }
+    },
+    "2026-11-12": {
+      "AAPL": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.5438,
+        "total": 12
+      },
+      "AMD": {
+        "n": 8,
+        "pos": 0.875,
+        "score": 0.3577,
+        "total": 18
+      },
+      "ASTS": {
+        "n": 7,
+        "pos": 0.571,
+        "score": 0.0568,
+        "total": 17
+      },
+      "BABA": {
+        "n": 6,
+        "pos": 0.0,
+        "score": -0.3259,
+        "total": 12
+      },
+      "CLBT": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.5824,
+        "total": 5
+      },
+      "CRWV": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.2018,
+        "total": 11
+      },
+      "CTVA": {
+        "n": 5,
+        "pos": 0.0,
+        "score": -0.6126,
+        "total": 8
+      },
+      "ECO": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.509,
+        "total": 5
+      },
+      "GOOGL": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.3087,
+        "total": 7
+      },
+      "GPI": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.5463,
+        "total": 25
+      },
+      "HAL": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.4327,
+        "total": 7
+      },
+      "INTC": {
+        "n": 4,
+        "pos": 0.75,
+        "score": -0.0211,
+        "total": 10
+      },
+      "LGN": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.8854,
+        "total": 6
+      },
+      "LUNR": {
+        "n": 8,
+        "pos": 1.0,
+        "score": 0.6269,
+        "total": 11
+      },
+      "MSFT": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.0348,
+        "total": 7
+      },
+      "MSTR": {
+        "n": 11,
+        "pos": 0.182,
+        "score": -0.329,
+        "total": 18
+      },
+      "NBIS": {
+        "n": 8,
+        "pos": 0.25,
+        "score": -0.2913,
+        "total": 15
+      },
+      "NIQ": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7081,
+        "total": 6
+      },
+      "NVDA": {
+        "n": 52,
+        "pos": 0.135,
+        "score": -0.3173,
+        "total": 91
+      },
+      "NWSA": {
+        "n": 20,
+        "pos": 0.65,
+        "score": 0.2783,
+        "total": 34
+      },
+      "ONDS": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.5641,
+        "total": 9
+      },
+      "PFGC": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7027,
+        "total": 3
+      },
+      "PLTR": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.1573,
+        "total": 14
+      },
+      "RKLB": {
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.3615,
+        "total": 15
+      },
+      "RRC": {
+        "n": 4,
+        "pos": 0.5,
+        "score": 0.2008,
+        "total": 5
+      },
+      "SLDE": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.2987,
+        "total": 4
+      },
+      "SMR": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.1248,
+        "total": 7
+      },
+      "SPCX": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.1156,
+        "total": 15
+      },
+      "TNL": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 2
+      },
+      "YMM": {
+        "n": 8,
+        "pos": 1.0,
+        "score": 0.8492,
+        "total": 10
+      }
     }
   }
 }
