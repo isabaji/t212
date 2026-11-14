@@ -3991,17 +3991,30 @@
         "score": 0.0757,
         "total": 6
       },
+      "AAPL": {
+        "n": 41,
+        "pos": 0.146,
+        "score": -0.166,
+        "src": "peers:MSFT+NVDA",
+        "total": 8
+      },
+      "ADSK": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.664,
+        "total": 1
+      },
       "AMAT": {
-        "n": 14,
-        "pos": 0.857,
-        "score": 0.3155,
-        "total": 21
+        "n": 12,
+        "pos": 0.833,
+        "score": 0.293,
+        "total": 18
       },
       "AMD": {
-        "n": 3,
-        "pos": 0.333,
-        "score": -0.469,
-        "total": 8
+        "n": 5,
+        "pos": 0.0,
+        "score": -0.2808,
+        "total": 11
       },
       "ASTS": {
         "n": 8,
@@ -4009,11 +4022,23 @@
         "score": -0.2432,
         "total": 14
       },
-      "BE": {
+      "AZN": {
         "n": 5,
         "pos": 0.8,
-        "score": 0.1423,
+        "score": 0.5101,
         "total": 10
+      },
+      "BE": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.1541,
+        "total": 9
+      },
+      "BETA": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
       },
       "BROS": {
         "n": 2,
@@ -4022,10 +4047,10 @@
         "total": 5
       },
       "CBRS": {
-        "n": 15,
+        "n": 8,
         "pos": 1.0,
-        "score": 0.5191,
-        "total": 22
+        "score": 0.4193,
+        "total": 14
       },
       "CRWV": {
         "n": 8,
@@ -4034,16 +4059,22 @@
         "total": 14
       },
       "CSCO": {
-        "n": 16,
-        "pos": 0.812,
-        "score": 0.4639,
-        "total": 22
+        "n": 10,
+        "pos": 0.7,
+        "score": 0.3767,
+        "total": 14
       },
       "CTVA": {
         "n": 6,
         "pos": 0.0,
         "score": -0.3702,
         "total": 14
+      },
+      "DELL": {
+        "n": 4,
+        "pos": 0.0,
+        "score": -0.6248,
+        "total": 7
       },
       "GOOGL": {
         "n": 1,
@@ -4052,16 +4083,46 @@
         "total": 6
       },
       "GPI": {
-        "n": 7,
-        "pos": 0.429,
-        "score": -0.0443,
-        "total": 21
+        "n": 9,
+        "pos": 0.778,
+        "score": 0.1315,
+        "total": 19
       },
       "GS": {
         "n": 6,
         "pos": 0.167,
         "score": -0.2176,
         "total": 16
+      },
+      "GSAT": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 2
+      },
+      "ICE": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 2
+      },
+      "IFNNY": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.7036,
+        "total": 3
+      },
+      "IONQ": {
+        "n": 5,
+        "pos": 0.0,
+        "score": -0.379,
+        "total": 12
+      },
+      "IOT": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.1974,
+        "total": 7
       },
       "IREN": {
         "n": 3,
@@ -4087,6 +4148,12 @@
         "score": 0.4241,
         "total": 7
       },
+      "LUNR": {
+        "n": 10,
+        "pos": 0.9,
+        "score": 0.2683,
+        "total": 17
+      },
       "MOD": {
         "n": 4,
         "pos": 0.75,
@@ -4094,34 +4161,40 @@
         "total": 13
       },
       "MSFT": {
-        "n": 18,
-        "pos": 0.389,
-        "score": -0.1281,
-        "total": 21
+        "n": 10,
+        "pos": 0.2,
+        "score": -0.3257,
+        "total": 12
       },
       "NBIS": {
-        "n": 11,
-        "pos": 0.273,
-        "score": -0.2598,
-        "total": 20
+        "n": 10,
+        "pos": 0.3,
+        "score": -0.2417,
+        "total": 19
       },
       "NVDA": {
-        "n": 29,
-        "pos": 0.069,
-        "score": -0.4804,
-        "total": 59
+        "n": 31,
+        "pos": 0.129,
+        "score": -0.3342,
+        "total": 51
       },
       "NWSA": {
-        "n": 20,
-        "pos": 0.95,
-        "score": 0.6276,
-        "total": 33
+        "n": 16,
+        "pos": 0.938,
+        "score": 0.6429,
+        "total": 28
+      },
+      "ORCL": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.177,
+        "total": 8
       },
       "OTEX": {
         "n": 3,
         "pos": 0.333,
         "score": -0.0483,
-        "total": 6
+        "total": 4
       },
       "RKLB": {
         "n": 6,
@@ -4137,15 +4210,21 @@
       },
       "SLDE": {
         "n": 7,
-        "pos": 0.0,
-        "score": -0.4584,
+        "pos": 0.143,
+        "score": -0.2372,
         "total": 7
       },
+      "SPB": {
+        "n": 6,
+        "pos": 0.5,
+        "score": 0.3552,
+        "total": 13
+      },
       "SPCX": {
-        "n": 1,
+        "n": 6,
         "pos": 1.0,
-        "score": 0.2913,
-        "total": 19
+        "score": 0.2991,
+        "total": 21
       },
       "STE": {
         "n": 2,
@@ -4154,10 +4233,16 @@
         "total": 3
       },
       "TSLA": {
-        "n": 2,
-        "pos": 1.0,
-        "score": 0.2913,
-        "total": 17
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 16
+      },
+      "VST": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 5
       },
       "WWW": {
         "n": 4,
