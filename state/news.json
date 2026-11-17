@@ -4426,6 +4426,243 @@
         "score": -0.4621,
         "total": 4
       }
+    },
+    "2026-11-17": {
+      "AAP": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.773,
+        "total": 2
+      },
+      "AAPL": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.3041,
+        "total": 10
+      },
+      "ABBV": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 7
+      },
+      "ALK": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.63,
+        "total": 6
+      },
+      "AMZN": {
+        "n": 15,
+        "pos": 0.6,
+        "score": 0.0905,
+        "src": "peers:HD+TSLA",
+        "total": 9
+      },
+      "ANET": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.1974,
+        "total": 9
+      },
+      "AS": {
+        "n": 13,
+        "pos": 1.0,
+        "score": 0.6312,
+        "total": 18
+      },
+      "ASX": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.664,
+        "total": 3
+      },
+      "BABA": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.2119,
+        "total": 7
+      },
+      "BAC": {
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.0587,
+        "total": 11
+      },
+      "CRM": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.3387,
+        "total": 13
+      },
+      "CRWV": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.0874,
+        "total": 5
+      },
+      "DB": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.141,
+        "total": 10
+      },
+      "DIS": {
+        "n": 19,
+        "pos": 0.895,
+        "score": 0.311,
+        "total": 28
+      },
+      "DKS": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.2169,
+        "total": 5
+      },
+      "EXE": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 3
+      },
+      "FCPT": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.4606,
+        "total": 4
+      },
+      "GFF": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.4374,
+        "total": 10
+      },
+      "GOOGL": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 7
+      },
+      "GPI": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.2348,
+        "total": 11
+      },
+      "GS": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.1705,
+        "total": 15
+      },
+      "HD": {
+        "n": 12,
+        "pos": 0.583,
+        "score": 0.1976,
+        "total": 29
+      },
+      "ICE": {
+        "n": 2,
+        "pos": 0.0,
+        "score": -0.1974,
+        "total": 5
+      },
+      "JNJ": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.2303,
+        "total": 11
+      },
+      "JPM": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.0536,
+        "total": 10
+      },
+      "MS": {
+        "n": 10,
+        "pos": 0.8,
+        "score": 0.2742,
+        "total": 17
+      },
+      "MSTR": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.1546,
+        "total": 9
+      },
+      "NVDA": {
+        "n": 35,
+        "pos": 0.343,
+        "score": -0.0453,
+        "total": 66
+      },
+      "NVS": {
+        "n": 6,
+        "pos": 1.0,
+        "score": 0.7021,
+        "total": 14
+      },
+      "NWSA": {
+        "n": 13,
+        "pos": 0.846,
+        "score": 0.4124,
+        "total": 17
+      },
+      "O": {
+        "n": 3,
+        "pos": 0.667,
+        "score": -0.0474,
+        "total": 5
+      },
+      "POST": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.0438,
+        "total": 9
+      },
+      "RHHBY": {
+        "n": 14,
+        "pos": 1.0,
+        "score": 0.663,
+        "total": 24
+      },
+      "RKLB": {
+        "n": 6,
+        "pos": 0.333,
+        "score": -0.2154,
+        "total": 15
+      },
+      "SPCX": {
+        "n": 4,
+        "pos": 0.5,
+        "score": 0.0823,
+        "total": 16
+      },
+      "TEVA": {
+        "n": 4,
+        "pos": 0.75,
+        "score": 0.3508,
+        "total": 5
+      },
+      "TSLA": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.1143,
+        "total": 16
+      },
+      "WFC": {
+        "n": 3,
+        "pos": 0.0,
+        "score": -0.1683,
+        "total": 9
+      },
+      "XPEV": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.5419,
+        "total": 18
+      }
     }
   }
 }
