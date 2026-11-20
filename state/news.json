@@ -5106,6 +5106,224 @@
         "score": 0.5487,
         "total": 13
       }
+    },
+    "2026-11-20": {
+      "ACN": {
+        "n": 6,
+        "pos": 0.5,
+        "score": 0.0075,
+        "total": 6
+      },
+      "AIT": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 3
+      },
+      "ALB": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
+      },
+      "ALH": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
+      },
+      "AMD": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.2124,
+        "total": 7
+      },
+      "APD": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 2
+      },
+      "ASX": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.0244,
+        "total": 3
+      },
+      "AVNT": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
+      },
+      "BABA": {
+        "n": 9,
+        "pos": 0.222,
+        "score": -0.4303,
+        "total": 15
+      },
+      "BE": {
+        "n": 7,
+        "pos": 0.429,
+        "score": -0.4332,
+        "total": 16
+      },
+      "BILL": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.2382,
+        "total": 14
+      },
+      "BJ": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.622,
+        "total": 4
+      },
+      "BKE": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 4
+      },
+      "BSP": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.1583,
+        "total": 14
+      },
+      "CBRS": {
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.2107,
+        "total": 6
+      },
+      "CBT": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
+      },
+      "CIFR": {
+        "n": 2,
+        "pos": 0.5,
+        "score": -0.5981,
+        "total": 3
+      },
+      "ESTC": {
+        "n": 8,
+        "pos": 0.875,
+        "score": 0.5189,
+        "total": 16
+      },
+      "GOOGL": {
+        "n": 4,
+        "pos": 0.5,
+        "score": -0.1387,
+        "total": 8
+      },
+      "GPI": {
+        "n": 3,
+        "pos": 0.333,
+        "score": -0.4109,
+        "total": 7
+      },
+      "INTU": {
+        "n": 13,
+        "pos": 0.308,
+        "score": -0.0971,
+        "total": 21
+      },
+      "KEYS": {
+        "n": 9,
+        "pos": 1.0,
+        "score": 0.5808,
+        "total": 18
+      },
+      "MKC": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.162,
+        "total": 7
+      },
+      "NVDA": {
+        "n": 15,
+        "pos": 0.267,
+        "score": -0.4249,
+        "total": 26
+      },
+      "NWSA": {
+        "n": 11,
+        "pos": 1.0,
+        "score": 0.5021,
+        "total": 18
+      },
+      "ORCL": {
+        "n": 4,
+        "pos": 0.0,
+        "score": -0.3563,
+        "total": 8
+      },
+      "OTEX": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.1891,
+        "total": 4
+      },
+      "PANW": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.4721,
+        "total": 13
+      },
+      "ROST": {
+        "n": 14,
+        "pos": 0.643,
+        "score": 0.1501,
+        "total": 19
+      },
+      "SAM": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.0874,
+        "total": 6
+      },
+      "SLDE": {
+        "n": 13,
+        "pos": 0.077,
+        "score": -0.2996,
+        "total": 13
+      },
+      "SNDK": {
+        "n": 9,
+        "pos": 0.222,
+        "score": -0.4961,
+        "total": 13
+      },
+      "SNY": {
+        "n": 5,
+        "pos": 0.8,
+        "score": 0.1224,
+        "total": 14
+      },
+      "SPCX": {
+        "n": 2,
+        "pos": 0.5,
+        "score": 0.0797,
+        "total": 14
+      },
+      "UNH": {
+        "n": 10,
+        "pos": 0.7,
+        "score": 0.3271,
+        "total": 14
+      },
+      "WMT": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.3571,
+        "total": 14
+      }
     }
   }
 }
