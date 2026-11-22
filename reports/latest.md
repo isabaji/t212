@@ -1,4 +1,4 @@
-# Bot report — 7 days to 2026-11-15
+# Bot report — 7 days to 2026-11-22
 
 ## Trades (last 7 days)
 
@@ -21,21 +21,21 @@
 
 ## News archive
 
-- 14 days archived (2026-10-27 → 2026-11-13), 5 in this period
-- buy-grade symbol-days this period: 51 (AAON×3, BLSH×3, NWSA×3, YMM×3, IFNNY×3, CRWV×2, GPI×2, AMZN×1)
-- sell-grade symbol-days this period: 8 (CTVA×2, HIMS×1, NVDA×1, SLDE×1, DELL×1, IONQ×1, IREN×1)
-- latest day (2026-11-13): most negative DELL -0.62, IREN -0.39, IONQ -0.38; most positive IFNNY +0.70, NWSA +0.64, WWW +0.64
-- score sources this period: own 199, peers:MSFT+NVDA 1
+- 19 days archived (2026-10-27 → 2026-11-20), 5 in this period
+- buy-grade symbol-days this period: 40 (NWSA×4, RHHBY×3, AS×2, YMM×2, ZIM×2, PANW×2, WMT×2, CYTK×1)
+- sell-grade symbol-days this period: 12 (UNH×2, INTC×1, MSTR×1, TCEHY×1, JPM×1, BABA×1, BE×1, GPI×1)
+- latest day (2026-11-20): most negative SNDK -0.50, BE -0.43, BABA -0.43; most positive BJ +0.62, KEYS +0.58, ESTC +0.52
+- score sources this period: own 175, peers:HD+TSLA 1, peers:MSFT+NVDA 1
 
 ## Discovered universe
 
-- 625 names seen all-time, 273 in this period, 118 eligible to trade
-- not eligible: market cap below minimum ×128, average dollar volume below minimum ×17, lookup failed: KeyError ×7, no market-cap/volume data ×3
-- newest: ADSK (Autodesk, 2026-11-13), AMAT (Applied Materials, 2026-11-13), AMPX (Amprius Technologies, 2026-11-13), ANAB (AnaptysBio, 2026-11-13), ATYR (aTyr Pharma, 2026-11-13), AZN (AstraZeneca, 2026-11-13), BAER (Bridger Aerospace Group Holdings, 2026-11-13), BETA (Beta Technologies, 2026-11-13), BROS (Dutch Bros, 2026-11-13), CBRS (Cerebras Systems, 2026-11-13)
+- 729 names seen all-time, 225 in this period, 109 eligible to trade
+- not eligible: market cap below minimum ×100, average dollar volume below minimum ×10, no market-cap/volume data ×3, lookup failed: KeyError ×3
+- newest: AADX (Applied Aerospace & Defense, 2026-11-20), ACN (Accenture, 2026-11-20), ADNT (Adient, 2026-11-20), AIT (Applied Industrial Technologies, 2026-11-20), AIV (Apartment Investment and Management, 2026-11-20), ALB (Albemarle, 2026-11-20), APD (Air Products and Chemicals, 2026-11-20), AVNT (Avient, 2026-11-20), BJ (BJ's Wholesale Club, 2026-11-20), BKE (Buckle, 2026-11-20)
 
 ## Earnings in the next 7 days
 
-- NVDA (2026-11-17), BLSH (2026-11-18), BABA (2026-11-19), POST (2026-11-19), ROAD (2026-11-19), YMM (2026-11-19)
+- ADSK (2026-11-24), DELL (2026-11-24), DKS (2026-11-24), MDT (2026-11-24)
 
 ## Cycle log
 
