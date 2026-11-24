@@ -5324,6 +5324,248 @@
         "score": 0.3571,
         "total": 14
       }
+    },
+    "2026-11-23": {
+      "A": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5483,
+        "total": 7
+      },
+      "ABBV": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.5886,
+        "total": 7
+      },
+      "ALK": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.571,
+        "total": 3
+      },
+      "ALL": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
+      },
+      "AMD": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.5685,
+        "total": 8
+      },
+      "AMZN": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.2726,
+        "total": 10
+      },
+      "ANF": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 1
+      },
+      "BAM": {
+        "n": 7,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 11
+      },
+      "BBIO": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.8184,
+        "total": 5
+      },
+      "BBY": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 7
+      },
+      "BIP": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 51
+      },
+      "BXSL": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.2913,
+        "total": 4
+      },
+      "CRWD": {
+        "n": 16,
+        "pos": 0.875,
+        "score": 0.2694,
+        "total": 25
+      },
+      "FICO": {
+        "n": 3,
+        "pos": 0.667,
+        "score": -0.1965,
+        "total": 4
+      },
+      "GOOGL": {
+        "n": 3,
+        "pos": 0.667,
+        "score": 0.4876,
+        "total": 8
+      },
+      "GPI": {
+        "n": 7,
+        "pos": 0.857,
+        "score": 0.1203,
+        "total": 12
+      },
+      "GTES": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 2
+      },
+      "HPE": {
+        "n": 12,
+        "pos": 0.917,
+        "score": 0.5176,
+        "total": 16
+      },
+      "ICE": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.2378,
+        "total": 3
+      },
+      "JPM": {
+        "n": 8,
+        "pos": 0.625,
+        "score": 0.1809,
+        "total": 16
+      },
+      "LULU": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.4621,
+        "total": 8
+      },
+      "MNDY": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.1974,
+        "total": 10
+      },
+      "MS": {
+        "n": 1,
+        "pos": 0.0,
+        "score": -0.6044,
+        "total": 8
+      },
+      "MSTR": {
+        "n": 8,
+        "pos": 0.75,
+        "score": 0.267,
+        "total": 15
+      },
+      "NFLX": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.0988,
+        "total": 15
+      },
+      "NVDA": {
+        "n": 45,
+        "pos": 0.844,
+        "score": 0.2935,
+        "total": 70
+      },
+      "NVO": {
+        "n": 5,
+        "pos": 1.0,
+        "score": 0.5542,
+        "total": 6
+      },
+      "NWSA": {
+        "n": 10,
+        "pos": 1.0,
+        "score": 0.4963,
+        "total": 15
+      },
+      "OPCH": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 3
+      },
+      "ORCL": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.2906,
+        "total": 10
+      },
+      "RHHBY": {
+        "n": 4,
+        "pos": 1.0,
+        "score": 0.7524,
+        "total": 6
+      },
+      "SLDE": {
+        "n": 4,
+        "pos": 0.25,
+        "score": -0.1442,
+        "total": 4
+      },
+      "SN": {
+        "n": 0,
+        "pos": 0.0,
+        "score": 0.0,
+        "total": 5
+      },
+      "SYM": {
+        "n": 6,
+        "pos": 0.833,
+        "score": 0.2938,
+        "total": 9
+      },
+      "TAK": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 3
+      },
+      "TSLA": {
+        "n": 5,
+        "pos": 0.6,
+        "score": 0.0775,
+        "total": 14
+      },
+      "WMT": {
+        "n": 1,
+        "pos": 1.0,
+        "score": 0.8005,
+        "total": 7
+      },
+      "YMM": {
+        "n": 3,
+        "pos": 1.0,
+        "score": 0.6071,
+        "total": 3
+      },
+      "ZM": {
+        "n": 2,
+        "pos": 1.0,
+        "score": 0.7163,
+        "total": 4
+      },
+      "ZS": {
+        "n": 15,
+        "pos": 0.933,
+        "score": 0.3546,
+        "total": 23
+      }
     }
   }
 }
